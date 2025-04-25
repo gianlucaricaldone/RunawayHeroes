@@ -7,6 +7,8 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using RunawayHeroes.Core;
 using RunawayHeroes.Characters;
+using RunawayHeroes.Items;
+using RunawayHeroes.Manager;
 
 namespace RunawayHeroes.Core.Tutorial
 {
