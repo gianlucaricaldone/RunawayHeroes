@@ -348,7 +348,7 @@ namespace RunawayHeroes
                     targetVelocity = new Vector3(movementDirection.x, 0, movementDirection.z) * currentMovementSpeed;
                 }
                 
-                Vector3 velocityChange = targetVelocity - new Vector3(rb.velocity.x, 0, rb.velocity.z);
+                Vector3 velocityChange = targetVelocity - new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
                 rb.AddForce(velocityChange, ForceMode.VelocityChange);
             }
 
@@ -406,13 +406,13 @@ namespace RunawayHeroes
                 );
 
                 // Reset jump state if grounded
-                if (isGrounded && rb.velocity.y < 0.1f)
+                if (isGrounded && rb.linearVelocity.y < 0.1f)
                 {
                     isJumping = false;
                     animator?.SetBool("Jumping", false);
                     
                     // Play landing sound if falling from a height
-                    if (rb.velocity.y < -5f)
+                    if (rb.linearVelocity.y < -5f)
                     {
                         PlayLandingSound();
                     }
@@ -498,7 +498,7 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+                rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
                 rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             }
             
@@ -523,7 +523,7 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+                rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
                 rb.AddForce(Vector3.up * doubleJumpForce, ForceMode.Impulse);
             }
             
@@ -957,8 +957,8 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = new Vector3(wallForward.x * wallRunSpeed * speedMultiplier, 
-                    rb.velocity.y, wallForward.z * wallRunSpeed * speedMultiplier);
+                rb.linearVelocity = new Vector3(wallForward.x * wallRunSpeed * speedMultiplier, 
+                    rb.linearVelocity.y, wallForward.z * wallRunSpeed * speedMultiplier);
                 
                 // Apply gravity if being introduced
                 if (gravity != 0)
@@ -1020,7 +1020,7 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = Vector3.zero; // Clear current velocity
+                rb.linearVelocity = Vector3.zero; // Clear current velocity
                 rb.AddForce(new Vector3(jumpDirection.x * adjustedWallJumpForce, adjustedUpwardForce, 
                     jumpDirection.z * adjustedWallJumpForce), ForceMode.Impulse);
             }
@@ -1210,7 +1210,7 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = new Vector3(railDirection.x * grindRailSpeed * speedMultiplier, 0, 
+                rb.linearVelocity = new Vector3(railDirection.x * grindRailSpeed * speedMultiplier, 0, 
                     railDirection.z * grindRailSpeed * speedMultiplier);
             }
             
@@ -1265,7 +1265,7 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = Vector3.zero; // Clear current velocity
+                rb.linearVelocity = Vector3.zero; // Clear current velocity
                 rb.AddForce(jumpDirection * grindJumpForce, ForceMode.Impulse);
             }
             
@@ -1498,7 +1498,7 @@ namespace RunawayHeroes
             }
             else if (rb != null)
             {
-                rb.velocity = transform.forward * vaultForwardBoost;
+                rb.linearVelocity = transform.forward * vaultForwardBoost;
             }
             
             // End vaulting
@@ -1563,7 +1563,7 @@ namespace RunawayHeroes
             else if (rb != null)
             {
                 // Reduce velocity during turn
-                rb.velocity = rb.velocity * 0.9f;
+                rb.linearVelocity = rb.linearVelocity * 0.9f;
             }
             
             // Rotate quickly to new direction if input is present
@@ -1699,7 +1699,7 @@ namespace RunawayHeroes
             animator.SetBool("Grounded", isGrounded);
             
             // Update vertical velocity
-            float verticalVelocity = controller != null ? velocity.y : (rb != null ? rb.velocity.y : 0);
+            float verticalVelocity = controller != null ? velocity.y : (rb != null ? rb.linearVelocity.y : 0);
             animator.SetFloat("VerticalVelocity", verticalVelocity);
             
             // Update in air time
@@ -1817,5 +1817,4 @@ namespace RunawayHeroes
         #endregion
     }
 
-    /// <summary>
-    /// Component for terminal hacking, used by Alex
+}
