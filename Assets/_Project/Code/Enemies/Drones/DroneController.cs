@@ -528,7 +528,7 @@ namespace RunawayHeroes.Enemies
         private void MoveToTarget(Vector3 targetPosition, float speed)
         {
             Vector3 direction = (targetPosition - transform.position).normalized;
-            rb.velocity = direction * speed;
+            rb.linearVelocity = direction * speed;
         }
 
         private void LookAtTarget(Vector3 targetPosition)
@@ -558,7 +558,7 @@ namespace RunawayHeroes.Enemies
         private IEnumerator WaitAtWaypoint()
         {
             // Stop movement
-            rb.velocity = Vector3.zero;
+            rb.linearVelocity = Vector3.zero;
             
             // Wait
             yield return new WaitForSeconds(waypointWaitTime);
@@ -750,7 +750,7 @@ namespace RunawayHeroes.Enemies
                     Rigidbody projectileRb = projectile.GetComponent<Rigidbody>();
                     if (projectileRb != null)
                     {
-                        projectileRb.velocity = direction * projectileSpeed;
+                        projectileRb.linearVelocity = direction * projectileSpeed;
                     }
                     
                     // Set up projectile
@@ -785,7 +785,7 @@ namespace RunawayHeroes.Enemies
                 while (elapsedTime < rushDuration)
                 {
                     float t = elapsedTime / rushDuration;
-                    rb.velocity = Vector3.Lerp(Vector3.zero, (targetPosition - startPosition).normalized * rushSpeed, t);
+                    rb.linearVelocity = Vector3.Lerp(Vector3.zero, (targetPosition - startPosition).normalized * rushSpeed, t);
                     elapsedTime += Time.deltaTime;
                     yield return null;
                 }
@@ -808,7 +808,7 @@ namespace RunawayHeroes.Enemies
                 while (elapsedTime < 0.5f)
                 {
                     float t = elapsedTime / 0.5f;
-                    rb.velocity = Vector3.Lerp(rb.velocity, Vector3.zero, t);
+                    rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, t);
                     elapsedTime += Time.deltaTime;
                     yield return null;
                 }
@@ -960,7 +960,7 @@ namespace RunawayHeroes.Enemies
             switch (newState)
             {
                 case DroneState.Idle:
-                    rb.velocity = Vector3.zero;
+                    rb.linearVelocity = Vector3.zero;
                     break;
                 
                 case DroneState.Patrol:
@@ -983,12 +983,12 @@ namespace RunawayHeroes.Enemies
                     break;
                 
                 case DroneState.Attack:
-                    rb.velocity = Vector3.zero;
+                    rb.linearVelocity = Vector3.zero;
                     break;
                 
                 case DroneState.Search:
                     searchTimer = 10f; // Search for 10 seconds
-                    rb.velocity = Vector3.zero;
+                    rb.linearVelocity = Vector3.zero;
                     break;
                 
                 case DroneState.Retreat:
@@ -1093,7 +1093,7 @@ namespace RunawayHeroes.Enemies
         {
             isStunned = true;
             stunTimer = duration;
-            rb.velocity = Vector3.zero;
+            rb.linearVelocity = Vector3.zero;
             rb.isKinematic = true;
         }
 
@@ -1199,7 +1199,7 @@ namespace RunawayHeroes.Enemies
             // Reset position
             transform.position = initialPosition;
             transform.rotation = initialRotation;
-            rb.velocity = Vector3.zero;
+            rb.linearVelocity = Vector3.zero;
             
             // Reset state machine
             SetDroneState(DroneState.Idle);

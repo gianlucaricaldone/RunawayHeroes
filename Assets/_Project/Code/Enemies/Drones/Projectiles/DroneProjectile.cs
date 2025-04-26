@@ -131,14 +131,14 @@ namespace RunawayHeroes.Enemies
 
                 case ProjectileType.Homing:
                     // Find closest target and adjust trajectory slightly
-                    if (rb != null && rb.velocity.magnitude > 0.1f)
+                    if (rb != null && rb.linearVelocity.magnitude > 0.1f)
                     {
                         GameObject player = GameObject.FindGameObjectWithTag("Player");
                         if (player != null)
                         {
                             Vector3 directionToTarget = (player.transform.position - transform.position).normalized;
-                            rb.velocity = Vector3.Lerp(rb.velocity.normalized, directionToTarget, Time.deltaTime * 2f) * rb.velocity.magnitude;
-                            transform.forward = rb.velocity.normalized;
+                            rb.linearVelocity = Vector3.Lerp(rb.linearVelocity.normalized, directionToTarget, Time.deltaTime * 2f) * rb.linearVelocity.magnitude;
+                            transform.forward = rb.linearVelocity.normalized;
                         }
                     }
                     break;
@@ -204,7 +204,7 @@ namespace RunawayHeroes.Enemies
             // Stop movement
             if (rb != null)
             {
-                rb.velocity = Vector3.zero;
+                rb.linearVelocity = Vector3.zero;
                 rb.isKinematic = true;
             }
 
