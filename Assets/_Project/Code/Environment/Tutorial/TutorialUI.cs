@@ -48,6 +48,20 @@ namespace RunawayHeroes.Core.Tutorial
         [SerializeField] private AudioClip completionSound;
         [SerializeField] private AudioClip buttonClickSound;
 
+        // Riferimenti UI per i messaggi
+        [Header("Message Elements")]
+        [SerializeField] private GameObject _messageContainer;
+        [SerializeField] private TextMeshProUGUI _messageText;
+        [SerializeField] private Image _messageBackground;
+
+        // Variabili per la gestione dei messaggi
+        private bool _isShowingHighPriorityMessage = false;
+        private System.Action _pendingMessageCallback = null;
+        private Coroutine _messageFadeCoroutine = null;
+
+        // Riferimento allo step corrente del tutorial
+        private TutorialStep _currentTutorialStep = null;
+
         // Private variables
         private AudioSource audioSource;
         private CanvasGroup instructionCanvasGroup;
@@ -461,6 +475,119 @@ namespace RunawayHeroes.Core.Tutorial
             {
                 TutorialManager.Instance.ForceCompleteCurrentStep();
             }
+        }
+
+        /// <summary>
+        /// Mostra un messaggio di tutorial all'utente
+        /// </summary>
+        /// <param name="message">Il testo del messaggio da mostrare</param>
+        /// <param name="duration">Durata di visualizzazione del messaggio in secondi, usa -1 per visualizzazione permanente</param>
+        /// <param name="isHighPriority">Se true, il messaggio sovrascriverà altri messaggi attualmente visualizzati</param>
+        /// <param name="onComplete">Callback opzionale da eseguire quando il messaggio scompare</param>
+        public void ShowMessage(string message, float duration = 3.0f, bool isHighPriority = false, System.Action onComplete = null)
+        {
+            // Se è in corso un messaggio ad alta priorità e questo non lo è, esci
+            if (_isShowingHighPriorityMessage && !isHighPriority)
+                return;
+
+            // Se c'è una coroutine di dissolvenza in corso, interrompila
+            if (_messageFadeCoroutine != null)
+            {
+                StopCoroutine(_messageFadeCoroutine);
+                _messageFadeCoroutine = null;
+            }
+
+            // Aggiorna flag di priorità
+            _isShowingHighPriorityMessage = isHighPriority;
+
+            // Prepara il pannello per il messaggio (potrebbe essere un pannello diverso da instructionPanel/completionPanel)
+            // Assumiamo che esista un _messageContainer (GameObject) e un _messageText (TextMeshProUGUI)
+            if (_messageContainer != null)
+            {
+                _messageContainer.gameObject.SetActive(true);
+            }
+
+            // Imposta il testo del messaggio
+            if (_messageText != null)
+            {
+                _messageText.text = message;
+                // Ripristina l'opacità del testo
+                _messageText.color = new Color(_messageText.color.r, _messageText.color.g, _messageText.color.b, 1f);
+            }
+
+            // Se il messaggio è associato allo step corrente del tutorial, evidenzialo nell'UI
+            if (_currentTutorialStep != null && _currentTutorialStep.instructionText == message)
+            {
+                HighlightCurrentStep();
+            }
+
+            // Riproduci suono di notifica
+            if (audioSource != null && instructionAppearSound != null)
+            {
+                audioSource.PlayOneShot(instructionAppearSound);
+            }
+
+            // Se è specificata una durata, programma la scomparsa del messaggio
+            if (duration > 0)
+            {
+                _messageFadeCoroutine = StartCoroutine(FadeOutMessageAfterDelay(duration, onComplete));
+            }
+            else if (duration == -1)
+            {
+                // Per messaggi a durata indefinita, memorizza il callback per chiamarlo successivamente
+                _pendingMessageCallback = onComplete;
+            }
+
+            // Log del messaggio per debug
+            Debug.Log($"Tutorial Message: {message}");
+        }
+
+        /// <summary>
+        /// Coroutine che fa scomparire gradualmente un messaggio dopo un ritardo specificato
+        /// </summary>
+        private IEnumerator FadeOutMessageAfterDelay(float delay, System.Action onComplete)
+        {
+            // Attendi per la durata specificata
+            yield return new WaitForSeconds(delay);
+
+            // Dissolvenza del testo
+            float fadeTime = 0.5f;
+            float elapsed = 0f;
+            Color startColor = _messageText.color;
+            Color endColor = new Color(startColor.r, startColor.g, startColor.b, 0f);
+
+            while (elapsed < fadeTime)
+            {
+                elapsed += Time.deltaTime;
+                _messageText.color = Color.Lerp(startColor, endColor, elapsed / fadeTime);
+                yield return null;
+            }
+
+            // Nascondi il container del messaggio
+            if (_messageContainer != null)
+            {
+                _messageContainer.gameObject.SetActive(false);
+            }
+
+            // Reimposta il flag di alta priorità
+            _isShowingHighPriorityMessage = false;
+
+            // Esegui il callback se fornito
+            onComplete?.Invoke();
+
+            // Cancella il riferimento alla coroutine
+            _messageFadeCoroutine = null;
+        }
+
+        /// <summary>
+        /// Evidenzia lo step corrente nell'interfaccia del tutorial
+        /// </summary>
+        private void HighlightCurrentStep()
+        {
+            // L'implementazione dipende dalla struttura UI
+            // Potrebbe evidenziare un elemento nella lista degli step, cambiare colore, ecc.
+            // Questa è una implementazione placeholder
+            Debug.Log("Highlighting current tutorial step: " + _currentTutorialStep.stepName);
         }
     }
 }

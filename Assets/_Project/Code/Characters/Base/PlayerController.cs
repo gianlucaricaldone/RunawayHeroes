@@ -1050,6 +1050,32 @@ namespace RunawayHeroes.Characters
         {
             isGamePaused = false;
         }
+
+        /// <summary>
+        /// Determina se il personaggio è attualmente in stato di salto
+        /// </summary>
+        /// <returns>True se il personaggio sta saltando, false altrimenti</returns>
+        public bool IsJumping()
+        {
+            // Un personaggio è considerato in salto se:
+            // 1. Non è a terra (IsGrounded è false)
+            // 2. Ha una velocità verticale positiva (sta andando verso l'alto)
+            // 3. Non sta scivolando, correndo su un muro o facendo grinding
+            
+            // Controlla se il personaggio sta andando verso l'alto (component Y della velocità positiva)
+            bool isMovingUpward = moveDirection.y > 0.1f;
+            
+            // Un personaggio non sta saltando se è a terra, sta scivolando, correndo su un muro o facendo grinding
+            bool isNotJumping = IsGrounded || IsSliding || IsWallRunning || IsGrinding;
+            
+            // Se il personaggio sta usando l'abilità speciale di Urban Dash con boost verticale, 
+            // potrebbe essere considerato in salto anche se tecnicamente è un dash
+            bool isUrbanDashJumping = IsUsingSpecialAbility && characterType == CharacterType.Alex 
+                                    && moveDirection.y > 0f;
+            
+            // Un personaggio sta saltando se si sta muovendo verso l'alto e non è in nessuno degli stati che impediscono il salto
+            return (isMovingUpward && !isNotJumping) || isUrbanDashJumping;
+        }
         #endregion
     }
 
@@ -1123,4 +1149,5 @@ namespace RunawayHeroes.Characters
             Destroy(gameObject, 2f);
         }
     }
+
 }
