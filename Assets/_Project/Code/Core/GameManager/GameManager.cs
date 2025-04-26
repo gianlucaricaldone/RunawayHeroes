@@ -687,6 +687,106 @@ namespace RunawayHeroes.Manager
                     break;
             }
         }
+
+        /// <summary>
+        /// Applica un effetto visivo allo schermo del giocatore per una durata specificata
+        /// </summary>
+        /// <param name="effectName">Nome dell'effetto da applicare</param>
+        /// <param name="duration">Durata dell'effetto in secondi</param>
+        public void ApplyScreenEffect(string effectName, float duration)
+        {
+            // Implementazione di base per gestire diversi tipi di effetti schermo
+            Debug.Log($"Applying screen effect: {effectName} for {duration} seconds");
+
+            // Qui potremmo avere logica differente basata sul tipo di effetto
+            switch (effectName.ToLower())
+            {
+                case "blinded":
+                    StartCoroutine(ApplyBlindedEffect(duration));
+                    break;
+                case "damaged":
+                    StartCoroutine(ApplyDamagedEffect(duration));
+                    break;
+                case "slowmotion":
+                    StartCoroutine(ApplySlowMotionEffect(duration));
+                    break;
+                default:
+                    Debug.LogWarning($"Unknown screen effect: {effectName}");
+                    break;
+            }
+        }
+
+        private IEnumerator ApplyBlindedEffect(float duration)
+        {
+            // Qui potremmo attivare un canvas bianco che copre lo schermo
+            // o modificare un effetto post-processing per aumentare la luminosità
+            Debug.Log("Blinded effect started");
+            
+            // Trova il canvas dell'effetto o crealo se necessario
+            // Questo è solo un esempio di implementazione
+            /* 
+            CanvasGroup blindEffect = GetBlindEffectCanvas();
+            if (blindEffect != null)
+            {
+                // Fade in
+                float startTime = Time.time;
+                while (Time.time < startTime + 0.2f)
+                {
+                    float t = (Time.time - startTime) / 0.2f;
+                    blindEffect.alpha = Mathf.Lerp(0, 1, t);
+                    yield return null;
+                }
+                blindEffect.alpha = 1;
+                
+                // Mantieni l'effetto
+                yield return new WaitForSeconds(duration - 0.4f);
+                
+                // Fade out
+                startTime = Time.time;
+                while (Time.time < startTime + 0.2f)
+                {
+                    float t = (Time.time - startTime) / 0.2f;
+                    blindEffect.alpha = Mathf.Lerp(1, 0, t);
+                    yield return null;
+                }
+                blindEffect.alpha = 0;
+            }
+            */
+            
+            // Versione semplificata per il debugging
+            yield return new WaitForSeconds(duration);
+            Debug.Log("Blinded effect ended");
+        }
+
+        private IEnumerator ApplyDamagedEffect(float duration)
+        {
+            // Esempio: attiva un effetto vignetta rossa per indicare il danno
+            Debug.Log("Damaged effect started");
+            
+            // Implementazione semplificata per il debugging
+            yield return new WaitForSeconds(duration);
+            Debug.Log("Damaged effect ended");
+        }
+
+        private IEnumerator ApplySlowMotionEffect(float duration)
+        {
+            // Esempio: rallenta temporaneamente il tempo di gioco
+            Debug.Log("Slow motion effect started");
+            
+            // Salva il valore originale di timeScale
+            float originalTimeScale = Time.timeScale;
+            
+            // Applica slow motion
+            Time.timeScale = 0.3f;
+            
+            // Attendi la durata (tenendo conto del timeScale modificato)
+            yield return new WaitForSecondsRealtime(duration);
+            
+            // Ripristina il timeScale originale
+            Time.timeScale = originalTimeScale;
+            
+            Debug.Log("Slow motion effect ended");
+        }
         #endregion
     }
 

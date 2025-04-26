@@ -1290,6 +1290,84 @@ namespace RunawayHeroes.Core.Tutorial
         {
             HandleCollectibleCollected(collectibleType);
         }
+
+        /// <summary>
+        /// Gestisce il completamento di un obiettivo del tutorial.
+        /// Viene chiamato dalla classe TutorialObjective quando un obiettivo è stato completato.
+        /// </summary>
+        /// <param name="objective">L'obiettivo completato</param>
+        public void OnObjectiveCompleted(TutorialObjective objective)
+        {
+            if (!tutorialActive || objective == null)
+                return;
+
+            Debug.Log($"Objective completed: {objective.ObjectiveName} ({objective.ObjectiveId})");
+
+            // Controlla se questo obiettivo è rilevante per lo step corrente
+            if (currentStep != null && 
+                currentStep.stepType == TutorialStepType.Trigger && 
+                currentStep.triggerAction == TutorialTriggerAction.CompleteObjective && 
+                currentStep.objectiveId == objective.ObjectiveId)
+            {
+                // Questo obiettivo è quello che stavamo aspettando per completare lo step corrente
+                CompleteCurrentStep();
+            }
+
+            // Puoi aggiungere qui altre logiche per obiettivi opzionali, ricompense, ecc.
+            
+            // Riproduci suono di completamento se l'obiettivo ha il suo suono personalizzato
+            AudioClip objectiveSound = objective.GetComponent<AudioSource>()?.clip;
+            if (audioSource != null && objectiveSound != null)
+            {
+                audioSource.PlayOneShot(objectiveSound);
+            }
+            
+            // Aggiorna UI se necessario
+            UpdateProgressUI();
+        }
+
+        /// <summary>
+        /// Registra un obiettivo nel tutorial manager.
+        /// Viene chiamato dagli obiettivi quando vengono inizializzati.
+        /// </summary>
+        /// <param name="objective">L'obiettivo da registrare</param>
+        public void RegisterObjective(TutorialObjective objective)
+        {
+            if (objective == null)
+                return;
+                
+            Debug.Log($"Registering objective: {objective.ObjectiveName} ({objective.ObjectiveId})");
+            
+            // Qui potresti mantenere una lista di obiettivi attivi se necessario
+            // objectives.Add(objective);
+            
+            // Traccia anche l'oggetto GameObject per facilitare la pulizia
+            tutorialObjects.Add(objective.gameObject);
+        }
+
+        /// <summary>
+        /// Rimuove un obiettivo dal tutorial manager.
+        /// Viene chiamato dagli obiettivi quando vengono distrutti.
+        /// </summary>
+        /// <param name="objective">L'obiettivo da rimuovere</param>
+        public void UnregisterObjective(TutorialObjective objective)
+        {
+            if (objective == null)
+                return;
+                
+            Debug.Log($"Unregistering objective: {objective.ObjectiveName} ({objective.ObjectiveId})");
+            
+            // Qui potresti rimuovere l'obiettivo da una lista se ne tieni traccia
+            // objectives.Remove(objective);
+            
+            // Rimuovi anche il GameObject dall'elenco degli oggetti di tutorial
+            if (tutorialObjects.Contains(objective.gameObject))
+            {
+                tutorialObjects.Remove(objective.gameObject);
+            }
+        }
+
+
         #endregion
     }
 
