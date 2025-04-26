@@ -17,7 +17,7 @@ namespace RunawayHeroes.Manager
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<FocusTimeManager>();
+                    _instance = FindAnyObjectByType<FocusTimeManager>();
                     if (_instance == null)
                     {
                         Debug.LogError("FocusTimeManager non trovato nella scena!");

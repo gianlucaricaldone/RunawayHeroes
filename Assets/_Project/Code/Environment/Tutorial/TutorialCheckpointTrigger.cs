@@ -30,8 +30,8 @@ namespace RunawayHeroes.Core.Tutorial
         private void Awake()
         {
             // Trova i riferimenti necessari nella scena
-            tutorialController = FindObjectOfType<Level1TutorialController>();
-            tutorialUI = FindObjectOfType<TutorialUI>();
+            tutorialController = FindAnyObjectByType<Level1TutorialController>();
+            tutorialUI = FindAnyObjectByType<TutorialUI>();
             
             // Assicurati che ci sia un collider trigger
             Collider collider = GetComponent<Collider>();

@@ -86,10 +86,10 @@ namespace RunawayHeroes.Manager
             Debug.Log("GameManager initializing...");
 
             // Find tutorial manager if exists
-            tutorialManager = FindObjectOfType<TutorialManager>();
+            tutorialManager = FindAnyObjectByType<TutorialManager>();
             if (tutorialManager == null)
             {
-                tutorialManager = GameObject.FindObjectOfType<TutorialManager>();
+                tutorialManager = GameObject.FindAnyObjectByType<TutorialManager>();
             }
 
             // Check if tutorial is completed from saved data
@@ -98,12 +98,12 @@ namespace RunawayHeroes.Manager
             // Initialize systems
             if (audioManager == null)
             {
-                audioManager = FindObjectOfType<AudioManager>();
+                audioManager = FindAnyObjectByType<AudioManager>();
             }
 
             if (saveSystem == null)
             {
-                saveSystem = FindObjectOfType<SaveSystem>();
+                saveSystem = FindAnyObjectByType<SaveSystem>();
             }
 
             // Subscribe to scene load events
@@ -124,7 +124,7 @@ namespace RunawayHeroes.Manager
             isLevelLoading = false;
 
             // Find the active player in the scene
-            activePlayer = FindObjectOfType<PlayerController>();
+            activePlayer = FindAnyObjectByType<PlayerController>();
 
             // Check if this is a tutorial level
             IsTutorialMode = IsTutorialLevel(scene.name);
@@ -222,6 +222,349 @@ namespace RunawayHeroes.Manager
 
             // After tutorial is completed, we load the first real level
             LoadLevel(firstLevelScene);
+        }
+
+        /// <summary>
+        /// Chiamato quando un livello specifico del tutorial è stato completato.
+        /// </summary>
+        /// <param name="levelIndex">Indice del livello tutorial completato</param>
+        public void TutorialLevelCompleted(int levelIndex)
+        {
+            Debug.Log($"Tutorial level {levelIndex} completed");
+
+            // Salva il progresso di questo specifico livello di tutorial
+            string key = $"TutorialLevel_{levelIndex}_Completed";
+            PlayerPrefs.SetInt(key, 1);
+            PlayerPrefs.Save();
+
+            // Se questo è l'ultimo livello del tutorial, marca l'intero tutorial come completato
+            if (tutorialManager != null && levelIndex >= GetTutorialLevelsCount() - 1)
+            {
+                // Chiama il metodo che gestisce il completamento dell'intero tutorial
+                OnTutorialCompleted();
+            }
+            
+            // Sblocca funzionalità o fornisci ricompense basate sul livello di tutorial completato
+            ProcessTutorialLevelRewards(levelIndex);
+        }
+
+        /// <summary>
+        /// Gestisce il completamento di un livello in uno specifico mondo.
+        /// </summary>
+        /// <param name="worldIndex">Indice del mondo (1-6)</param>
+        /// <param name="levelIndex">Indice del livello nel mondo (1-9)</param>
+        public void WorldLevelCompleted(int worldIndex, int levelIndex)
+        {
+            Debug.Log($"World {worldIndex} Level {levelIndex} completed");
+
+            // Salva il progresso di questo specifico livello nel mondo
+            string levelKey = $"World{worldIndex}_Level{levelIndex}_Completed";
+            PlayerPrefs.SetInt(levelKey, 1);
+            
+            // Tiene traccia del livello più alto completato in questo mondo
+            int highestCompletedLevel = PlayerPrefs.GetInt($"World{worldIndex}_HighestLevel", 0);
+            if (levelIndex > highestCompletedLevel)
+            {
+                PlayerPrefs.SetInt($"World{worldIndex}_HighestLevel", levelIndex);
+            }
+            
+            PlayerPrefs.Save();
+
+            // Aggiorna sblocchi basati sul completamento
+            UpdateWorldUnlocks(worldIndex, levelIndex);
+            
+            // Processa ricompense specifiche per questo livello
+            ProcessWorldLevelRewards(worldIndex, levelIndex);
+            
+            // Controlla se è stato completato l'intero mondo
+            CheckWorldCompletion(worldIndex, levelIndex);
+        }
+
+        /// <summary>
+        /// Aggiorna gli sblocchi basati sul completamento di un livello in un mondo.
+        /// </summary>
+        private void UpdateWorldUnlocks(int worldIndex, int levelIndex)
+        {
+            // Sblocca il livello successivo se non è l'ultimo
+            int totalLevelsInWorld = GetTotalLevelsInWorld(worldIndex);
+            if (levelIndex < totalLevelsInWorld)
+            {
+                string nextLevelKey = $"World{worldIndex}_Level{levelIndex + 1}_Unlocked";
+                PlayerPrefs.SetInt(nextLevelKey, 1);
+            }
+            
+            // Se è l'ultimo livello del mondo, sblocca il prossimo mondo
+            else if (levelIndex == totalLevelsInWorld && worldIndex < 6)
+            {
+                string nextWorldKey = $"World{worldIndex + 1}_Unlocked";
+                PlayerPrefs.SetInt(nextWorldKey, 1);
+                
+                // Sblocca anche il primo livello del mondo successivo
+                string nextWorldFirstLevelKey = $"World{worldIndex + 1}_Level1_Unlocked";
+                PlayerPrefs.SetInt(nextWorldFirstLevelKey, 1);
+            }
+            
+            // Sblocca il personaggio del mondo se è il boss finale (livello 9)
+            if (levelIndex == totalLevelsInWorld)
+            {
+                UnlockWorldCharacter(worldIndex);
+            }
+            
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Controlla se un intero mondo è stato completato e processa le ricompense per il completamento.
+        /// </summary>
+        private void CheckWorldCompletion(int worldIndex, int levelIndex)
+        {
+            int totalLevelsInWorld = GetTotalLevelsInWorld(worldIndex);
+            
+            // Verifica se questo è l'ultimo livello del mondo
+            if (levelIndex == totalLevelsInWorld)
+            {
+                Debug.Log($"World {worldIndex} completed!");
+                
+                // Salva che il mondo è stato completato
+                string worldCompletedKey = $"World{worldIndex}_Completed";
+                PlayerPrefs.SetInt(worldCompletedKey, 1);
+                PlayerPrefs.Save();
+                
+                // Sblocca contenuti speciali per aver completato il mondo
+                ProcessWorldCompletionRewards(worldIndex);
+                
+                // Controlla se tutti i mondi sono stati completati
+                CheckAllWorldsCompletion();
+            }
+        }
+
+        /// <summary>
+        /// Verifica se tutti i mondi sono stati completati e sblocca contenuti finali.
+        /// </summary>
+        private void CheckAllWorldsCompletion()
+        {
+            bool allWorldsCompleted = true;
+            
+            // Controlla il completamento di tutti e 6 i mondi
+            for (int i = 1; i <= 6; i++)
+            {
+                if (PlayerPrefs.GetInt($"World{i}_Completed", 0) != 1)
+                {
+                    allWorldsCompleted = false;
+                    break;
+                }
+            }
+            
+            if (allWorldsCompleted)
+            {
+                Debug.Log("All worlds completed! Unlocking final content!");
+                
+                // Salva che tutti i mondi sono stati completati
+                PlayerPrefs.SetInt("AllWorldsCompleted", 1);
+                PlayerPrefs.Save();
+                
+                // Sblocca contenuti finali del gioco
+                UnlockFinalContent();
+            }
+        }
+
+        /// <summary>
+        /// Sblocca il personaggio associato a un mondo specifico.
+        /// </summary>
+        private void UnlockWorldCharacter(int worldIndex)
+        {
+            string characterKey = "";
+            
+            switch (worldIndex)
+            {
+                case 1:
+                    characterKey = "Character_Alex_Unlocked";
+                    break;
+                case 2:
+                    characterKey = "Character_Maya_Unlocked";
+                    break;
+                case 3:
+                    characterKey = "Character_Kai_Unlocked";
+                    break;
+                case 4:
+                    characterKey = "Character_Ember_Unlocked";
+                    break;
+                case 5:
+                    characterKey = "Character_Marina_Unlocked";
+                    break;
+                case 6:
+                    characterKey = "Character_Neo_Unlocked";
+                    break;
+            }
+            
+            if (!string.IsNullOrEmpty(characterKey))
+            {
+                PlayerPrefs.SetInt(characterKey, 1);
+                PlayerPrefs.Save();
+                Debug.Log($"Character for World {worldIndex} unlocked!");
+            }
+        }
+
+        /// <summary>
+        /// Elabora ricompense specifiche per il completamento dei livelli del tutorial.
+        /// </summary>
+        private void ProcessTutorialLevelRewards(int levelIndex)
+        {
+            switch (levelIndex)
+            {
+                case 0: // Primi Passi
+                    // Sblocca funzionalità di salto o fornisci ricompensa
+                    AddCurrency(50); // Ricompensa piccola per il primo completamento
+                    break;
+                case 1: // Scivolata Perfetta
+                    // Sblocca scivolate o fornisci ricompensa
+                    AddCurrency(75);
+                    break;
+                case 2: // Riflessi Pronti
+                    // Sblocca movimento laterale o fornisci ricompensa
+                    AddCurrency(100);
+                    break;
+                case 3: // Potere degli Oggetti
+                    // Sblocca Focus Time o fornisci ricompensa
+                    AddCurrency(150);
+                    break;
+                case 4: // Fuga dal Trainer
+                    // Sblocca ricompensa finale del tutorial
+                    AddCurrency(300);
+                    UnlockStarterEquipment();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Elabora ricompense specifiche per il completamento dei livelli nei mondi principali.
+        /// </summary>
+        private void ProcessWorldLevelRewards(int worldIndex, int levelIndex)
+        {
+            // Ricompense di base aumentano con la progressione
+            int baseCurrency = 100 * worldIndex + 50 * levelIndex;
+            
+            // Bonus speciali per livelli significativi (mid-boss, boss)
+            if (levelIndex == 3 || levelIndex == 6) // Mid-boss ai livelli 3 e 6
+            {
+                baseCurrency += 200 * worldIndex;
+                UnlockMidBossReward(worldIndex, levelIndex);
+            }
+            else if (levelIndex == 9) // Boss finale al livello 9
+            {
+                baseCurrency += 500 * worldIndex;
+                UnlockBossReward(worldIndex);
+            }
+            
+            AddCurrency(baseCurrency);
+        }
+
+        /// <summary>
+        /// Sblocca ricompense specifiche per aver sconfitto un mid-boss.
+        /// </summary>
+        private void UnlockMidBossReward(int worldIndex, int levelIndex)
+        {
+            // Sblocca item speciali, abilità o skin basate sul mid-boss sconfitto
+            string rewardKey = $"MidBossReward_World{worldIndex}_Level{levelIndex}";
+            PlayerPrefs.SetInt(rewardKey, 1);
+            
+            Debug.Log($"Mid-boss reward unlocked for World {worldIndex}, Level {levelIndex}");
+            
+            // Qui potresti aggiungere codice specifico per diversi mid-boss
+        }
+
+        /// <summary>
+        /// Sblocca ricompense specifiche per aver sconfitto il boss di un mondo.
+        /// </summary>
+        private void UnlockBossReward(int worldIndex)
+        {
+            // Sblocca ricompense speciali per aver sconfitto il boss del mondo
+            string rewardKey = $"BossReward_World{worldIndex}";
+            PlayerPrefs.SetInt(rewardKey, 1);
+            
+            Debug.Log($"Boss reward unlocked for World {worldIndex}");
+            
+            // Qui potresti aggiungere codice specifico per diversi boss
+        }
+
+        /// <summary>
+        /// Processa ricompense per aver completato un intero mondo.
+        /// </summary>
+        private void ProcessWorldCompletionRewards(int worldIndex)
+        {
+            // Ricompensa principale per aver completato il mondo
+            int completionBonus = 1000 * worldIndex;
+            AddCurrency(completionBonus);
+            
+            // Sblocca skin speciali o potenziamenti
+            string worldCompletionRewardKey = $"WorldCompletionReward_{worldIndex}";
+            PlayerPrefs.SetInt(worldCompletionRewardKey, 1);
+            
+            Debug.Log($"World {worldIndex} completion rewards processed");
+            
+            // Qui potresti aggiungere codice specifico per diversi mondi
+        }
+
+        /// <summary>
+        /// Sblocca contenuti finali per aver completato tutti i mondi.
+        /// </summary>
+        private void UnlockFinalContent()
+        {
+            // Sblocca mondi bonus premium
+            PlayerPrefs.SetInt("PremiumWorld_Celestial_Unlocked", 1);
+            PlayerPrefs.SetInt("PremiumWorld_Mythical_Unlocked", 1);
+            
+            // Sblocca modalità di gioco aggiuntive
+            PlayerPrefs.SetInt("Mode_BossRush_Unlocked", 1);
+            PlayerPrefs.SetInt("Mode_Speedrun_Unlocked", 1);
+            
+            // Sblocca ultimate skin per tutti i personaggi
+            for (int i = 1; i <= 6; i++)
+            {
+                PlayerPrefs.SetInt($"UltimateSkin_Character{i}", 1);
+            }
+            
+            // Ricompensa sostanziosa di valuta
+            AddCurrency(10000);
+            
+            Debug.Log("Final game content unlocked!");
+        }
+
+        /// <summary>
+        /// Sblocca equipaggiamento iniziale dopo aver completato il tutorial.
+        /// </summary>
+        private void UnlockStarterEquipment()
+        {
+            PlayerPrefs.SetInt("Equipment_StarterBoots_Unlocked", 1);
+            PlayerPrefs.SetInt("Equipment_StarterGloves_Unlocked", 1);
+            
+            Debug.Log("Starter equipment unlocked");
+        }
+
+        /// <summary>
+        /// Restituisce il numero totale di livelli in un mondo specifico.
+        /// </summary>
+        private int GetTotalLevelsInWorld(int worldIndex)
+        {
+            // La maggior parte dei mondi ha 9 livelli
+            return 9;
+        }
+
+        /// <summary>
+        /// Restituisce il numero totale di livelli nel tutorial.
+        /// </summary>
+        private int GetTutorialLevelsCount()
+        {
+            // Se il TutorialManager è disponibile, usa la sua proprietà
+            if (tutorialManager != null && tutorialManager is TutorialManager manager)
+            {
+                // Assumiamo che TutorialManager abbia una proprietà per il numero di livelli
+                // Se non ce l'ha, possiamo implementarla o usare un valore fisso
+                return 5; // tutorialManager.TutorialLevelsCount
+            }
+            
+            // Fallback a un valore fisso (5 livelli tutorial: Level1_FirstSteps fino a Level5_EscapeTrainer)
+            return 5;
         }
 
         /// <summary>
@@ -873,5 +1216,4 @@ namespace RunawayHeroes.Manager
             // Implementation for clearing all data
         }
     }
-
 }

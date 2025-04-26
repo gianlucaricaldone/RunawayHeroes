@@ -114,8 +114,47 @@ namespace RunawayHeroes.Core.Tutorial
         public TutorialData CurrentTutorialData => currentTutorialData;
         public bool IsTutorialCompleted => PlayerPrefs.GetInt("TutorialCompleted", 0) == 1;
         public ControlType DetectedControlType => detectedControlType;
+        public int TutorialLevelsCount => tutorialLevelNames.Length;
 
         #region Initialization
+
+        /// <summary>
+        /// Inizializza il TutorialManager con un controller di tutorial specifico.
+        /// Questo metodo viene chiamato dai controller di livello tutorial.
+        /// </summary>
+        /// <param name="controller">Il controller che sta inizializzando questo manager</param>
+        public void Initialize(object controller)
+        {
+            Debug.Log($"TutorialManager initialized by {controller.GetType().Name}");
+
+            // Memorizza un riferimento al controller se necessario
+            if (controller is Level1TutorialController level1Controller)
+            {
+                // Configurazioni specifiche per il Level1TutorialController
+                tutorialActive = true;
+                currentTutorialLevel = 0; // Level1 è il primo livello tutorial
+            }
+            else if (controller is MonoBehaviour monoBehaviour)
+            {
+                // Configurazione generica per altri controller
+                Debug.Log($"Controller is a {monoBehaviour.GetType().Name}");
+            }
+
+            // Assicurati che l'UI del tutorial sia visibile
+            if (tutorialCanvas)
+                tutorialCanvas.SetActive(true);
+
+            // Cerca e registra componenti necessari se non già fatto
+            if (playerController == null)
+                playerController = FindAnyObjectByType<PlayerController>();
+
+            if (focusTimeManager == null)
+                focusTimeManager = FindAnyObjectByType<FocusTimeManager>();
+
+            // Sottoscrivi agli eventi necessari
+            SubscribeToEvents();
+        }
+
         private void InitializeTutorialManager()
         {
             // Get component reference
@@ -187,8 +226,8 @@ namespace RunawayHeroes.Core.Tutorial
             LoadTutorialDataForCurrentLevel();
 
             // Find necessary game components after scene load
-            playerController = FindObjectOfType<PlayerController>();
-            focusTimeManager = FindObjectOfType<FocusTimeManager>();
+            playerController = FindAnyObjectByType<PlayerController>();
+            focusTimeManager = FindAnyObjectByType<FocusTimeManager>();
 
             // If we have valid tutorial data, start the tutorial
             if (currentTutorialData != null)
@@ -1367,6 +1406,81 @@ namespace RunawayHeroes.Core.Tutorial
             }
         }
 
+        /// <summary>
+        /// Completa un livello specifico del tutorial.
+        /// Questo metodo viene chiamato quando un livello tutorial è completato con successo.
+        /// </summary>
+        /// <param name="levelIndex">L'indice del livello da completare</param>
+        public void CompleteTutorial(int levelIndex)
+        {
+            if (levelIndex < 0 || levelIndex >= tutorialLevelNames.Length)
+            {
+                Debug.LogError($"Invalid tutorial level index: {levelIndex}");
+                return;
+            }
+
+            Debug.Log($"Marking tutorial level {levelIndex} as completed");
+
+            // Salva il progresso per questo livello specifico
+            string key = $"TutorialLevel_{levelIndex}_Completed";
+            PlayerPrefs.SetInt(key, 1);
+            PlayerPrefs.Save();
+
+            // Mostra pannello di completamento se disponibile
+            if (completionPanel && completionText && currentTutorialData != null)
+            {
+                completionPanel.SetActive(true);
+                completionText.text = currentTutorialData.completionMessage ?? "Livello completato con successo!";
+                
+                // Nascondi il pannello dopo un ritardo
+                StartCoroutine(HideCompletionPanelAfterDelay(5f));
+            }
+
+            // Notifica il Game Manager se presente
+            if (gameManager != null)
+            {
+                gameManager.TutorialLevelCompleted(levelIndex);
+            }
+
+            // Attiva l'evento di livello completato
+            OnTutorialLevelCompleted?.Invoke(levelIndex);
+
+            // Se questo è l'ultimo livello, completa l'intero tutorial
+            if (levelIndex >= tutorialLevelNames.Length - 1)
+            {
+                CompleteTutorialFully();
+            }
+            else
+            {
+                // Prepara il passaggio al livello successivo
+                StartCoroutine(PrepareNextLevel(levelIndex));
+            }
+        }
+
+        /// <summary>
+        /// Prepara il passaggio al livello successivo
+        /// </summary>
+        /// <param name="currentLevelIndex">Indice del livello corrente</param>
+        private IEnumerator PrepareNextLevel(int currentLevelIndex)
+        {
+            // Attesa prima del caricamento del livello successivo
+            yield return new WaitForSeconds(3f);
+
+            // Determina il livello successivo
+            int nextLevelIndex = currentLevelIndex + 1;
+            if (nextLevelIndex < tutorialLevelNames.Length)
+            {
+                string nextLevelName = tutorialLevelNames[nextLevelIndex];
+                Debug.Log($"Preparing to load next tutorial level: {nextLevelName}");
+                
+                // Qui puoi aggiungere la logica per preparare la transizione
+                // ad esempio mostrare una schermata di caricamento
+            }
+            else
+            {
+                Debug.Log("No more tutorial levels to load");
+            }
+        }
 
         #endregion
     }

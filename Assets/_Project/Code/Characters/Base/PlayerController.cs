@@ -66,6 +66,37 @@ namespace RunawayHeroes.Characters
         [SerializeField] private AudioClip slideSFX;
         [SerializeField] private AudioClip specialAbilitySFX;
 
+        [Header("Tutorial Control")]
+        [SerializeField] private bool _canJump = true;
+        [SerializeField] private bool _canSlide = true;
+        [SerializeField] private bool _canMoveHorizontal = true;
+        [SerializeField] private bool _isAutoRunning = false;
+
+        // Proprietà per il Tutorial
+        public bool canJump
+        {
+            get { return _canJump; }
+            set { _canJump = value; }
+        }
+
+        public bool canSlide
+        {
+            get { return _canSlide; }
+            set { _canSlide = value; }
+        }
+
+        public bool canMoveHorizontal
+        {
+            get { return _canMoveHorizontal; }
+            set { _canMoveHorizontal = value; }
+        }
+
+        public bool isAutoRunning
+        {
+            get { return _isAutoRunning; }
+            set { _isAutoRunning = value; }
+        }
+
         // Events
         public event Action OnJump;
         public event Action OnLand;
@@ -89,8 +120,8 @@ namespace RunawayHeroes.Characters
         public float SpecialAbilityCooldownRemaining { get; private set; }
         public int CurrentLane { get; private set; }
         public CharacterType CurrentCharacter => characterType;
-        public bool CanJump => IsGrounded && !IsSliding;
-        public bool CanSlide => IsGrounded && !IsSliding;
+        public bool CanJump => IsGrounded && !IsSliding && canJump;
+        public bool CanSlide => IsGrounded && !IsSliding && canSlide;
         public bool CanUseSpecialAbility => SpecialAbilityCooldownRemaining <= 0 && !IsUsingSpecialAbility;
 
         // Private variables
@@ -166,8 +197,18 @@ namespace RunawayHeroes.Characters
             // Handle cooldowns
             UpdateCooldowns();
 
-            // Handle input
-            HandleInput();
+            // Handle input or auto-running
+            if (isAutoRunning)
+            {
+                // In modalità auto-running, gestisce solo l'avanzamento automatico
+                // Input per salto, scivolata e movimenti laterali sono ancora possibili
+                HandleInput();
+            }
+            else
+            {
+                // Modalità normale con input completo
+                HandleInput();
+            }
 
             // Apply gravity
             ApplyGravity();
@@ -209,13 +250,16 @@ namespace RunawayHeroes.Characters
                 StartSlide();
             }
 
-            if (Input.GetButtonDown("Left") && !isMovingLaterally && CurrentLane > 0)
+            if (canMoveHorizontal)
             {
-                MoveLane(-1);
-            }
-            else if (Input.GetButtonDown("Right") && !isMovingLaterally && CurrentLane < availableLanes - 1)
-            {
-                MoveLane(1);
+                if (Input.GetButtonDown("Left") && !isMovingLaterally && CurrentLane > 0)
+                {
+                    MoveLane(-1);
+                }
+                else if (Input.GetButtonDown("Right") && !isMovingLaterally && CurrentLane < availableLanes - 1)
+                {
+                    MoveLane(1);
+                }
             }
 
             if (Input.GetButtonDown("Ability") && CanUseSpecialAbility)
@@ -265,7 +309,7 @@ namespace RunawayHeroes.Characters
                             }
                         }
                         // Check for horizontal swipe (lane change)
-                        else if (Mathf.Abs(swipeDelta.x) > swipeThreshold && Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y) && !isMovingLaterally)
+                        else if (canMoveHorizontal && Mathf.Abs(swipeDelta.x) > swipeThreshold && Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y) && !isMovingLaterally)
                         {
                             isTouchTracking = false; // Prevent multiple swipe detections
 
@@ -388,7 +432,7 @@ namespace RunawayHeroes.Characters
         /// </summary>
         public void MoveLane(int direction)
         {
-            if (isMovingLaterally)
+            if (isMovingLaterally || !canMoveHorizontal)
                 return;
 
             int targetLane = CurrentLane + direction;
@@ -432,7 +476,7 @@ namespace RunawayHeroes.Characters
         private void MoveCharacter()
         {
             // Determine current speed
-            float currentSpeed = runSpeed;
+            float currentSpeed = isAutoRunning ? runSpeed : 0f;
             
             if (IsSliding)
                 currentSpeed = slideSpeed;
@@ -453,7 +497,7 @@ namespace RunawayHeroes.Characters
             animator.SetFloat(animSpeed, currentSpeed / runSpeed);
             
             // Play run dust effect when grounded and moving
-            if (IsGrounded && !IsSliding && !IsWallRunning && !IsGrinding && runDustFX != null)
+            if (IsGrounded && !IsSliding && !IsWallRunning && !IsGrinding && runDustFX != null && currentSpeed > 0)
             {
                 if (!runDustFX.isPlaying)
                     runDustFX.Play();

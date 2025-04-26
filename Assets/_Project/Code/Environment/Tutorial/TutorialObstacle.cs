@@ -34,7 +34,7 @@ namespace RunawayHeroes.Core.Tutorial
         private void Awake()
         {
             // Trova il tutorial controller nella scena
-            tutorialController = FindObjectOfType<Level1TutorialController>();
+            tutorialController = FindAnyObjectByType<Level1TutorialController>();
             
             // Assicurati che l'ostacolo abbia un collider trigger
             triggerCollider = GetComponent<BoxCollider>();

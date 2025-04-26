@@ -236,7 +236,7 @@ namespace RunawayHeroes
         private void AwardPoints()
         {
             // Find game manager or score controller to award points
-            ScoreManager scoreManager = FindObjectOfType<ScoreManager>();
+            ScoreManager scoreManager = FindAnyObjectByType<ScoreManager>();
             if (scoreManager != null)
             {
                 scoreManager.AddPoints(pointsAwarded, increaseCombo);

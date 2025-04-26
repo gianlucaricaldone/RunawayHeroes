@@ -54,7 +54,7 @@ namespace RunawayHeroes
             // Reveal map area if needed
             if (revealMapArea)
             {
-                MapController mapController = FindObjectOfType<MapController>();
+                MapController mapController = FindAnyObjectByType<MapController>();
                 if (mapController != null)
                 {
                     mapController.RevealMapArea(mapAreaID);
@@ -65,7 +65,7 @@ namespace RunawayHeroes
             // Unlock waypoint if needed
             if (unlockWaypoint)
             {
-                WaypointSystem waypointSystem = FindObjectOfType<WaypointSystem>();
+                WaypointSystem waypointSystem = FindAnyObjectByType<WaypointSystem>();
                 if (waypointSystem != null)
                 {
                     waypointSystem.UnlockWaypoint(waypointID, waypointName);
@@ -76,7 +76,7 @@ namespace RunawayHeroes
             // Add collectible to inventory if needed
             if (addCollectible)
             {
-                InventorySystem inventorySystem = FindObjectOfType<InventorySystem>();
+                InventorySystem inventorySystem = FindAnyObjectByType<InventorySystem>();
                 if (inventorySystem != null)
                 {
                     inventorySystem.AddCollectible(collectibleType, collectibleID, collectibleName);
