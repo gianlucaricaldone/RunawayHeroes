@@ -7,6 +7,7 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Abilities;
+using RunawayHeroes.ECS.Components.Enemies;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 
 namespace RunawayHeroes.ECS.Systems.Abilities

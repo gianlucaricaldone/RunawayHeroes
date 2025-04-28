@@ -1,3 +1,4 @@
+// Path: Assets/_Project/Runtime/Bridge/InputBridge.cs
 using Unity.Entities;
 using UnityEngine;
 using Unity.Mathematics;
@@ -11,7 +12,8 @@ namespace RunawayHeroes.Runtime.Bridge
     /// Questo componente deve essere aggiunto a un GameObject nella scena
     /// e si occupa di convertire gli input in componenti ECS.
     /// </summary>
-    public class InputBridge : MonoBehaviour, IConvertGameObjectToEntity
+    [AddComponentMenu("RunawayHeroes/Bridges/Input Bridge")]
+    public class InputBridge : MonoBehaviour
     {
         [Header("Input Settings")]
         [Tooltip("Sensibilità per il touch/swipe laterale")]
@@ -33,26 +35,99 @@ namespace RunawayHeroes.Runtime.Bridge
         // Ultimo input laterale per smoothing
         private float lastLateralInput = 0f;
         
-        /// <summary>
-        /// Converte questo componente Unity in componenti ECS
-        /// </summary>
-        public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+        // Riferimento all'entità creata
+        private Entity _inputEntity;
+        private EntityManager _entityManager;
+        private EntityCommandBuffer _commandBuffer;
+        
+        // Classe Baker interna che gestisce la conversione GameObject -> Entity
+        public class InputBridgeBaker : Baker<InputBridge>
         {
-            // Aggiunge i tag necessari all'entità
-            dstManager.AddComponent<TagComponent>(entity);
+            public override void Bake(InputBridge authoring)
+            {
+                // Crea un'entità con flag di utilizzo dinamico
+                var entity = GetEntity(TransformUsageFlags.Dynamic);
+                
+                // Aggiungi i tag necessari all'entità
+                AddComponent<TagComponent>(entity);
+                
+                // Inizializza l'InputComponent con valori predefiniti
+                AddComponent(entity, InputComponent.Default());
+                
+                // Aggiungi i componenti di input specifici
+                AddComponent<JumpInputComponent>(entity);
+                AddComponent<SlideInputComponent>(entity);
+                AddComponent<FocusTimeInputComponent>(entity);
+                AddComponent<AbilityInputComponent>(entity);
+                AddComponent<ResonanceInputComponent>(entity);
+                
+                // Aggiungi un componente che contiene le impostazioni di input
+                AddComponent(entity, new InputSettingsComponent
+                {
+                    LateralSensitivity = authoring.lateralSensitivity,
+                    FocusTimeActivationDuration = authoring.focusTimeActivationDuration,
+                    EnableKeyboardControls = authoring.enableKeyboardControls,
+                    EnableTouchControls = authoring.enableTouchControls
+                });
+                
+                // Aggiungi un tag per identificare questa entità come il bridge di input
+                AddComponent<InputBridgeTag>(entity);
+            }
+        }
+        
+        /// <summary>
+        /// Inizializza il bridge all'avvio
+        /// </summary>
+        private void Start()
+        {
+            // Ottieni il World e l'EntityManager
+            World defaultWorld = World.DefaultGameObjectInjectionWorld;
+            if (defaultWorld != null)
+            {
+                _entityManager = defaultWorld.EntityManager;
+                
+                // Trova l'entità di input creata dal baker
+                var query = _entityManager.CreateEntityQuery(typeof(InputBridgeTag));
+                if (query.CalculateEntityCount() > 0)
+                {
+                    var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+                    _inputEntity = entities[0];
+                    entities.Dispose();
+                    
+                    Debug.Log($"Input Bridge trovato: Entity {_inputEntity.Index}");
+                }
+                else
+                {
+                    Debug.LogWarning("Nessuna entità InputBridge trovata. Gli input potrebbero non funzionare correttamente.");
+                }
+            }
+            else
+            {
+                Debug.LogError("Nessun World ECS trovato. Assicurati che il sistema ECS sia correttamente inizializzato.");
+            }
+        }
+        
+        /// <summary>
+        /// Aggiorna gli input ad ogni frame
+        /// </summary>
+        private void Update()
+        {
+            if (_entityManager == null || !_entityManager.Exists(_inputEntity))
+                return;
             
-            // Inizializza l'InputComponent con valori predefiniti
-            var inputComponent = InputComponent.Default();
-            dstManager.AddComponentData(entity, inputComponent);
+            // Crea un command buffer temporaneo per questo frame
+            _commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
             
-            // Se necessario, aggiunge altri componenti di input specifici
-            dstManager.AddComponent<JumpInputComponent>(entity);
-            dstManager.AddComponent<SlideInputComponent>(entity);
-            dstManager.AddComponent<FocusTimeInputComponent>(entity);
-            dstManager.AddComponent<AbilityInputComponent>(entity);
+            // Processa gli input
+            ProcessFocusTimeInput(_inputEntity);
+            ProcessMovementInput(_inputEntity);
+            ProcessJumpInput(_inputEntity);
+            ProcessSlideInput(_inputEntity);
+            ProcessAbilityInput(_inputEntity);
             
-            // Notifica alla console di log
-            Debug.Log($"Input Bridge convertito in ECS: Entity {entity.Index}");
+            // Esegui i comandi accumulati
+            _commandBuffer.Playback(_entityManager);
+            _commandBuffer.Dispose();
         }
         
         /// <summary>
@@ -95,8 +170,11 @@ namespace RunawayHeroes.Runtime.Bridge
             }
         }
 
-        private void ProcessFocusTimeInput(Entity playerEntity, EntityCommandBuffer commandBuffer)
+        private void ProcessFocusTimeInput(Entity playerEntity)
         {
+            if (!_entityManager.HasComponent<FocusTimeInputComponent>(playerEntity))
+                return;
+                
             var focusTimeInput = new FocusTimeInputComponent
             {
                 ActivateFocusTime = false,
@@ -111,7 +189,25 @@ namespace RunawayHeroes.Runtime.Bridge
             // Input da tastiera
             if (enableKeyboardControls)
             {
-                // [Codice identico a quello precedente per la tastiera]
+                // Implementazione tastiera per Focus Time (se necessario)
+                if (Input.GetKeyDown(KeyCode.F))
+                {
+                    focusTimeInput.ActivateFocusTime = true;
+                }
+                
+                if (Input.GetKeyUp(KeyCode.F))
+                {
+                    focusTimeInput.DeactivateFocusTime = true;
+                }
+                
+                // Selezione slot con i tasti numerici
+                for (int i = 0; i < 9; i++)
+                {
+                    if (Input.GetKeyDown(KeyCode.Alpha1 + i))
+                    {
+                        focusTimeInput.SelectedItemIndex = i;
+                    }
+                }
             }
             
             // Input touch
@@ -145,9 +241,7 @@ namespace RunawayHeroes.Runtime.Bridge
                                 float normalizedDelta = deltaX / Screen.width * lateralSensitivity;
                                 
                                 // Aggiungi anche un componente di input di movimento
-                                var movementInput = EntityManager.HasComponent<InputComponent>(playerEntity) 
-                                    ? EntityManager.GetComponentData<InputComponent>(playerEntity) 
-                                    : new InputComponent();
+                                var movementInput = _entityManager.GetComponentData<InputComponent>(playerEntity);
                                 
                                 // Imposta il movimento laterale in base allo spostamento del dito
                                 movementInput.LateralMovement = normalizedDelta;
@@ -155,7 +249,7 @@ namespace RunawayHeroes.Runtime.Bridge
                                 movementInput.IsMovementEnabled = true;
                                 
                                 // Aggiorna il componente di input
-                                commandBuffer.SetComponent(playerEntity, movementInput);
+                                _commandBuffer.SetComponent(playerEntity, movementInput);
                             }
                         }
                     }
@@ -177,25 +271,181 @@ namespace RunawayHeroes.Runtime.Bridge
                         touchStartTime = 0;
                         
                         // Resetta anche l'input di movimento quando si rilascia il tocco
-                        if (EntityManager.HasComponent<InputComponent>(playerEntity))
-                        {
-                            var movementInput = EntityManager.GetComponentData<InputComponent>(playerEntity);
-                            movementInput.LateralMovement = 0;
-                            commandBuffer.SetComponent(playerEntity, movementInput);
-                        }
+                        var movementInput = _entityManager.GetComponentData<InputComponent>(playerEntity);
+                        movementInput.LateralMovement = 0;
+                        _commandBuffer.SetComponent(playerEntity, movementInput);
                     }
                 }
             }
             
-            // Aggiungi o sostituisci il componente FocusTimeInput al giocatore
-            if (EntityManager.HasComponent<FocusTimeInputComponent>(playerEntity))
-            {
-                commandBuffer.SetComponent(playerEntity, focusTimeInput);
-            }
-            else
-            {
-                commandBuffer.AddComponent(playerEntity, focusTimeInput);
-            }
+            _commandBuffer.SetComponent(playerEntity, focusTimeInput);
         }
+        
+        private void ProcessMovementInput(Entity playerEntity)
+        {
+            if (!_entityManager.HasComponent<InputComponent>(playerEntity))
+                return;
+                
+            var inputComponent = _entityManager.GetComponentData<InputComponent>(playerEntity);
+            
+            // Inizialmente assumiamo che il movimento sia abilitato
+            inputComponent.IsMovementEnabled = true;
+            
+            // Input da tastiera per movimento laterale
+            if (enableKeyboardControls)
+            {
+                float lateralInput = 0f;
+                
+                if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+                {
+                    lateralInput -= 1.0f;
+                }
+                
+                if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+                {
+                    lateralInput += 1.0f;
+                }
+                
+                // Applica la sensibilità e aggiorna l'input
+                inputComponent.LateralMovement = lateralInput * lateralSensitivity;
+                lastLateralInput = inputComponent.LateralMovement;
+            }
+            
+            // Input touch per movimento laterale (se non gestito da Focus Time)
+            if (enableTouchControls && Input.touchCount > 0 && !currentTouch.HasValue)
+            {
+                Touch touch = Input.GetTouch(0);
+                
+                // Swipe orizzontale sulla metà inferiore dello schermo
+                if (touch.position.y < Screen.height * 0.5f)
+                {
+                    // Calcola la posizione normalizzata orizzontale (-1 a 1)
+                    float normalizedX = (touch.position.x / Screen.width) * 2.0f - 1.0f;
+                    inputComponent.LateralMovement = normalizedX * lateralSensitivity;
+                    lastLateralInput = inputComponent.LateralMovement;
+                }
+            }
+            
+            // Calcola la direzione di movimento 3D
+            inputComponent.MoveDirection = new float2(inputComponent.LateralMovement, 1.0f);
+            
+            // Aggiorna il componente
+            _commandBuffer.SetComponent(playerEntity, inputComponent);
+        }
+        
+        private void ProcessJumpInput(Entity playerEntity)
+        {
+            if (!_entityManager.HasComponent<JumpInputComponent>(playerEntity))
+                return;
+                        
+            var jumpInput = new JumpInputComponent
+            {
+                JumpPressed = false,
+                JumpForceMultiplier = 1.0f // Valore di default senza potenziamenti
+            };
+            
+            // Input da tastiera per salto
+            if (enableKeyboardControls && Input.GetKeyDown(KeyCode.Space))
+            {
+                jumpInput.JumpPressed = true;
+            }
+            
+            // Input touch per salto (tap rapido sulla parte superiore dello schermo)
+            if (enableTouchControls && Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+                if (touch.phase == TouchPhase.Began && touch.position.y > Screen.height * 0.5f)
+                {
+                    // Tap nella metà superiore dello schermo attiva il salto
+                    jumpInput.JumpPressed = true;
+                }
+            }
+            
+            _commandBuffer.SetComponent(playerEntity, jumpInput);
+        }
+        
+        private void ProcessSlideInput(Entity playerEntity)
+        {
+            if (!_entityManager.HasComponent<SlideInputComponent>(playerEntity))
+                return;
+                
+            var slideInput = new SlideInputComponent
+            {
+                SlidePressed = false
+            };
+            
+            // Input da tastiera per scivolata
+            if (enableKeyboardControls && Input.GetKeyDown(KeyCode.S))
+            {
+                slideInput.SlidePressed = true;
+            }
+            
+            // Input touch per scivolata (swipe veloce verso il basso)
+            if (enableTouchControls && Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+                if (touch.phase == TouchPhase.Moved)
+                {
+                    // Se il dito ha fatto uno swipe verso il basso di almeno il 10% dell'altezza dello schermo
+                    if (touch.deltaPosition.y < -Screen.height * 0.1f)
+                    {
+                        slideInput.SlidePressed = true;
+                    }
+                }
+            }
+            
+            _commandBuffer.SetComponent(playerEntity, slideInput);
+        }
+        
+        private void ProcessAbilityInput(Entity playerEntity)
+        {
+            if (!_entityManager.HasComponent<AbilityInputComponent>(playerEntity))
+                return;
+                
+            var abilityInput = new AbilityInputComponent
+            {
+                ActivateAbility = false,
+                TargetPosition = float2.zero,
+                CurrentAbilityType = AbilityType.None
+            };
+            
+            // Input da tastiera per abilità
+            if (enableKeyboardControls && Input.GetKeyDown(KeyCode.E))
+            {
+                abilityInput.ActivateAbility = true;
+                abilityInput.TargetPosition = new float2(Screen.width * 0.5f, Screen.height * 0.5f);
+            }
+            
+            // Input touch per abilità (doppio tap)
+            if (enableTouchControls && Input.touchCount > 0)
+            {
+                // Implementazione semplificata - in una versione completa bisognerebbe
+                // tracciare i touch per rilevare un vero doppio tap
+                Touch touch = Input.GetTouch(0);
+                if (touch.tapCount >= 2)
+                {
+                    abilityInput.ActivateAbility = true;
+                    abilityInput.TargetPosition = new float2(touch.position.x, touch.position.y);
+                }
+            }
+            
+            _commandBuffer.SetComponent(playerEntity, abilityInput);
+        }
+    }
+    
+    /// <summary>
+    /// Componente tag per identificare l'entità InputBridge
+    /// </summary>
+    public struct InputBridgeTag : IComponentData { }
+    
+    /// <summary>
+    /// Componente per memorizzare le impostazioni di input
+    /// </summary>
+    public struct InputSettingsComponent : IComponentData
+    {
+        public float LateralSensitivity;
+        public float FocusTimeActivationDuration;
+        public bool EnableKeyboardControls;
+        public bool EnableTouchControls;
     }
 }

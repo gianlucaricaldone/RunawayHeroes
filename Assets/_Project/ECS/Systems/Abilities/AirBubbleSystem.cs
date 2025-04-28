@@ -2,20 +2,19 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Collections;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Abilities;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Components.Enemies;
 
 namespace RunawayHeroes.ECS.Systems.Abilities
 {
-    /// <summary>
-    /// Sistema che gestisce l'abilità "Bolla d'Aria" di Marina.
-    /// Si occupa della creazione di una bolla protettiva che fornisce
-    /// ossigeno extra e respinge nemici acquatici.
-    /// </summary>
+    [BurstCompile]
     public partial class AirBubbleSystem : SystemBase
     {
         private EntityQuery _abilityQuery;
@@ -25,7 +24,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         protected override void OnCreate()
         {
             _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
-
             
             _abilityQuery = GetEntityQuery(
                 ComponentType.ReadWrite<AirBubbleAbilityComponent>(),
@@ -44,34 +42,32 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnUpdate()
         {
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
             
+            // Rimuoviamo completamente WithReadOnly poiché non possiamo usarlo con EntityQuery
+            // Useremo WithoutBurst e Run, che è la soluzione più semplice
             Entities
                 .WithName("AirBubbleSystem")
-                .WithReadOnly(_underwaterEnemyQuery)
+                .WithoutBurst()
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref AirBubbleAbilityComponent airBubble,
                           in AbilityInputComponent abilityInput,
                           in TransformComponent transform,
-                          in MarinaComponent marinaComponent) =>
+                          in MarinaComponent marinaComponent) => 
                 {
-                    // Aggiorna timer e stato
                     bool stateChanged = false;
                     
-                    // Se l'abilità è attiva, gestisci la durata
                     if (airBubble.IsActive)
                     {
                         airBubble.RemainingTime -= deltaTime;
                         
                         if (airBubble.RemainingTime <= 0)
                         {
-                            // Termina l'abilità
                             airBubble.IsActive = false;
                             airBubble.RemainingTime = 0;
                             stateChanged = true;
                             
-                            // Crea evento di fine abilità
                             var endAbilityEvent = commandBuffer.CreateEntity(entityInQueryIndex);
                             commandBuffer.AddComponent(entityInQueryIndex, endAbilityEvent, new AbilityEndedEvent
                             {
@@ -81,7 +77,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                         else
                         {
-                            // L'abilità è attiva - respingi i nemici acquatici nelle vicinanze
+                            // Usa ToEntityArray su _underwaterEnemyQuery direttamente
+                            // Non è un problema in una lambda con WithoutBurst
                             foreach (var enemy in _underwaterEnemyQuery.ToEntityArray(Allocator.Temp))
                             {
                                 if (EntityManager.HasComponent<TransformComponent>(enemy) &&
@@ -90,21 +87,15 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                                     var enemyTransform = EntityManager.GetComponentData<TransformComponent>(enemy);
                                     float distance = math.distance(transform.Position, enemyTransform.Position);
                                     
-                                    // Se il nemico è nel raggio della bolla
                                     if (distance <= airBubble.BubbleRadius)
                                     {
-                                        // Calcola la direzione di repulsione
                                         float3 repulsionDir = math.normalize(enemyTransform.Position - transform.Position);
-                                        
-                                        // Calcola la forza di repulsione (più forte quando più vicino)
                                         float repulsionStrength = airBubble.RepelForce * (1.0f - distance / airBubble.BubbleRadius);
                                         
-                                        // Applica la forza di repulsione
                                         var physics = EntityManager.GetComponentData<PhysicsComponent>(enemy);
                                         physics.Velocity += repulsionDir * repulsionStrength;
                                         commandBuffer.SetComponent(entityInQueryIndex, enemy, physics);
                                         
-                                        // Crea evento di repulsione
                                         var repulsionEvent = commandBuffer.CreateEntity(entityInQueryIndex);
                                         commandBuffer.AddComponent(entityInQueryIndex, repulsionEvent, new EnemyRepulsionEvent
                                         {
@@ -119,7 +110,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                     }
                     
-                    // Aggiorna il cooldown
                     if (airBubble.CooldownRemaining > 0)
                     {
                         airBubble.CooldownRemaining -= deltaTime;
@@ -129,7 +119,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             airBubble.CooldownRemaining = 0;
                             stateChanged = true;
                             
-                            // Crea evento di abilità pronta
                             var readyEvent = commandBuffer.CreateEntity(entityInQueryIndex);
                             commandBuffer.AddComponent(entityInQueryIndex, readyEvent, new AbilityReadyEvent
                             {
@@ -139,19 +128,15 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                     }
                     
-                    // Controlla input per attivazione abilità
                     if (abilityInput.ActivateAbility && airBubble.IsAvailable && !airBubble.IsActive)
                     {
-                        // Attiva l'abilità
                         airBubble.IsActive = true;
                         airBubble.RemainingTime = airBubble.Duration;
                         airBubble.CooldownRemaining = airBubble.Cooldown;
                         
-                        // Potenzia la bolla in base alle capacità di Marina
                         airBubble.BubbleRadius *= (1.0f + marinaComponent.WaterBreathing);
                         airBubble.RepelForce *= (1.0f + marinaComponent.ElectricResistance * 0.5f);
                         
-                        // Crea evento di attivazione abilità
                         var activateEvent = commandBuffer.CreateEntity(entityInQueryIndex);
                         commandBuffer.AddComponent(entityInQueryIndex, activateEvent, new AbilityActivatedEvent
                         {
@@ -161,7 +146,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             Duration = airBubble.Duration
                         });
                         
-                        // Crea entità visiva per la bolla d'aria
                         var bubbleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
                         commandBuffer.AddComponent(entityInQueryIndex, bubbleEntity, new AirBubbleVisualComponent
                         {
@@ -171,64 +155,48 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             RemainingTime = airBubble.Duration
                         });
                     }
-                    
-                }).ScheduleParallel();
+                }).Run();
             
-            // Aggiorna i visualizzatori della bolla
             Entities
                 .WithName("AirBubbleVisualUpdater")
+                .WithoutBurst()
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref AirBubbleVisualComponent bubbleVisual,
-                          ref TransformComponent transform) =>
+                          ref TransformComponent transform) => 
                 {
-                    // Aggiorna il tempo rimanente
                     bubbleVisual.RemainingTime -= deltaTime;
                     
-                    // Se il tempo è scaduto, distruggi l'entità visiva
                     if (bubbleVisual.RemainingTime <= 0)
                     {
                         commandBuffer.DestroyEntity(entityInQueryIndex, entity);
                     }
                     else
                     {
-                        // Aggiorna la posizione in base all'entità proprietaria
                         if (EntityManager.Exists(bubbleVisual.OwnerEntity) &&
                             EntityManager.HasComponent<TransformComponent>(bubbleVisual.OwnerEntity))
                         {
                             transform.Position = EntityManager.GetComponentData<TransformComponent>(bubbleVisual.OwnerEntity).Position;
                         }
                     }
-                    
-                }).ScheduleParallel();
-            
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+                }).Run();
         }
     }
     
-    /// <summary>
-    /// Componente per l'effetto visivo della bolla d'aria
-    /// </summary>
     public struct AirBubbleVisualComponent : IComponentData
     {
-        public Entity OwnerEntity;   // Entità proprietaria (Marina)
-        public float Radius;         // Raggio della bolla
-        public float Duration;       // Durata totale
-        public float RemainingTime;  // Tempo rimanente
+        public Entity OwnerEntity;
+        public float Radius;
+        public float Duration;
+        public float RemainingTime;
     }
     
-    /// <summary>
-    /// Tag per identificare i nemici acquatici
-    /// </summary>
     public struct UnderwaterTag : IComponentData { }
     
-    /// <summary>
-    /// Evento per la repulsione di un nemico
-    /// </summary>
     public struct EnemyRepulsionEvent : IComponentData
     {
-        public Entity EnemyEntity;     // Entità nemica respinta
-        public Entity SourceEntity;    // Entità che causa la repulsione
-        public float RepulsionForce;   // Forza di repulsione
-        public float3 Direction;       // Direzione di repulsione
+        public Entity EnemyEntity;
+        public Entity SourceEntity;
+        public float RepulsionForce;
+        public float3 Direction;
     }
 }
