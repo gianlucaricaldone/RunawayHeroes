@@ -20,7 +20,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         protected override void OnCreate()
         {
             // Riferimento al command buffer system per generare eventi
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             // Query per trovare entità che possono saltare
             _jumpableEntitiesQuery = GetEntityQuery(

@@ -24,7 +24,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnCreate()
         {
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+
             
             _abilityQuery = GetEntityQuery(
                 ComponentType.ReadWrite<AirBubbleAbilityComponent>(),

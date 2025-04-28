@@ -31,7 +31,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         protected override void OnCreate()
         {
             // Ottiene il sistema di command buffer per le modifiche strutturali
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             // Definisce la query per identificare le entità giocatore
             _playerQuery = GetEntityQuery(

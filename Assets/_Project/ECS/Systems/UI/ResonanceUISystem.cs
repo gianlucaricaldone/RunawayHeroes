@@ -41,7 +41,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         protected override void OnCreate()
         {
             // Ottieni riferimento al command buffer system
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             // Definisci la query per le entità con Risonanza
             _resonanceQuery = GetEntityQuery(

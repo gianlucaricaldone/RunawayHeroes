@@ -22,7 +22,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnCreate()
         {
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             _inputQuery = GetEntityQuery(
                 ComponentType.ReadWrite<AbilityInputComponent>(),

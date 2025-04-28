@@ -22,7 +22,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         protected override void OnCreate()
         {
             // Riferimento al command buffer system per generare eventi
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             // Query per entità con il componente FocusTime
             _focusTimeQuery = GetEntityQuery(

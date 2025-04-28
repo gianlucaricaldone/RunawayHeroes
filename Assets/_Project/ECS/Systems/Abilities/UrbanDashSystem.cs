@@ -24,7 +24,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         protected override void OnCreate()
         {
             // Prendi riferimento al command buffer system per creare eventi
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             // Definisci query per entità con UrbanDashAbilityComponent
             _abilityQuery = GetEntityQuery(

@@ -3,6 +3,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -24,7 +25,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         
         protected override void OnCreate()
         {
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
             // Query per il giocatore
             _playerQuery = GetEntityQuery(
