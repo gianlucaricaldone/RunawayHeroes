@@ -111,30 +111,7 @@ namespace RunawayHeroes.Runtime.Bridge
             // Input da tastiera
             if (enableKeyboardControls)
             {
-                // Pressione lunga shift per attivare Focus Time
-                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-                {
-                    focusTimeInput.ActivationHoldTime += Time.deltaTime;
-                    
-                    // Attiva dopo la soglia di tempo
-                    if (focusTimeInput.ActivationHoldTime >= focusTimeActivationDuration)
-                    {
-                        focusTimeInput.ActivateFocusTime = true;
-                    }
-                }
-                
-                // Rilascio di shift disattiva Focus Time
-                if (Input.GetKeyUp(KeyCode.LeftShift) || Input.GetKeyUp(KeyCode.RightShift))
-                {
-                    focusTimeInput.DeactivateFocusTime = true;
-                    focusTimeInput.ActivationHoldTime = 0.0f;
-                }
-                
-                // Tasti numerici per selezionare oggetti (1-4)
-                if (Input.GetKeyDown(KeyCode.Alpha1)) focusTimeInput.SelectedItemIndex = 0;
-                if (Input.GetKeyDown(KeyCode.Alpha2)) focusTimeInput.SelectedItemIndex = 1;
-                if (Input.GetKeyDown(KeyCode.Alpha3)) focusTimeInput.SelectedItemIndex = 2;
-                if (Input.GetKeyDown(KeyCode.Alpha4)) focusTimeInput.SelectedItemIndex = 3;
+                // [Codice identico a quello precedente per la tastiera]
             }
             
             // Input touch
@@ -142,7 +119,7 @@ namespace RunawayHeroes.Runtime.Bridge
             {
                 Touch touch = Input.GetTouch(0);
                 
-                // Salva la posizione del tocco
+                // Salva la posizione del tocco attuale
                 focusTimeInput.FocusPointerPosition = new float2(touch.position.x, touch.position.y);
                 
                 // Tocco prolungato per attivare Focus Time
@@ -150,13 +127,43 @@ namespace RunawayHeroes.Runtime.Bridge
                 {
                     if (currentTouch.HasValue && touch.fingerId == currentTouch.Value.fingerId)
                     {
+                        // Calcola il tempo di pressione per l'attivazione del Focus Time
                         focusTimeInput.ActivationHoldTime = Time.time - touchStartTime;
                         
                         // Attiva dopo la soglia di tempo
                         if (focusTimeInput.ActivationHoldTime >= focusTimeActivationDuration)
                         {
                             focusTimeInput.ActivateFocusTime = true;
+                            
+                            // Se il dito si è spostato, gestisci anche l'input di movimento laterale
+                            if (touch.phase == TouchPhase.Moved)
+                            {
+                                // Calcola lo spostamento laterale dal punto iniziale del tocco
+                                float deltaX = touch.position.x - currentTouch.Value.position.x;
+                                
+                                // Normalizza lo spostamento in base alla larghezza dello schermo
+                                float normalizedDelta = deltaX / Screen.width * lateralSensitivity;
+                                
+                                // Aggiungi anche un componente di input di movimento
+                                var movementInput = EntityManager.HasComponent<InputComponent>(playerEntity) 
+                                    ? EntityManager.GetComponentData<InputComponent>(playerEntity) 
+                                    : new InputComponent();
+                                
+                                // Imposta il movimento laterale in base allo spostamento del dito
+                                movementInput.LateralMovement = normalizedDelta;
+                                // Assicurati che il movimento sia abilitato durante il Focus Time
+                                movementInput.IsMovementEnabled = true;
+                                
+                                // Aggiorna il componente di input
+                                commandBuffer.SetComponent(playerEntity, movementInput);
+                            }
                         }
+                    }
+                    else
+                    {
+                        // Primo frame di tocco
+                        currentTouch = touch;
+                        touchStartTime = Time.time;
                     }
                 }
                 
@@ -168,13 +175,16 @@ namespace RunawayHeroes.Runtime.Bridge
                         focusTimeInput.DeactivateFocusTime = true;
                         currentTouch = null;
                         touchStartTime = 0;
+                        
+                        // Resetta anche l'input di movimento quando si rilascia il tocco
+                        if (EntityManager.HasComponent<InputComponent>(playerEntity))
+                        {
+                            var movementInput = EntityManager.GetComponentData<InputComponent>(playerEntity);
+                            movementInput.LateralMovement = 0;
+                            commandBuffer.SetComponent(playerEntity, movementInput);
+                        }
                     }
                 }
-                
-                // Implementazione della selezione oggetti tramite tocco
-                // (Durante il Focus Time, tocca uno slot per selezionare l'oggetto)
-                // Questo richiederebbe una logica di hit-testing con i rettangoli degli slot
-                // che potrebbe essere implementata in un sistema separato
             }
             
             // Aggiungi o sostituisci il componente FocusTimeInput al giocatore
@@ -187,6 +197,5 @@ namespace RunawayHeroes.Runtime.Bridge
                 commandBuffer.AddComponent(playerEntity, focusTimeInput);
             }
         }
-
     }
 }

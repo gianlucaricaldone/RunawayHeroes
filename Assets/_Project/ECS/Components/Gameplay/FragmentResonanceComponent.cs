@@ -1,192 +1,354 @@
+// Path: Assets/_Project/ECS/Components/Gameplay/FragmentResonanceComponent.cs
+using System;
 using Unity.Entities;
+using Unity.Collections;
 using Unity.Mathematics;
-using Unity.Transforms;
-using RunawayHeroes.ECS.Components.Core;
-using RunawayHeroes.ECS.Components.Gameplay;
-using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
-using RunawayHeroes.ECS.Events.EventDefinitions;
 
-namespace RunawayHeroes.ECS.Systems.Abilities
+namespace RunawayHeroes.ECS.Components.Gameplay
 {
     /// <summary>
-    /// Sistema che gestisce la meccanica "Risonanza dei Frammenti", che permette
-    /// ai giocatori di cambiare personaggio istantaneamente durante il gameplay.
+    /// Componente che gestisce la meccanica "Risonanza dei Frammenti",
+    /// permettendo ai giocatori di cambiare personaggio istantaneamente durante il gameplay.
     /// </summary>
-    public partial class FragmentResonanceSystem : SystemBase
+    [Serializable]
+    public struct FragmentResonanceComponent : IComponentData
     {
-        private EntityQuery _resonanceQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
+        /// <summary>
+        /// Il personaggio attualmente attivo
+        /// </summary>
+        public Entity ActiveCharacter;
         
-        protected override void OnCreate()
+        /// <summary>
+        /// Entità dei personaggi sbloccati
+        /// </summary>
+        public FixedList128Bytes<Entity> UnlockedCharacters;
+        
+        /// <summary>
+        /// Numero di personaggi attualmente sbloccati
+        /// </summary>
+        public int CharacterCount;
+        
+        /// <summary>
+        /// Indica se la Risonanza dei Frammenti è sbloccata (richiede almeno 2 personaggi)
+        /// </summary>
+        public bool IsUnlocked;
+        
+        /// <summary>
+        /// Livello di Risonanza raggiunto:
+        /// 1: Risonanza Base - Cambio personaggio con effetti base
+        /// 2: Risonanza Amplificata - Aumenta il raggio dell'onda di energia
+        /// 3: Risonanza Perfetta - Elimina il costo di Focus Time
+        /// 4: Risonanza Totale - Permette di attivare brevemente due abilità combinate
+        /// </summary>
+        public int ResonanceLevel;
+        
+        /// <summary>
+        /// Tempo di cooldown tra cambi personaggio
+        /// </summary>
+        public float Cooldown;
+        
+        /// <summary>
+        /// Tempo di cooldown rimanente
+        /// </summary>
+        public float CooldownRemaining;
+        
+        /// <summary>
+        /// Costo in Focus Time per effettuare un cambio personaggio
+        /// (10% della barra del Focus Time, ignorato a Risonanza Perfetta)
+        /// </summary>
+        public float FocusTimeCost;
+        
+        /// <summary>
+        /// Durata dell'invulnerabilità dopo il cambio personaggio
+        /// </summary>
+        public float InvulnerabilityDuration;
+        
+        /// <summary>
+        /// Raggio dell'onda di energia che danneggia i nemici durante il cambio
+        /// </summary>
+        public float EnergyWaveRadius;
+        
+        /// <summary>
+        /// Danno inflitto dall'onda di energia
+        /// </summary>
+        public float EnergyWaveDamage;
+        
+        /// <summary>
+        /// Verifica se la Risonanza è disponibile per l'uso (cooldown completato)
+        /// </summary>
+        public bool IsAvailable => CooldownRemaining <= 0 && IsUnlocked;
+        
+        /// <summary>
+        /// Crea un nuovo componente FragmentResonance con valori di default
+        /// </summary>
+        /// <param name="initialCharacter">Personaggio iniziale (Alex)</param>
+        /// <returns>Componente inizializzato</returns>
+        public static FragmentResonanceComponent Default(Entity initialCharacter)
         {
-            // Riferimento al command buffer system per generare eventi
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            var resonance = new FragmentResonanceComponent
+            {
+                ActiveCharacter = initialCharacter,
+                UnlockedCharacters = new FixedList128Bytes<Entity>(),
+                CharacterCount = 1,
+                IsUnlocked = false, // Si sblocca con 2+ personaggi
+                ResonanceLevel = 1,
+                Cooldown = 8.0f,
+                CooldownRemaining = 0,
+                FocusTimeCost = 0.1f, // 10% della barra Focus Time
+                InvulnerabilityDuration = 1.5f,
+                EnergyWaveRadius = 5.0f,
+                EnergyWaveDamage = 10.0f
+            };
             
-            // Query per entità con il componente Risonanza
-            _resonanceQuery = GetEntityQuery(
-                ComponentType.ReadWrite<FragmentResonanceComponent>(),
-                ComponentType.ReadOnly<ResonanceInputComponent>()
-            );
+            // Aggiungi il personaggio iniziale alla lista
+            resonance.UnlockedCharacters.Add(initialCharacter);
             
-            // Richiede entità corrispondenti per eseguire l'aggiornamento
-            RequireForUpdate(_resonanceQuery);
+            return resonance;
         }
         
-        protected override void OnUpdate()
+        /// <summary>
+        /// Aggiorna i timer della Risonanza
+        /// </summary>
+        /// <param name="deltaTime">Tempo trascorso dall'ultimo frame</param>
+        /// <returns>True se lo stato è cambiato (cooldown completato), false altrimenti</returns>
+        public bool Update(float deltaTime)
         {
-            float deltaTime = Time.DeltaTime;
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            bool stateChanged = false;
             
-            // Elabora le richieste e lo stato della Risonanza
-            Entities
-                .WithName("FragmentResonanceProcessor")
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref FragmentResonanceComponent resonance,
-                          ref FocusTimeComponent focusTime,
-                          ref HealthComponent health,
-                          in ResonanceInputComponent input,
-                          in TransformComponent transform) => 
+            if (CooldownRemaining > 0)
+            {
+                CooldownRemaining -= deltaTime;
+                
+                if (CooldownRemaining <= 0)
                 {
-                    // Aggiorna i timer di cooldown
-                    bool stateChanged = resonance.Update(deltaTime);
-                    
-                    // Se è stato richiesto un cambio di personaggio
-                    if (input.SwitchToCharacterIndex >= 0 && resonance.IsUnlocked)
-                    {
-                        // Verifica che ci sia energia Focus sufficiente
-                        bool hasSufficientFocus = (resonance.ResonanceLevel >= 3) || // Risonanza Perfetta elimina il costo
-                                                 (focusTime.CurrentEnergy >= resonance.FocusTimeCost);
-                        
-                        if (resonance.IsAvailable && hasSufficientFocus)
-                        {
-                            // Memorizza informazioni sul personaggio corrente prima del cambio
-                            Entity previousCharacter = resonance.ActiveCharacter;
-                            float3 currentPosition = transform.Position;
-                            float3 currentVelocity = new float3(0, 0, 0); // In un sistema reale, questa sarebbe ottenuta da PhysicsComponent
-                            
-                            // Tenta di cambiare personaggio
-                            bool switched = resonance.SwitchCharacter(input.SwitchToCharacterIndex);
-                            
-                            if (switched)
-                            {
-                                // 1. Consuma energia Focus Time (se necessario)
-                                if (resonance.ResonanceLevel < 3) // Skip se Risonanza Perfetta
-                                {
-                                    focusTime.CurrentEnergy -= resonance.FocusTimeCost;
-                                }
-                                
-                                // 2. Attiva invulnerabilità temporanea
-                                health.SetInvulnerable(resonance.InvulnerabilityDuration);
-                                
-                                // 3. Genera un'onda di energia che danneggia i nemici
-                                var waveEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                commandBuffer.AddComponent(entityInQueryIndex, waveEvent, new EnergyWaveEvent
-                                {
-                                    Origin = currentPosition,
-                                    Radius = resonance.EnergyWaveRadius,
-                                    Damage = resonance.EnergyWaveDamage,
-                                    SourceEntity = entity
-                                });
-                                
-                                // 4. Applica bonus ambientali in base al personaggio e all'ambiente
-                                // (in un sistema reale, otterremmo il tipo di mondo attuale dal livello)
-                                WorldType currentWorld = WorldType.Urban; // Esempio
-                                EnvironmentalBonus bonus = resonance.GetEnvironmentalBonus(currentWorld);
-                                
-                                // 5. Applica bonus di Risonanza Amplificata se sbloccata
-                                if (resonance.ResonanceLevel >= 2)
-                                {
-                                    resonance.EnergyWaveRadius *= 1.5f; // Aumenta il raggio dell'onda
-                                }
-                                
-                                // 6. Controlla se è possibile attivare le abilità combinate (Risonanza Totale)
-                                if (resonance.ResonanceLevel >= 4)
-                                {
-                                    // Logica per attivare brevemente due abilità speciali combinate
-                                    var combinedAbilityEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                    commandBuffer.AddComponent(entityInQueryIndex, combinedAbilityEvent, new CombinedAbilitiesEvent
-                                    {
-                                        PrimaryCharacter = resonance.ActiveCharacter,
-                                        SecondaryCharacter = previousCharacter,
-                                        Duration = 3.0f // Durata breve dell'effetto combinato
-                                    });
-                                }
-                                
-                                // 7. Genera l'evento principale di cambio personaggio
-                                var switchEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                commandBuffer.AddComponent(entityInQueryIndex, switchEvent, new CharacterSwitchedEvent
-                                {
-                                    PlayerEntity = entity,
-                                    PreviousCharacter = previousCharacter,
-                                    NewCharacter = resonance.ActiveCharacter,
-                                    Position = currentPosition,
-                                    Velocity = currentVelocity,
-                                    WorldType = currentWorld,
-                                    AppliedBonus = bonus
-                                });
-                            }
-                        }
-                    }
-                    
-                    // Se è stato sbloccato un nuovo personaggio
-                    if (input.NewCharacterUnlocked && input.NewCharacterEntity != Entity.Null)
-                    {
-                        bool added = resonance.AddCharacter(input.NewCharacterEntity);
-                        
-                        if (added)
-                        {
-                            // Genera un evento di sblocco personaggio
-                            var unlockEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, unlockEvent, new CharacterUnlockedEvent
-                            {
-                                PlayerEntity = entity,
-                                UnlockedCharacter = input.NewCharacterEntity,
-                                TotalCharacters = resonance.CharacterCount
-                            });
-                            
-                            // Se questo è il secondo personaggio, la Risonanza viene sbloccata
-                            if (resonance.CharacterCount == 2)
-                            {
-                                var resonanceUnlockedEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                commandBuffer.AddComponent(entityInQueryIndex, resonanceUnlockedEvent, new ResonanceUnlockedEvent
-                                {
-                                    PlayerEntity = entity
-                                });
-                            }
-                        }
-                    }
-                    
-                    // Se è stato sbloccato un nuovo livello di Risonanza
-                    if (input.ResonanceLevelUp && input.NewResonanceLevel > resonance.ResonanceLevel)
-                    {
-                        int previousLevel = resonance.ResonanceLevel;
-                        resonance.ResonanceLevel = input.NewResonanceLevel;
-                        
-                        // Genera un evento di potenziamento Risonanza
-                        var upgradeEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, upgradeEvent, new ResonanceUpgradedEvent
-                        {
-                            PlayerEntity = entity,
-                            PreviousLevel = previousLevel,
-                            NewLevel = resonance.ResonanceLevel
-                        });
-                    }
-                    
-                    // Se lo stato della Risonanza è cambiato (cooldown terminato)
-                    if (stateChanged && resonance.IsAvailable)
-                    {
-                        var readyEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, readyEvent, new ResonanceReadyEvent
-                        {
-                            PlayerEntity = entity
-                        });
-                    }
-                    
-                }).ScheduleParallel();
+                    CooldownRemaining = 0;
+                    stateChanged = true;
+                }
+            }
             
-            // Assicura che il command buffer venga eseguito
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            return stateChanged;
         }
+        
+        /// <summary>
+        /// Cambia il personaggio attivo
+        /// </summary>
+        /// <param name="characterIndex">Indice del personaggio da attivare</param>
+        /// <returns>True se il cambio è riuscito, false altrimenti</returns>
+        public bool SwitchCharacter(int characterIndex)
+        {
+            if (!IsAvailable || characterIndex < 0 || characterIndex >= CharacterCount)
+            {
+                return false;
+            }
+            
+            Entity newCharacter = UnlockedCharacters[characterIndex];
+            
+            // Non cambiare se è già il personaggio attivo
+            if (newCharacter == ActiveCharacter)
+            {
+                return false;
+            }
+            
+            // Attiva il nuovo personaggio
+            ActiveCharacter = newCharacter;
+            
+            // Applica cooldown
+            CooldownRemaining = Cooldown;
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// Aggiunge un nuovo personaggio alla Risonanza
+        /// </summary>
+        /// <param name="characterEntity">Entità del personaggio da aggiungere</param>
+        /// <returns>True se il personaggio è stato aggiunto, false se già presente o lista piena</returns>
+        public bool AddCharacter(Entity characterEntity)
+        {
+            // Verifica se il personaggio è già nella lista
+            for (int i = 0; i < CharacterCount; i++)
+            {
+                if (UnlockedCharacters[i] == characterEntity)
+                {
+                    return false;
+                }
+            }
+            
+            // Verifica se c'è spazio nella lista
+            if (CharacterCount >= 6) // Massimo 6 personaggi (come da design)
+            {
+                return false;
+            }
+            
+            // Aggiungi il personaggio
+            UnlockedCharacters.Add(characterEntity);
+            CharacterCount++;
+            
+            // Se questo è il secondo personaggio, sblocca la Risonanza
+            if (CharacterCount == 2)
+            {
+                IsUnlocked = true;
+            }
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// Ottiene i bonus ambientali in base al tipo di mondo e al personaggio
+        /// </summary>
+        /// <param name="worldType">Il tipo di mondo corrente</param>
+        /// <returns>Struttura contenente i bonus applicabili</returns>
+        public EnvironmentalBonus GetEnvironmentalBonus(WorldType worldType)
+        {
+            // Ottiene il tipo di personaggio dal componente PlayerData
+            // In una implementazione reale, questo verrebbe fatto con EntityManager
+            CharacterType characterType = CharacterType.Alex; // Placeholder
+            
+            var bonus = new EnvironmentalBonus
+            {
+                SpeedBonus = 0,
+                JumpBonus = 0,
+                HealingEfficiency = 0,
+                ElementalResistance = 0,
+                CooldownReduction = 0
+            };
+            
+            // Applica bonus in base alla combinazione personaggio-ambiente
+            switch (characterType)
+            {
+                case CharacterType.Alex when worldType == WorldType.Urban:
+                    bonus.SpeedBonus = 0.25f; // +25% velocità per 3 secondi
+                    break;
+                case CharacterType.Maya when worldType == WorldType.Forest:
+                    bonus.HealingEfficiency = 0.4f; // +40% efficacia oggetti curativi
+                    break;
+                case CharacterType.Kai when worldType == WorldType.Tundra:
+                    bonus.ElementalResistance = 0.5f; // Resistenza al freddo per 5 secondi
+                    break;
+                case CharacterType.Ember when worldType == WorldType.Volcano:
+                    bonus.ElementalResistance = 0.6f; // Resistenza al fuoco per 4 secondi
+                    break;
+                case CharacterType.Marina when worldType == WorldType.Abyss:
+                    bonus.JumpBonus = 0.3f; // +30% potenza salto sott'acqua
+                    break;
+                case CharacterType.Neo when worldType == WorldType.Virtual:
+                    bonus.CooldownReduction = 0.2f; // -20% tempo ricarica abilità
+                    break;
+            }
+            
+            return bonus;
+        }
+        
+        /// <summary>
+        /// Riduce il cooldown della Risonanza tramite oggetti o abilità
+        /// </summary>
+        /// <param name="reductionAmount">Quantità di riduzione in secondi</param>
+        public void ReduceCooldown(float reductionAmount)
+        {
+            CooldownRemaining = math.max(0, CooldownRemaining - reductionAmount);
+        }
+    }
+    
+    /// <summary>
+    /// Struttura che definisce i bonus ambientali applicati durante la Risonanza
+    /// </summary>
+    public struct EnvironmentalBonus
+    {
+        /// <summary>
+        /// Bonus alla velocità di movimento
+        /// </summary>
+        public float SpeedBonus;
+        
+        /// <summary>
+        /// Bonus alla potenza di salto
+        /// </summary>
+        public float JumpBonus;
+        
+        /// <summary>
+        /// Miglioramento efficacia oggetti curativi
+        /// </summary>
+        public float HealingEfficiency;
+        
+        /// <summary>
+        /// Resistenza agli elementi ambientali
+        /// </summary>
+        public float ElementalResistance;
+        
+        /// <summary>
+        /// Riduzione tempo di ricarica abilità
+        /// </summary>
+        public float CooldownReduction;
+    }
+    
+    /// <summary>
+    /// Evento generato quando un personaggio viene cambiato con la Risonanza
+    /// </summary>
+    public struct CharacterSwitchedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public Entity PreviousCharacter;
+        public Entity NewCharacter;
+        public float3 Position;
+        public float3 Velocity;
+        public WorldType WorldType;
+        public EnvironmentalBonus AppliedBonus;
+    }
+    
+    /// <summary>
+    /// Evento generato quando un personaggio viene sbloccato
+    /// </summary>
+    public struct CharacterUnlockedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public Entity UnlockedCharacter;
+        public int TotalCharacters;
+    }
+    
+    /// <summary>
+    /// Evento generato quando la Risonanza viene sbloccata
+    /// </summary>
+    public struct ResonanceUnlockedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+    }
+    
+    /// <summary>
+    /// Evento generato quando il livello di Risonanza aumenta
+    /// </summary>
+    public struct ResonanceUpgradedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public int PreviousLevel;
+        public int NewLevel;
+    }
+    
+    /// <summary>
+    /// Evento generato quando la Risonanza è di nuovo disponibile dopo il cooldown
+    /// </summary>
+    public struct ResonanceReadyEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+    }
+    
+    /// <summary>
+    /// Evento generato quando l'onda di energia della Risonanza viene emessa
+    /// </summary>
+    public struct EnergyWaveEvent : IComponentData
+    {
+        public float3 Origin;
+        public float Radius;
+        public float Damage;
+        public Entity SourceEntity;
+    }
+    
+    /// <summary>
+    /// Evento generato quando si attivano abilità combinate (Risonanza Totale)
+    /// </summary>
+    public struct CombinedAbilitiesEvent : IComponentData
+    {
+        public Entity PrimaryCharacter;
+        public Entity SecondaryCharacter;
+        public float Duration;
     }
 }
