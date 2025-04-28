@@ -3,6 +3,8 @@ using Unity.Mathematics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Transforms;
+using RunawayHeroes.ECS.Components.Abilities;
+using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
@@ -115,6 +117,29 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                 canBreakThrough = true;
                             }
                             // Altri controlli per abilità speciali possono essere aggiunti qui
+
+                            // Controlla se il giocatore ha l'abilità Urban Dash attiva
+                            if (HasComponent<UrbanDashAbilityComponent>(playerEntity))
+                            {
+                                var urbanDash = GetComponent<UrbanDashAbilityComponent>(playerEntity);
+                                
+                                // Se l'abilità è attiva, verifica se la forza è sufficiente per sfondare l'ostacolo
+                                if (urbanDash.IsActive && urbanDash.BreakThroughForce > obstacle.Strength)
+                                {
+                                    canBreakThrough = true;
+                                    
+                                    // Applica bonus di sfondamento se è Alex
+                                    if (HasComponent<AlexComponent>(playerEntity))
+                                    {
+                                        var alexComp = GetComponent<AlexComponent>(playerEntity);
+                                        if (alexComp.ObstacleBreakThroughBonus > 0)
+                                        {
+                                            // Effetto visivo o bonus potenziato per Alex
+                                            // (potremmo aggiungere un effetto visivo più grande qui)
+                                        }
+                                    }
+                                }
+                            }
                             
                             // Se non può sfondare, applica danno e genera evento
                             if (!canBreakThrough)
