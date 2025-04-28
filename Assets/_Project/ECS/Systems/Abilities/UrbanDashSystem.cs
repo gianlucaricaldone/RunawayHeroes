@@ -1,9 +1,12 @@
+// Path: Assets/_Project/ECS/Systems/Abilities/UrbanDashSystem.cs
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
-using RunawayHeroes.ECS.Components.Abilities;
 using RunawayHeroes.ECS.Components.Input;
+using RunawayHeroes.ECS.Components.Characters;
+using RunawayHeroes.ECS.Components.Abilities;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 
 namespace RunawayHeroes.ECS.Systems.Abilities
@@ -20,19 +23,18 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnCreate()
         {
-            // Riferimento al command buffer system per generare eventi
+            // Prendi riferimento al command buffer system per creare eventi
             _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
             
-            // Query per entità con l'abilità Scatto Urbano
+            // Definisci query per entità con UrbanDashAbilityComponent
             _abilityQuery = GetEntityQuery(
                 ComponentType.ReadWrite<UrbanDashAbilityComponent>(),
+                ComponentType.ReadOnly<AbilityInputComponent>(),
                 ComponentType.ReadWrite<MovementComponent>(),
-                ComponentType.ReadWrite<PhysicsComponent>(),
                 ComponentType.ReadWrite<HealthComponent>(),
-                ComponentType.ReadOnly<AbilityInputComponent>()
+                ComponentType.ReadWrite<PhysicsComponent>()
             );
             
-            // Richiede entità corrispondenti per eseguire l'aggiornamento
             RequireForUpdate(_abilityQuery);
         }
         
@@ -41,91 +43,108 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             float deltaTime = Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
             
-            // Elabora lo stato e le richieste dell'abilità
+            // Aggiorna lo stato dell'abilità e gestisci input
             Entities
-                .WithName("UrbanDashProcessor")
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref UrbanDashAbilityComponent ability,
+                .WithName("UrbanDashSystem")
+                .ForEach((Entity entity, int entityInQueryIndex, 
+                          ref UrbanDashAbilityComponent urbanDash,
                           ref MovementComponent movement,
-                          ref PhysicsComponent physics,
                           ref HealthComponent health,
-                          in AbilityInputComponent abilityInput) => 
+                          ref PhysicsComponent physics,
+                          in AbilityInputComponent abilityInput,
+                          in TransformComponent transform,
+                          in AlexComponent alexComponent) => 
                 {
-                    // Se è stata richiesta l'attivazione dell'abilità
-                    if (abilityInput.ActivateAbility && ability.IsAvailable)
+                    // Aggiorna i timer dell'abilità
+                    bool stateChanged = false;
+                    
+                    // Se l'abilità è attiva, gestisci la durata
+                    if (urbanDash.IsActive)
                     {
-                        // Attiva l'abilità
-                        bool activated = ability.Activate();
+                        urbanDash.RemainingTime -= deltaTime;
                         
-                        if (activated)
+                        if (urbanDash.RemainingTime <= 0)
                         {
-                            // Applica effetti immediati
+                            // Termina l'abilità
+                            urbanDash.IsActive = false;
+                            urbanDash.RemainingTime = 0;
+                            stateChanged = true;
                             
-                            // 1. Impulso di velocità nella direzione attuale
-                            float3 dashDirection = movement.IsMoving 
-                                ? movement.MoveDirection 
-                                : new float3(0, 0, 1); // Default avanti
-                                
-                            physics.Velocity += dashDirection * ability.InitialBoost;
+                            // Ripristina la velocità normale
+                            movement.CurrentSpeed /= urbanDash.SpeedMultiplier;
                             
-                            // 2. Attiva invulnerabilità temporanea
-                            health.SetInvulnerable(ability.Duration);
+                            // Termina l'invulnerabilità
+                            health.IsInvulnerable = false;
                             
-                            // Genera un evento di attivazione abilità
-                            var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new AbilityActivatedEvent
+                            // Crea evento di fine abilità
+                            var endAbilityEvent = commandBuffer.CreateEntity(entityInQueryIndex);
+                            commandBuffer.AddComponent(entityInQueryIndex, endAbilityEvent, new AbilityEndedEvent
                             {
-                                EntityActivated = entity,
-                                AbilityType = AbilityType.UrbanDash,
-                                Duration = ability.Duration
+                                EntityID = entity,
+                                AbilityType = AbilityType.UrbanDash
                             });
                         }
                     }
                     
-                    // Aggiorna lo stato dell'abilità (durata, cooldown)
-                    bool stateChanged = ability.Update(deltaTime);
-                    
-                    // Se l'abilità è attiva, applica gli effetti continui
-                    if (ability.IsActive)
+                    // Aggiorna il cooldown se necessario
+                    if (urbanDash.CooldownRemaining > 0)
                     {
-                        // 1. Velocità aumentata
-                        movement.CurrentSpeed = movement.BaseSpeed * ability.SpeedMultiplier;
+                        // Applica bonus di riduzione cooldown da Alex
+                        float reduction = 1.0f - alexComponent.UrbanDashCooldownReduction;
+                        urbanDash.CooldownRemaining -= deltaTime * reduction;
                         
-                        // 2. Effetti visivi (gestiti tramite eventi e sistema VFX separato)
-                        
-                        // 3. Controlla collisioni con ostacoli (in un sistema reale, questo
-                        //    verrebbe probabilmente gestito nel sistema di collisione)
-                    }
-                    // Se l'abilità è appena terminata, ripristina gli stati modificati
-                    else if (stateChanged)
-                    {
-                        // Ripristina la velocità normale
-                        movement.CurrentSpeed = movement.BaseSpeed;
-                        
-                        // Genera un evento di fine abilità
-                        var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new AbilityDeactivatedEvent
+                        if (urbanDash.CooldownRemaining <= 0)
                         {
-                            EntityDeactivated = entity,
+                            urbanDash.CooldownRemaining = 0;
+                            stateChanged = true;
+                            
+                            // Crea evento di abilità pronta
+                            var readyEvent = commandBuffer.CreateEntity(entityInQueryIndex);
+                            commandBuffer.AddComponent(entityInQueryIndex, readyEvent, new AbilityReadyEvent
+                            {
+                                EntityID = entity,
+                                AbilityType = AbilityType.UrbanDash
+                            });
+                        }
+                    }
+                    
+                    // Controlla input per attivazione abilità
+                    if (abilityInput.ActivateAbility && urbanDash.IsAvailable && !urbanDash.IsActive)
+                    {
+                        // Attiva l'abilità
+                        urbanDash.IsActive = true;
+                        urbanDash.RemainingTime = urbanDash.Duration;
+                        urbanDash.CooldownRemaining = urbanDash.Cooldown;
+                        
+                        // Applica aumento di velocità
+                        movement.CurrentSpeed *= urbanDash.SpeedMultiplier;
+                        
+                        // Applica boost iniziale di velocità
+                        physics.Velocity.z += urbanDash.InitialBoost;
+                        
+                        // Attiva invulnerabilità temporanea
+                        health.SetInvulnerable(urbanDash.Duration);
+                        
+                        // Crea evento di attivazione abilità
+                        var activateEvent = commandBuffer.CreateEntity(entityInQueryIndex);
+                        commandBuffer.AddComponent(entityInQueryIndex, activateEvent, new AbilityActivatedEvent
+                        {
+                            EntityID = entity,
                             AbilityType = AbilityType.UrbanDash,
-                            CooldownRemaining = ability.CooldownRemaining
+                            Position = transform.Position,
+                            Duration = urbanDash.Duration
                         });
                     }
                     
-                    // Se lo stato del cooldown è cambiato (disponibile per l'uso), notifica
-                    if (stateChanged && ability.IsAvailable)
+                    // Se attivo, gestisci sfondamento di ostacoli
+                    if (urbanDash.IsActive)
                     {
-                        var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new AbilityReadyEvent
-                        {
-                            EntityReady = entity,
-                            AbilityType = AbilityType.UrbanDash
-                        });
+                        // La logica per sfondare ostacoli è gestita da ObstacleCollisionSystem
+                        // che controlla se l'abilità è attiva e applica il bonus di sfondamento
                     }
                     
                 }).ScheduleParallel();
             
-            // Assicura che il command buffer venga eseguito
             _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
     }
