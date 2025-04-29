@@ -2,6 +2,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Burst;
 using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
@@ -43,6 +44,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             RequireForUpdate(_abilityQuery);
         }
         
+        [BurstCompile]
         protected override void OnUpdate()
         {
             float deltaTime = SystemAPI.Time.DeltaTime;

@@ -2,7 +2,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-// Rimuove l'import di Unity.Burst poiché causerebbe ambiguità
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -47,7 +47,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
             RequireForUpdate(_playerQuery);
         }
         
-        // Rimuoviamo completamente l'attributo BurstCompile per ora
+        [BurstCompile]
         protected override void OnUpdate()
         {
             // Resto del metodo invariato
