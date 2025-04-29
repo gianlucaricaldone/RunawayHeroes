@@ -259,7 +259,7 @@ namespace RunawayHeroes.ECS.Entities.Factory
                 Cooldown = 30.0f,
                 CooldownRemaining = 0,
                 HeatAura = 2.0f,            // Aura di calore che danneggia nemici vicini
-                LavaImmunity = true,        // Immunità alla lava quando attivo
+                LavaWalkingActive = true,        // Immunità alla lava quando attivo
                 IsActive = false
             });
             

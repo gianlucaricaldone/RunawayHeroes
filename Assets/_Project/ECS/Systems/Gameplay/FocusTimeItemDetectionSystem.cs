@@ -49,7 +49,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
             
             // Ottieni il tempo di gioco corrente
-            float currentTime = (float)Time.ElapsedTime;
+            float currentTime = (float)SystemAPI.Time.ElapsedTime;
             
             // Rileva oggetti nelle vicinanze del giocatore durante il Focus Time
             NativeArray<Entity> playerEntities = _playerQuery.ToEntityArray(Allocator.TempJob);

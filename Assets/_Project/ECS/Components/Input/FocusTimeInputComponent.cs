@@ -2,6 +2,7 @@
 
 using System;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace RunawayHeroes.ECS.Components.Input
 {

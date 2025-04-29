@@ -1,7 +1,9 @@
+// Path: Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Components.Core;
 
 namespace RunawayHeroes.Authoring
 {
@@ -9,7 +11,7 @@ namespace RunawayHeroes.Authoring
     /// Base class per i componenti di authoring degli ostacoli.
     /// Fornisce funzionalità comuni per tutti i tipi di ostacoli.
     /// </summary>
-    public abstract class BaseObstacleAuthoring : MonoBehaviour, IConvertGameObjectToEntity
+    public abstract class BaseObstacleAuthoring : MonoBehaviour
     {
         [Header("Proprietà Ostacolo Base")]
         [Tooltip("Altezza dell'ostacolo, usata per determinare se può essere superato con scivolata")]
@@ -34,31 +36,10 @@ namespace RunawayHeroes.Authoring
         public ObstaclePreset preset = ObstaclePreset.Custom;
         
         /// <summary>
-        /// Conversione base per tutti gli ostacoli
-        /// </summary>
-        public virtual void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
-        {
-            // Applica preset se selezionato
-            ApplyPreset();
-            
-            // Aggiunge il componente ObstacleComponent base a tutti gli ostacoli
-            dstManager.AddComponentData(entity, new ObstacleComponent
-            {
-                Height = height,
-                Width = width,
-                CollisionRadius = collisionRadius,
-                Strength = strength,
-                DamageValue = damageValue,
-                IsDestructible = isDestructible
-            });
-            
-            // Le classi derivate aggiungeranno tag specifici
-        }
-        
-        /// <summary>
         /// Applica i valori predefiniti in base al preset selezionato
         /// </summary>
-        protected virtual void ApplyPreset()
+        // Cambiato da protected a public in modo che i Baker possano accedervi
+        public virtual void ApplyPreset()
         {
             switch (preset)
             {
@@ -99,7 +80,7 @@ namespace RunawayHeroes.Authoring
             }
         }
     }
-    
+
     /// <summary>
     /// Presets predefiniti per la configurazione rapida degli ostacoli
     /// </summary>
@@ -120,6 +101,39 @@ namespace RunawayHeroes.Authoring
     }
     
     /// <summary>
+    /// Baker per ostacoli standard
+    /// </summary>
+    public class StandardObstacleBaker : Baker<StandardObstacleAuthoring>
+    {
+        public override void Bake(StandardObstacleAuthoring authoring)
+        {
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent (converte da Unity Transform a ECS TransformComponent)
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity, // O Quaternion.ToECSQuaternion(transform.rotation)
+                Scale = transform.lossyScale.x
+            });
+        }
+    }
+    
+    /// <summary>
     /// Componente di authoring per ostacoli di lava (Ember può attraversarli con Corpo Ignifugo)
     /// </summary>
     public class LavaObstacleAuthoring : BaseObstacleAuthoring
@@ -127,20 +141,47 @@ namespace RunawayHeroes.Authoring
         [Header("Proprietà Lava")]
         [Tooltip("Danno al secondo quando si sta sulla lava senza protezione")]
         public float damagePerSecond = 20.0f;
-        
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+    }
+    
+    /// <summary>
+    /// Baker per ostacoli di lava
+    /// </summary>
+    public class LavaObstacleBaker : Baker<LavaObstacleAuthoring>
+    {
+        public override void Bake(LavaObstacleAuthoring authoring)
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge il tag LavaTag
-            dstManager.AddComponent<LavaTag>(entity);
+            AddComponent<LavaTag>(entity);
             
             // Aggiunge ToxicGroundTag per il danno continuativo
-            dstManager.AddComponentData(entity, new ToxicGroundTag
+            AddComponent(entity, new ToxicGroundTag
             {
                 ToxicType = 1, // Tipo fuoco/lava
-                DamagePerSecond = damagePerSecond
+                DamagePerSecond = authoring.damagePerSecond
             });
         }
     }
@@ -153,20 +194,47 @@ namespace RunawayHeroes.Authoring
         [Header("Proprietà Ghiaccio")]
         [Tooltip("Integrità massima del ghiaccio (quanto calore può assorbire prima di sciogliersi)")]
         public float maxIntegrity = 100.0f;
-        
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+    }
+    
+    /// <summary>
+    /// Baker per ostacoli di ghiaccio
+    /// </summary>
+    public class IceObstacleBaker : Baker<IceObstacleAuthoring>
+    {
+        public override void Bake(IceObstacleAuthoring authoring)
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge il tag IceObstacleTag
-            dstManager.AddComponent<IceObstacleTag>(entity);
+            AddComponent<IceObstacleTag>(entity);
             
             // Aggiunge il componente per l'integrità del ghiaccio
-            dstManager.AddComponentData(entity, new IceIntegrityComponent
+            AddComponent(entity, new IceIntegrityComponent
             {
-                MaxIntegrity = maxIntegrity,
-                CurrentIntegrity = maxIntegrity
+                MaxIntegrity = authoring.maxIntegrity,
+                CurrentIntegrity = authoring.maxIntegrity
             });
         }
     }
@@ -180,16 +248,43 @@ namespace RunawayHeroes.Authoring
         [Tooltip("Fattore di scivolosità (0-1, dove 1 è il massimo)")]
         [Range(0, 1)]
         public float slipFactor = 0.7f;
-        
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+    }
+    
+    /// <summary>
+    /// Baker per superfici scivolose
+    /// </summary>
+    public class SlipperyObstacleBaker : Baker<SlipperyObstacleAuthoring>
+    {
+        public override void Bake(SlipperyObstacleAuthoring authoring)
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge il tag SlipperyTag
-            dstManager.AddComponentData(entity, new SlipperyTag
+            AddComponent(entity, new SlipperyTag
             {
-                SlipFactor = slipFactor
+                SlipFactor = authoring.slipFactor
             });
         }
     }
@@ -199,10 +294,10 @@ namespace RunawayHeroes.Authoring
     /// </summary>
     public class DigitalBarrierAuthoring : BaseObstacleAuthoring
     {
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+        // Override del metodo ApplyPreset per impostare valori predefiniti diversi
+        public override void ApplyPreset()
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            base.ApplyPreset();
             
             // Le barriere digitali sono impostazioni predefinite resistenti e non distruttibili
             if (preset == ObstaclePreset.Custom)
@@ -211,9 +306,42 @@ namespace RunawayHeroes.Authoring
                 strength = 500.0f;
                 isDestructible = false;
             }
+        }
+    }
+    
+    /// <summary>
+    /// Baker per barriere digitali
+    /// </summary>
+    public class DigitalBarrierBaker : Baker<DigitalBarrierAuthoring>
+    {
+        public override void Bake(DigitalBarrierAuthoring authoring)
+        {
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge il tag DigitalBarrierTag
-            dstManager.AddComponent<DigitalBarrierTag>(entity);
+            AddComponent<DigitalBarrierTag>(entity);
         }
     }
     
@@ -231,22 +359,49 @@ namespace RunawayHeroes.Authoring
         
         [Tooltip("Direzione della corrente")]
         public Vector3 currentDirection = new Vector3(0, 0, 0);
-        
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+    }
+    
+    /// <summary>
+    /// Baker per zone subacquee
+    /// </summary>
+    public class UnderwaterObstacleBaker : Baker<UnderwaterObstacleAuthoring>
+    {
+        public override void Bake(UnderwaterObstacleAuthoring authoring)
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge il tag UnderwaterTag
-            dstManager.AddComponent<UnderwaterTag>(entity);
+            AddComponent<UnderwaterTag>(entity);
             
             // Se ha una corrente, aggiunge anche il componente CurrentTag
-            if (currentStrength > 0)
+            if (authoring.currentStrength > 0)
             {
-                dstManager.AddComponentData(entity, new CurrentTag
+                AddComponent(entity, new CurrentTag
                 {
-                    Direction = new float3(currentDirection.x, currentDirection.y, currentDirection.z),
-                    Strength = currentStrength,
+                    Direction = new float3(authoring.currentDirection.x, authoring.currentDirection.y, authoring.currentDirection.z),
+                    Strength = authoring.currentStrength,
                     CurrentType = 2 // Tipo corrente acquatica
                 });
             }
@@ -264,17 +419,44 @@ namespace RunawayHeroes.Authoring
         
         [Tooltip("Direzione della corrente")]
         public Vector3 currentDirection = new Vector3(0, 1, 0);
-        
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+    }
+    
+    /// <summary>
+    /// Baker per correnti d'aria
+    /// </summary>
+    public class AirCurrentBaker : Baker<AirCurrentAuthoring>
+    {
+        public override void Bake(AirCurrentAuthoring authoring)
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge il componente CurrentTag
-            dstManager.AddComponentData(entity, new CurrentTag
+            AddComponent(entity, new CurrentTag
             {
-                Direction = new float3(currentDirection.x, currentDirection.y, currentDirection.z),
-                Strength = currentStrength,
+                Direction = new float3(authoring.currentDirection.x, authoring.currentDirection.y, authoring.currentDirection.z),
+                Strength = authoring.currentStrength,
                 CurrentType = 1 // Tipo corrente aerea
             });
         }
@@ -288,17 +470,44 @@ namespace RunawayHeroes.Authoring
         [Header("Proprietà Gas Tossico")]
         [Tooltip("Danno al secondo nell'area tossica")]
         public float damagePerSecond = 10.0f;
-        
-        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+    }
+    
+    /// <summary>
+    /// Baker per zone di gas tossico
+    /// </summary>
+    public class ToxicGasBaker : Baker<ToxicGasAuthoring>
+    {
+        public override void Bake(ToxicGasAuthoring authoring)
         {
-            // Prima chiama la conversione base per aggiungere ObstacleComponent
-            base.Convert(entity, dstManager, conversionSystem);
+            authoring.ApplyPreset();
+            
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            
+            // Aggiunge componenti base
+            AddComponent(entity, new ObstacleComponent
+            {
+                Height = authoring.height,
+                Width = authoring.width,
+                CollisionRadius = authoring.collisionRadius,
+                Strength = authoring.strength,
+                DamageValue = authoring.damageValue,
+                IsDestructible = authoring.isDestructible
+            });
+            
+            // Aggiunge TransformComponent
+            var transform = GetComponent<Transform>();
+            AddComponent(entity, new TransformComponent
+            {
+                Position = transform.position,
+                Rotation = quaternion.identity,
+                Scale = transform.lossyScale.x
+            });
             
             // Aggiunge ToxicGroundTag per il danno continuativo
-            dstManager.AddComponentData(entity, new ToxicGroundTag
+            AddComponent(entity, new ToxicGroundTag
             {
                 ToxicType = 2, // Tipo gas tossico
-                DamagePerSecond = damagePerSecond
+                DamagePerSecond = authoring.damagePerSecond
             });
         }
     }
