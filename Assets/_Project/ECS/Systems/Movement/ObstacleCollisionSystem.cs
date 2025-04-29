@@ -1,6 +1,5 @@
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Transforms;
 using RunawayHeroes.ECS.Components.Abilities;
@@ -53,7 +52,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
             RequireForUpdate(_obstacleQuery);
         }
         
-        [BurstCompile]
         protected override void OnUpdate()
         {
             // Prepara il command buffer per le modifiche strutturali

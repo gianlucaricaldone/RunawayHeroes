@@ -112,7 +112,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                     if (focusTimeComponent.IsActive)
                     {
                         // Animazione pulsante per l'interfaccia radiale
-                        _pulseAnimationTime += Time.DeltaTime * PULSE_SPEED;
+                        _pulseAnimationTime += SystemAPI.Time.DeltaTime * PULSE_SPEED;
                         float pulse = 1.0f + PULSE_AMPLITUDE * math.sin(_pulseAnimationTime);
                         
                         // Aggiorna la visualizzazione degli slot degli oggetti

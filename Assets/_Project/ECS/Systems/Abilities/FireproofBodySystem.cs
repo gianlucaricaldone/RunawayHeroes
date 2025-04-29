@@ -2,11 +2,13 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Abilities;
+using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 
 namespace RunawayHeroes.ECS.Systems.Abilities
@@ -43,12 +45,45 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnUpdate()
         {
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            
+            // Ottieni le zone di lava prima di entrare nel job
+            var lavaHazards = _lavaQuery.ToEntityArray(Allocator.TempJob);
+            var lavaPositions = new NativeArray<float3>(lavaHazards.Length, Allocator.TempJob);
+            var lavaRadii = new NativeArray<float>(lavaHazards.Length, Allocator.TempJob);
+            var hasRadiusData = new NativeArray<bool>(lavaHazards.Length, Allocator.TempJob);
+            
+            // Popola i dati delle zone di lava
+            for (int i = 0; i < lavaHazards.Length; i++)
+            {
+                if (EntityManager.HasComponent<TransformComponent>(lavaHazards[i]))
+                {
+                    lavaPositions[i] = EntityManager.GetComponentData<TransformComponent>(lavaHazards[i]).Position;
+                }
+                
+                if (EntityManager.HasComponent<HazardComponent>(lavaHazards[i]))
+                {
+                    var hazard = EntityManager.GetComponentData<HazardComponent>(lavaHazards[i]);
+                    lavaRadii[i] = hazard.Radius;
+                    hasRadiusData[i] = true;
+                }
+                else
+                {
+                    hasRadiusData[i] = false;
+                }
+            }
             
             Entities
                 .WithName("FireproofBodySystem")
-                .WithReadOnly(_lavaQuery)
+                .WithReadOnly(lavaHazards)
+                .WithReadOnly(lavaPositions)
+                .WithReadOnly(lavaRadii)
+                .WithReadOnly(hasRadiusData)
+                .WithDisposeOnCompletion(lavaHazards)
+                .WithDisposeOnCompletion(lavaPositions)
+                .WithDisposeOnCompletion(lavaRadii)
+                .WithDisposeOnCompletion(hasRadiusData)
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref FireproofBodyAbilityComponent fireproofBody,
                           ref HealthComponent health,
@@ -91,23 +126,18 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             
                             // Controlla se il giocatore è in una zona di lava
                             bool inLava = false;
-                            foreach (var lavaHazard in _lavaQuery.ToEntityArray(Allocator.Temp))
+                            for (int i = 0; i < lavaHazards.Length; i++)
                             {
-                                if (EntityManager.HasComponent<HazardComponent>(lavaHazard))
+                                if (!hasRadiusData[i])
+                                    continue;
+                                
+                                float distance = math.distance(transform.Position, lavaPositions[i]);
+                                
+                                // Se il giocatore è dentro la zona di lava
+                                if (distance <= lavaRadii[i])
                                 {
-                                    var hazard = EntityManager.GetComponentData<HazardComponent>(lavaHazard);
-                                    if (EntityManager.HasComponent<TransformComponent>(lavaHazard))
-                                    {
-                                        var hazardTransform = EntityManager.GetComponentData<TransformComponent>(lavaHazard);
-                                        float distance = math.distance(transform.Position, hazardTransform.Position);
-                                        
-                                        // Se il giocatore è dentro la zona di lava
-                                        if (distance <= hazard.Radius)
-                                        {
-                                            inLava = true;
-                                            break;
-                                        }
-                                    }
+                                    inLava = true;
+                                    break;
                                 }
                             }
                             
@@ -188,8 +218,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                 }).ScheduleParallel();
             
             // Aggiorna i visualizzatori dell'effetto igneo
+            // Usiamo WithoutBurst e Run() qui perché accediamo a EntityManager
             Entities
                 .WithName("FireBodyVisualUpdater")
+                .WithoutBurst()
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref FireBodyVisualComponent fireVisual,
                           ref TransformComponent transform) =>
@@ -212,7 +244,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                     }
                     
-                }).ScheduleParallel();
+                }).Run();
             
             _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }

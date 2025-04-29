@@ -3,7 +3,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.Gameplay;
 
-namespace RunawayHeroes.Unity.Authoring
+namespace RunawayHeroes.Authoring
 {
     /// <summary>
     /// Base class per i componenti di authoring degli ostacoli.

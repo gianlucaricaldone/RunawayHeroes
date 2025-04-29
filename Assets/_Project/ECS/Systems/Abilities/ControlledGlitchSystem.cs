@@ -2,6 +2,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -43,12 +44,28 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnUpdate()
         {
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            
+            // Ottieni la lista di barriere prima di entrare nel job
+            var barriers = _barrierQuery.ToEntityArray(Allocator.TempJob);
+            var barrierPositions = new NativeArray<float3>(barriers.Length, Allocator.TempJob);
+            
+            // Popola le posizioni delle barriere
+            for (int i = 0; i < barriers.Length; i++)
+            {
+                if (EntityManager.HasComponent<TransformComponent>(barriers[i]))
+                {
+                    barrierPositions[i] = EntityManager.GetComponentData<TransformComponent>(barriers[i]).Position;
+                }
+            }
             
             Entities
                 .WithName("ControlledGlitchSystem")
-                .WithReadOnly(_barrierQuery)
+                .WithReadOnly(barriers)
+                .WithReadOnly(barrierPositions)
+                .WithDisposeOnCompletion(barriers)
+                .WithDisposeOnCompletion(barrierPositions)
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref ControlledGlitchAbilityComponent glitch,
                           ref TransformComponent transform,
@@ -96,31 +113,28 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                                 float closestDistance = float.MaxValue;
                                 float3 barrierPosition = float3.zero;
                                 
-                                foreach (var barrier in _barrierQuery.ToEntityArray(Allocator.Temp))
+                                for (int i = 0; i < barriers.Length; i++)
                                 {
-                                    if (EntityManager.HasComponent<TransformComponent>(barrier))
+                                    float3 currentBarrierPos = barrierPositions[i];
+                                    
+                                    // Calcola la distanza lungo la direzione di movimento
+                                    float3 toBarrier = currentBarrierPos - transform.Position;
+                                    float distanceAlongDirection = math.dot(toBarrier, forwardDirection);
+                                    
+                                    // Considera solo barriere davanti al giocatore, entro il raggio d'azione
+                                    if (distanceAlongDirection > 0 && distanceAlongDirection < glitch.GlitchDistance)
                                     {
-                                        var barrierTransform = EntityManager.GetComponentData<TransformComponent>(barrier);
+                                        // Calcola la distanza laterale (perpendicolare alla direzione)
+                                        float3 projection = distanceAlongDirection * forwardDirection;
+                                        float3 perpendicular = toBarrier - projection;
+                                        float lateralDistance = math.length(perpendicular);
                                         
-                                        // Calcola la distanza lungo la direzione di movimento
-                                        float3 toBarrier = barrierTransform.Position - transform.Position;
-                                        float distanceAlongDirection = math.dot(toBarrier, forwardDirection);
-                                        
-                                        // Considera solo barriere davanti al giocatore, entro il raggio d'azione
-                                        if (distanceAlongDirection > 0 && distanceAlongDirection < glitch.GlitchDistance)
+                                        // Considera solo barriere abbastanza vicino lateralmente
+                                        if (lateralDistance < 2.0f && distanceAlongDirection < closestDistance)
                                         {
-                                            // Calcola la distanza laterale (perpendicolare alla direzione)
-                                            float3 projection = distanceAlongDirection * forwardDirection;
-                                            float3 perpendicular = toBarrier - projection;
-                                            float lateralDistance = math.length(perpendicular);
-                                            
-                                            // Considera solo barriere abbastanza vicino lateralmente
-                                            if (lateralDistance < 2.0f && distanceAlongDirection < closestDistance)
-                                            {
-                                                closestDistance = distanceAlongDirection;
-                                                closestBarrier = barrier;
-                                                barrierPosition = barrierTransform.Position;
-                                            }
+                                            closestDistance = distanceAlongDirection;
+                                            closestBarrier = barriers[i];
+                                            barrierPosition = currentBarrierPos;
                                         }
                                     }
                                 }

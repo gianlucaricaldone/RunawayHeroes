@@ -34,7 +34,7 @@ namespace RunawayHeroes.ECS.Systems.Core
         protected override void OnUpdate()
         {
             // Ottiene il delta time per questo frame
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             
             // Applica la simulazione fisica a tutte le entità corrispondenti
             Entities

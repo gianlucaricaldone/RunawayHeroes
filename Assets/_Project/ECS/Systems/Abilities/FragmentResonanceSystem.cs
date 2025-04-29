@@ -35,7 +35,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnUpdate()
         {
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
             
             // Elabora le richieste e lo stato della Risonanza

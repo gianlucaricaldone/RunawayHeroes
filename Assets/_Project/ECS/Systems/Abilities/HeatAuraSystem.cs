@@ -2,6 +2,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -43,12 +44,47 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnUpdate()
         {
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            
+            // Ottieni gli ostacoli di ghiaccio prima di entrare nel job
+            var iceObstacles = _iceObstacleQuery.ToEntityArray(Allocator.TempJob);
+            var obstaclePositions = new NativeArray<float3>(iceObstacles.Length, Allocator.TempJob);
+            var obstacleScales = new NativeArray<float>(iceObstacles.Length, Allocator.TempJob);
+            var iceIntegrities = new NativeArray<IceIntegrityComponent>(iceObstacles.Length, Allocator.TempJob);
+            var hasIntegrity = new NativeArray<bool>(iceObstacles.Length, Allocator.TempJob);
+            
+            // Popola i dati degli ostacoli
+            for (int i = 0; i < iceObstacles.Length; i++)
+            {
+                if (EntityManager.HasComponent<TransformComponent>(iceObstacles[i]))
+                {
+                    var transform = EntityManager.GetComponentData<TransformComponent>(iceObstacles[i]);
+                    obstaclePositions[i] = transform.Position;
+                    obstacleScales[i] = transform.Scale;
+                }
+                
+                if (EntityManager.HasComponent<IceIntegrityComponent>(iceObstacles[i]))
+                {
+                    iceIntegrities[i] = EntityManager.GetComponentData<IceIntegrityComponent>(iceObstacles[i]);
+                    hasIntegrity[i] = true;
+                }
+                else
+                {
+                    hasIntegrity[i] = false;
+                }
+            }
             
             Entities
                 .WithName("HeatAuraSystem")
-                .WithReadOnly(_iceObstacleQuery)
+                .WithReadOnly(iceObstacles)
+                .WithReadOnly(obstaclePositions)
+                .WithReadOnly(obstacleScales)
+                .WithDisposeOnCompletion(iceObstacles)
+                .WithDisposeOnCompletion(obstaclePositions)
+                .WithDisposeOnCompletion(obstacleScales)
+                .WithDisposeOnCompletion(iceIntegrities)
+                .WithDisposeOnCompletion(hasIntegrity)
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref HeatAuraAbilityComponent heatAura,
                           in AbilityInputComponent abilityInput,
@@ -83,45 +119,41 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             // Continua gli effetti dell'aura di calore
                             
                             // 1. Effetto di scioglimento del ghiaccio
-                            foreach (var obstacle in _iceObstacleQuery.ToEntityArray(Allocator.Temp))
+                            for (int i = 0; i < iceObstacles.Length; i++)
                             {
-                                if (EntityManager.HasComponent<TransformComponent>(obstacle))
+                                if (!hasIntegrity[i])
+                                    continue;
+                                
+                                float distance = math.distance(transform.Position, obstaclePositions[i]);
+                                
+                                // Se l'ostacolo è nel raggio dell'aura
+                                if (distance <= heatAura.AuraRadius)
                                 {
-                                    var obstacleTransform = EntityManager.GetComponentData<TransformComponent>(obstacle);
-                                    float distance = math.distance(transform.Position, obstacleTransform.Position);
+                                    // Calcola la velocità di scioglimento basata sulla distanza
+                                    float meltFactor = 1.0f - (distance / heatAura.AuraRadius);
+                                    float meltRate = heatAura.MeltIceRate * meltFactor;
                                     
-                                    // Se l'ostacolo è nel raggio dell'aura
-                                    if (distance <= heatAura.AuraRadius)
+                                    // Ottieni il componente di ghiaccio e riduci la sua integrità
+                                    var iceIntegrity = iceIntegrities[i];
+                                    iceIntegrity.CurrentIntegrity -= meltRate * deltaTime;
+                                    
+                                    // Se il ghiaccio è completamente sciolto
+                                    if (iceIntegrity.CurrentIntegrity <= 0)
                                     {
-                                        // Calcola la velocità di scioglimento basata sulla distanza
-                                        float meltFactor = 1.0f - (distance / heatAura.AuraRadius);
-                                        float meltRate = heatAura.MeltIceRate * meltFactor;
+                                        commandBuffer.DestroyEntity(entityInQueryIndex, iceObstacles[i]);
                                         
-                                        // Ottieni il componente di ghiaccio e riduci la sua integrità
-                                        if (EntityManager.HasComponent<IceIntegrityComponent>(obstacle))
+                                        // Crea effetto di scioglimento
+                                        var meltEffect = commandBuffer.CreateEntity(entityInQueryIndex);
+                                        commandBuffer.AddComponent(entityInQueryIndex, meltEffect, new IceMeltEffectComponent
                                         {
-                                            var iceIntegrity = EntityManager.GetComponentData<IceIntegrityComponent>(obstacle);
-                                            iceIntegrity.CurrentIntegrity -= meltRate * deltaTime;
-                                            
-                                            // Se il ghiaccio è completamente sciolto
-                                            if (iceIntegrity.CurrentIntegrity <= 0)
-                                            {
-                                                commandBuffer.DestroyEntity(entityInQueryIndex, obstacle);
-                                                
-                                                // Crea effetto di scioglimento
-                                                var meltEffect = commandBuffer.CreateEntity(entityInQueryIndex);
-                                                commandBuffer.AddComponent(entityInQueryIndex, meltEffect, new IceMeltEffectComponent
-                                                {
-                                                    Position = obstacleTransform.Position,
-                                                    Size = obstacleTransform.Scale
-                                                });
-                                            }
-                                            else
-                                            {
-                                                // Aggiorna l'integrità del ghiaccio
-                                                commandBuffer.SetComponent(entityInQueryIndex, obstacle, iceIntegrity);
-                                            }
-                                        }
+                                            Position = obstaclePositions[i],
+                                            Size = obstacleScales[i]
+                                        });
+                                    }
+                                    else
+                                    {
+                                        // Aggiorna l'integrità del ghiaccio
+                                        commandBuffer.SetComponent(entityInQueryIndex, iceObstacles[i], iceIntegrity);
                                     }
                                 }
                             }
@@ -184,9 +216,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                     
                 }).ScheduleParallel();
             
-            // Aggiorna i visualizzatori dell'aura
+            // Aggiorna i visualizzatori dell'aura - Usiamo WithoutBurst e Run per l'accesso a EntityManager
             Entities
                 .WithName("HeatAuraVisualUpdater")
+                .WithoutBurst()
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref HeatAuraVisualComponent auraVisual,
                           ref TransformComponent transform) =>
@@ -209,7 +242,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                     }
                     
-                }).ScheduleParallel();
+                }).Run();
             
             _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }

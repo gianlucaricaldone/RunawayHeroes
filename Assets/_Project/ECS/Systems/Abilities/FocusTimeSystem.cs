@@ -41,7 +41,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnUpdate()
         {
-            float deltaTime = Time.DeltaTime;
+            float deltaTime =SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
             
             // Ottiene l'entità time manager per l'accesso in lettura/scrittura

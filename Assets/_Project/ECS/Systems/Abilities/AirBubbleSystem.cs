@@ -3,7 +3,6 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
-using Unity.Burst;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -14,7 +13,6 @@ using RunawayHeroes.ECS.Components.Enemies;
 
 namespace RunawayHeroes.ECS.Systems.Abilities
 {
-    [BurstCompile]
     public partial class AirBubbleSystem : SystemBase
     {
         private EntityQuery _abilityQuery;
@@ -45,11 +43,32 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             float deltaTime = SystemAPI.Time.DeltaTime;
             var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
             
-            // Rimuoviamo completamente WithReadOnly poiché non possiamo usarlo con EntityQuery
-            // Useremo WithoutBurst e Run, che è la soluzione più semplice
+            // Ottieni la lista di nemici subacquei prima di entrare nel job
+            var underwaterEnemies = _underwaterEnemyQuery.ToEntityArray(Allocator.TempJob);
+            var enemyPositions = new NativeArray<float3>(underwaterEnemies.Length, Allocator.TempJob);
+            var enemyPhysics = new NativeArray<PhysicsComponent>(underwaterEnemies.Length, Allocator.TempJob);
+            
+            // Popola le posizioni e i dati fisici dei nemici
+            for (int i = 0; i < underwaterEnemies.Length; i++)
+            {
+                if (EntityManager.HasComponent<TransformComponent>(underwaterEnemies[i]))
+                {
+                    enemyPositions[i] = EntityManager.GetComponentData<TransformComponent>(underwaterEnemies[i]).Position;
+                }
+                
+                if (EntityManager.HasComponent<PhysicsComponent>(underwaterEnemies[i]))
+                {
+                    enemyPhysics[i] = EntityManager.GetComponentData<PhysicsComponent>(underwaterEnemies[i]);
+                }
+            }
+            
             Entities
                 .WithName("AirBubbleSystem")
-                .WithoutBurst()
+                .WithReadOnly(underwaterEnemies)
+                .WithReadOnly(enemyPositions)
+                .WithDisposeOnCompletion(underwaterEnemies)
+                .WithDisposeOnCompletion(enemyPositions)
+                .WithDisposeOnCompletion(enemyPhysics)
                 .ForEach((Entity entity, int entityInQueryIndex,
                           ref AirBubbleAbilityComponent airBubble,
                           in AbilityInputComponent abilityInput,
@@ -77,34 +96,29 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                         else
                         {
-                            // Usa ToEntityArray su _underwaterEnemyQuery direttamente
-                            // Non è un problema in una lambda con WithoutBurst
-                            foreach (var enemy in _underwaterEnemyQuery.ToEntityArray(Allocator.Temp))
+                            // Usiamo i dati precalcolati
+                            for (int i = 0; i < underwaterEnemies.Length; i++)
                             {
-                                if (EntityManager.HasComponent<TransformComponent>(enemy) &&
-                                    EntityManager.HasComponent<PhysicsComponent>(enemy))
+                                float3 enemyPosition = enemyPositions[i];
+                                float distance = math.distance(transform.Position, enemyPosition);
+                                
+                                if (distance <= airBubble.BubbleRadius)
                                 {
-                                    var enemyTransform = EntityManager.GetComponentData<TransformComponent>(enemy);
-                                    float distance = math.distance(transform.Position, enemyTransform.Position);
+                                    float3 repulsionDir = math.normalize(enemyPosition - transform.Position);
+                                    float repulsionStrength = airBubble.RepelForce * (1.0f - distance / airBubble.BubbleRadius);
                                     
-                                    if (distance <= airBubble.BubbleRadius)
+                                    var physics = enemyPhysics[i];
+                                    physics.Velocity += repulsionDir * repulsionStrength;
+                                    commandBuffer.SetComponent(entityInQueryIndex, underwaterEnemies[i], physics);
+                                    
+                                    var repulsionEvent = commandBuffer.CreateEntity(entityInQueryIndex);
+                                    commandBuffer.AddComponent(entityInQueryIndex, repulsionEvent, new EnemyRepulsionEvent
                                     {
-                                        float3 repulsionDir = math.normalize(enemyTransform.Position - transform.Position);
-                                        float repulsionStrength = airBubble.RepelForce * (1.0f - distance / airBubble.BubbleRadius);
-                                        
-                                        var physics = EntityManager.GetComponentData<PhysicsComponent>(enemy);
-                                        physics.Velocity += repulsionDir * repulsionStrength;
-                                        commandBuffer.SetComponent(entityInQueryIndex, enemy, physics);
-                                        
-                                        var repulsionEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                        commandBuffer.AddComponent(entityInQueryIndex, repulsionEvent, new EnemyRepulsionEvent
-                                        {
-                                            EnemyEntity = enemy,
-                                            SourceEntity = entity,
-                                            RepulsionForce = repulsionStrength,
-                                            Direction = repulsionDir
-                                        });
-                                    }
+                                        EnemyEntity = underwaterEnemies[i],
+                                        SourceEntity = entity,
+                                        RepulsionForce = repulsionStrength,
+                                        Direction = repulsionDir
+                                    });
                                 }
                             }
                         }
@@ -134,6 +148,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         airBubble.RemainingTime = airBubble.Duration;
                         airBubble.CooldownRemaining = airBubble.Cooldown;
                         
+                        // Applicazione dei bonus di Marina
                         airBubble.BubbleRadius *= (1.0f + marinaComponent.WaterBreathing);
                         airBubble.RepelForce *= (1.0f + marinaComponent.ElectricResistance * 0.5f);
                         
@@ -155,8 +170,9 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             RemainingTime = airBubble.Duration
                         });
                     }
-                }).Run();
+                }).ScheduleParallel();
             
+            // La seconda parte deve usare anche EntityManager, quindi continua a usare Run()
             Entities
                 .WithName("AirBubbleVisualUpdater")
                 .WithoutBurst()
@@ -179,6 +195,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                     }
                 }).Run();
+            
+            _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
     }
     

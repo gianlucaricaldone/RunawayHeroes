@@ -2,6 +2,8 @@
 using System;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Collections;
+
 
 namespace RunawayHeroes.ECS.Components.Characters
 {

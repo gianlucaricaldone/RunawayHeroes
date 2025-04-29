@@ -36,7 +36,7 @@ namespace RunawayHeroes.ECS.Systems.Input
         protected override void OnUpdate()
         {
             // Ottiene il deltaTime per questo frame
-            float deltaTime = Time.DeltaTime;
+            float deltaTime = SystemAPI.Time.DeltaTime;
             
             // Input da tastiera/controller (per debug/sviluppo principalmente)
             bool jumpKey = UnityEngine.Input.GetKeyDown(KeyCode.Space) || UnityEngine.Input.GetKeyDown(KeyCode.UpArrow);
