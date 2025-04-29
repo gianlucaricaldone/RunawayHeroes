@@ -114,7 +114,7 @@ namespace RunawayHeroes.Runtime.Bridge
                 var physicsComponent = _entityManager.GetComponentData<PhysicsComponent>(_physicsEntity);
                 
                 // Applica la velocità dal sistema ECS al Rigidbody
-                _rigidbody.velocity = new Vector3(
+                _rigidbody.linearVelocity = new Vector3(
                     physicsComponent.Velocity.x,
                     physicsComponent.Velocity.y,
                     physicsComponent.Velocity.z
