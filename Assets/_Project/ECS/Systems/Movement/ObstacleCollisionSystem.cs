@@ -27,6 +27,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         private const float OBSTACLE_DAMAGE_MULTIPLIER = 10.0f;  // Moltiplicatore del danno basato sulla velocità
         private const float MIN_IMPACT_VELOCITY = 2.0f;          // Velocità minima per considerare un impatto
         private const float SMALL_OBSTACLE_THRESHOLD = 0.5f;     // Soglia per definire un ostacolo piccolo
+        private const float PLAYER_RADIUS = 0.5f;                // Raggio di collisione del giocatore
         
         protected override void OnCreate()
         {
@@ -76,9 +77,102 @@ namespace RunawayHeroes.ECS.Systems.Movement
                           in PhysicsComponent physics,
                           in MovementComponent movement) =>
                 {
+                    // Determina le abilità attive del giocatore
+                    bool isInvulnerable = health.IsInvulnerable;
+                    bool hasActiveUrbanDash = false;
+                    float urbanDashBreakForce = 0;
+                    bool hasActiveFireproofBody = false;
+                    bool hasActiveGlitchControl = false;
+                    bool hasActiveHeatAura = false;
+                    float heatAuraRadius = 0;
+                    bool hasActiveAirBubble = false;
+                    
+                    // Controlla abilità Urban Dash (Alex)
+                    if (HasComponent<UrbanDashAbilityComponent>(playerEntity))
+                    {
+                        var urbanDash = GetComponent<UrbanDashAbilityComponent>(playerEntity);
+                        hasActiveUrbanDash = urbanDash.IsActive;
+                        urbanDashBreakForce = urbanDash.BreakThroughForce;
+                        
+                        // Urban Dash conferisce temporaneamente invulnerabilità
+                        if (hasActiveUrbanDash)
+                            isInvulnerable = true;
+                    }
+                    
+                    // Controlla abilità Corpo Ignifugo (Ember)
+                    if (HasComponent<FireproofBodyAbilityComponent>(playerEntity))
+                    {
+                        var fireproofBody = GetComponent<FireproofBodyAbilityComponent>(playerEntity);
+                        hasActiveFireproofBody = fireproofBody.IsActive;
+                    }
+                    
+                    // Controlla abilità Glitch Controllato (Neo)
+                    if (HasComponent<ControlledGlitchAbilityComponent>(playerEntity))
+                    {
+                        var glitchControl = GetComponent<ControlledGlitchAbilityComponent>(playerEntity);
+                        hasActiveGlitchControl = glitchControl.IsActive && glitchControl.BarrierPenetration;
+                    }
+                    
+                    // Controlla abilità Aura di Calore (Kai)
+                    if (HasComponent<HeatAuraAbilityComponent>(playerEntity))
+                    {
+                        var heatAura = GetComponent<HeatAuraAbilityComponent>(playerEntity);
+                        hasActiveHeatAura = heatAura.IsActive;
+                        heatAuraRadius = heatAura.AuraRadius;
+                    }
+                    
+                    // Controlla abilità Bolla d'Aria (Marina)
+                    if (HasComponent<AirBubbleAbilityComponent>(playerEntity))
+                    {
+                        var airBubble = GetComponent<AirBubbleAbilityComponent>(playerEntity);
+                        hasActiveAirBubble = airBubble.IsActive;
+                    }
+                    
                     // Salta se il giocatore è invulnerabile
-                    if (health.IsInvulnerable)
+                    if (isInvulnerable)
                         return;
+                    
+                    // Ottieni bonus specifici per personaggio
+                    float obstacleBreakThroughBonus = 0f;
+                    float fireResistance = 0f;
+                    float iceResistance = 0f;
+                    float waterResistance = 0f;
+                    float digitalBarrierBypassChance = 0f;
+                    
+                    // Alex: bonus sfondamento
+                    if (HasComponent<AlexComponent>(playerEntity))
+                    {
+                        var alexComp = GetComponent<AlexComponent>(playerEntity);
+                        obstacleBreakThroughBonus = alexComp.ObstacleBreakThroughBonus;
+                    }
+                    
+                    // Ember: resistenza al fuoco/lava
+                    if (HasComponent<EmberComponent>(playerEntity))
+                    {
+                        var emberComp = GetComponent<EmberComponent>(playerEntity);
+                        fireResistance = emberComp.FireDamageReduction;
+                    }
+                    
+                    // Kai: resistenza al ghiaccio
+                    if (HasComponent<KaiComponent>(playerEntity))
+                    {
+                        var kaiComp = GetComponent<KaiComponent>(playerEntity);
+                        iceResistance = kaiComp.ColdResistance;
+                    }
+                    
+                    // Marina: resistenza acquatica
+                    if (HasComponent<MarinaComponent>(playerEntity))
+                    {
+                        var marinaComp = GetComponent<MarinaComponent>(playerEntity);
+                        waterResistance = marinaComp.PressureResistance;
+                    }
+                    
+                    // Neo: bypass barriere
+                    if (HasComponent<NeoComponent>(playerEntity))
+                    {
+                        var neoComp = GetComponent<NeoComponent>(playerEntity);
+                        digitalBarrierBypassChance = neoComp.FirewallBypass;
+                    }
                     
                     // Verifica collisioni con tutti gli ostacoli
                     for (int i = 0; i < obstacles.Length; i++)
@@ -107,38 +201,92 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                 baseDamage = impactVelocity * OBSTACLE_DAMAGE_MULTIPLIER;
                             }
                             
-                            // Gestione della scivolata e dell'abilità Scatto Urbano
+                            // Applica modificatori in base al tipo di ostacolo e abilità del personaggio
                             bool canBreakThrough = false;
+                            bool isImmune = false;
                             
-                            // Verifica se il giocatore può sfondare l'ostacolo
-                            // (ad esempio con Scatto Urbano o se l'ostacolo è piccolo)
-                            if (movement.IsSliding && obstacle.Height < SMALL_OBSTACLE_THRESHOLD)
+                            // Gestione di ostacoli da sfondare
+                            if (obstacle.IsDestructible)
                             {
-                                canBreakThrough = true;
-                            }
-                            // Altri controlli per abilità speciali possono essere aggiunti qui
-
-                            // Controlla se il giocatore ha l'abilità Urban Dash attiva
-                            if (HasComponent<UrbanDashAbilityComponent>(playerEntity))
-                            {
-                                var urbanDash = GetComponent<UrbanDashAbilityComponent>(playerEntity);
-                                
-                                // Se l'abilità è attiva, verifica se la forza è sufficiente per sfondare l'ostacolo
-                                if (urbanDash.IsActive && urbanDash.BreakThroughForce > obstacle.Strength)
+                                // Sfondamento tramite scivolata per ostacoli piccoli
+                                if (movement.IsSliding && obstacle.Height < SMALL_OBSTACLE_THRESHOLD)
                                 {
                                     canBreakThrough = true;
-                                    
-                                    // Applica bonus di sfondamento se è Alex
-                                    if (HasComponent<AlexComponent>(playerEntity))
+                                }
+                                
+                                // Sfondamento tramite Urban Dash (Alex)
+                                if (hasActiveUrbanDash && (urbanDashBreakForce + obstacleBreakThroughBonus) > obstacle.Strength)
+                                {
+                                    canBreakThrough = true;
+                                }
+                            }
+                            
+                            // Gestione ostacoli speciali in base al tag
+                            
+                            // Lava (Ember è immune)
+                            if (HasComponent<LavaTag>(obstacleEntity))
+                            {
+                                if (hasActiveFireproofBody || fireResistance >= 0.9f)
+                                {
+                                    isImmune = true;
+                                }
+                                else if (fireResistance > 0)
+                                {
+                                    // Riduzione danno in base alla resistenza
+                                    baseDamage *= (1.0f - fireResistance);
+                                }
+                            }
+                            
+                            // Ghiaccio (Kai con Aura di Calore può scioglierlo)
+                            if (HasComponent<IceObstacleTag>(obstacleEntity))
+                            {
+                                if (hasActiveHeatAura)
+                                {
+                                    // Possibilità di sciogliere il ghiaccio
+                                    float distSq = math.distancesq(transform.Position, obstacleTransform.Position);
+                                    if (distSq < heatAuraRadius * heatAuraRadius)
                                     {
-                                        var alexComp = GetComponent<AlexComponent>(playerEntity);
-                                        if (alexComp.ObstacleBreakThroughBonus > 0)
-                                        {
-                                            // Effetto visivo o bonus potenziato per Alex
-                                            // (potremmo aggiungere un effetto visivo più grande qui)
-                                        }
+                                        canBreakThrough = true;
                                     }
                                 }
+                                
+                                if (iceResistance > 0)
+                                {
+                                    // Riduzione danno in base alla resistenza
+                                    baseDamage *= (1.0f - iceResistance);
+                                }
+                            }
+                            
+                            // Barriere digitali (Neo può attraversarle)
+                            if (HasComponent<DigitalBarrierTag>(obstacleEntity))
+                            {
+                                if (hasActiveGlitchControl || 
+                                    (digitalBarrierBypassChance > 0 && 
+                                     Unity.Mathematics.Random.CreateFromIndex((uint)entityInQueryIndex).NextFloat() < digitalBarrierBypassChance))
+                                {
+                                    canBreakThrough = true;
+                                    isImmune = true;
+                                }
+                            }
+                            
+                            // Zone subacquee (Marina è avvantaggiata)
+                            if (HasComponent<UnderwaterTag>(obstacleEntity))
+                            {
+                                if (hasActiveAirBubble || waterResistance >= 0.9f)
+                                {
+                                    isImmune = true;
+                                }
+                                else if (waterResistance > 0)
+                                {
+                                    // Riduzione danno in base alla resistenza
+                                    baseDamage *= (1.0f - waterResistance);
+                                }
+                            }
+                            
+                            // Se è immune, salta la collisione
+                            if (isImmune)
+                            {
+                                continue;
                             }
                             
                             // Se non può sfondare, applica danno e genera evento
@@ -183,6 +331,14 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                     ObstacleEntity = obstacleEntity,
                                     BreakThroughPosition = impactPosition
                                 });
+                                
+                                // Se l'ostacolo è distruttibile e lo sfonda, segna per la distruzione
+                                if (obstacle.IsDestructible)
+                                {
+                                    // Potrebbe essere necessario controllare qui la forza di sfondamento
+                                    // vs la resistenza dell'ostacolo per determinare se viene distrutto
+                                    commandBuffer.DestroyEntity(entityInQueryIndex, obstacleEntity);
+                                }
                             }
                             
                             // Interrompe il controllo degli altri ostacoli se ha già colpito uno
@@ -205,9 +361,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// </summary>
         private bool CheckCollision(TransformComponent playerTransform, TransformComponent obstacleTransform, float obstacleRadius)
         {
-            // Implementazione semplificata della collisione sferica
-            const float PLAYER_RADIUS = 0.5f; // Raggio di collisione del giocatore
-            
             float3 playerPos = playerTransform.Position;
             float3 obstaclePos = obstacleTransform.Position;
             
