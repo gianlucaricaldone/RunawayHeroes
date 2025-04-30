@@ -13,6 +13,7 @@ namespace RunawayHeroes.Runtime.Boot
         [SerializeField] private CanvasGroup fadeOverlay;
         [SerializeField] private Image logoImage;
         [SerializeField] private RectTransform logoTransform;
+        [SerializeField] private Text versionText; // Aggiunto testo versione
         
         [Header("Timing Settings")]
         [SerializeField] private float logoDelay = 0.5f;
@@ -23,34 +24,86 @@ namespace RunawayHeroes.Runtime.Boot
         [Header("System Settings")]
         [SerializeField] private bool initializeECS = true;
         [SerializeField] private string nextSceneName = "MainMenu";
+        [SerializeField] private string versionNumber = "1.0.0";
+
+        private bool _isInitialized = false;
+
+        private void Awake()
+        {
+            // Imposta il frameRate per garantire l'esecuzione fluida delle animazioni
+            Application.targetFrameRate = 60;
+            
+            // Inizializza i valori delle UI
+            if (fadeOverlay != null) 
+            {
+                fadeOverlay.alpha = 1f;
+                fadeOverlay.blocksRaycasts = true;
+            }
+            
+            if (logoImage != null)
+                logoImage.color = new Color(1f, 1f, 1f, 0f);
+            
+            if (logoTransform != null)
+                logoTransform.localScale = new Vector3(0.5f, 0.5f, 1f);
+                
+            if (versionText != null)
+                versionText.text = "v" + versionNumber;
+                
+            _isInitialized = true;
+            
+            // Log per debug
+            Debug.Log("BootSequence Awake completed");
+        }
 
         private void Start()
         {
-            // Inizializzazione
-            fadeOverlay.alpha = 1f;
-            logoImage.color = new Color(1f, 1f, 1f, 0f);
-            logoTransform.localScale = new Vector3(0.5f, 0.5f, 1f);
+            if (!_isInitialized)
+            {
+                Debug.LogError("BootSequence not properly initialized in Awake");
+                return;
+            }
             
-            // Disabilita interazione con UI durante la sequenza
-            fadeOverlay.blocksRaycasts = true;
+            // Avvio della sequenza con piccolo ritardo per garantire che tutto sia pronto
+            StartCoroutine(DelayedBootStart());
             
-            // Avvio della sequenza
+            // Log per debug
+            Debug.Log("BootSequence Start completed");
+        }
+        
+        private IEnumerator DelayedBootStart()
+        {
+            // Piccolo ritardo per garantire che tutto sia pronto
+            yield return new WaitForSeconds(0.1f);
+            
+            // Avvio della sequenza principale
             StartCoroutine(BootSequenceCoroutine());
+            
+            Debug.Log("BootSequence main coroutine started");
         }
 
         private IEnumerator BootSequenceCoroutine()
         {
+            Debug.Log("Boot sequence starting");
+            
             // Fade in (dal nero)
             yield return StartCoroutine(FadeCanvasGroup(fadeOverlay, 1f, 0f, fadeInDuration));
+            
+            Debug.Log("Fade in completed");
             
             // Attesa prima di mostrare il logo
             yield return new WaitForSeconds(logoDelay);
             
             // Animazione del logo
-            StartCoroutine(AnimateLogo());
+            yield return StartCoroutine(AnimateLogo());
             
-            // Attesa per la durata specificata
-            yield return new WaitForSeconds(totalDuration - logoDelay - fadeOutDuration);
+            Debug.Log("Logo animation completed");
+            
+            // Calcola il tempo rimanente
+            float remainingTime = Mathf.Max(0, totalDuration - logoDelay - fadeInDuration - fadeOutDuration);
+            
+            // Attesa per la durata rimanente
+            if (remainingTime > 0)
+                yield return new WaitForSeconds(remainingTime);
             
             // Inizializza ECS se necessario
             if (initializeECS)
@@ -61,6 +114,8 @@ namespace RunawayHeroes.Runtime.Boot
             
             // Fade out (al nero)
             yield return StartCoroutine(FadeCanvasGroup(fadeOverlay, 0f, 1f, fadeOutDuration));
+            
+            Debug.Log("Fade out completed, loading next scene: " + nextSceneName);
             
             // Caricamento della prossima scena
             SceneManager.LoadScene(nextSceneName);
@@ -115,6 +170,8 @@ namespace RunawayHeroes.Runtime.Boot
 
         private IEnumerator AnimateLogo()
         {
+            Debug.Log("Starting logo animation");
+            
             float duration = 1.0f;
             float elapsed = 0f;
             
@@ -129,29 +186,45 @@ namespace RunawayHeroes.Runtime.Boot
                 // Fade in del logo
                 logoImage.color = new Color(1f, 1f, 1f, t);
                 
-                elapsed += Time.unscaledDeltaTime; // Usiamo unscaledDeltaTime per evitare problemi con la pausa
+                elapsed += Time.deltaTime; // Uso deltaTime normale per coerenza
                 yield return null;
             }
             
-            // Valori finali
+            // Valori finali per garantire che l'animazione sia completa
             logoTransform.localScale = Vector3.one;
             logoImage.color = new Color(1f, 1f, 1f, 1f);
+            
+            Debug.Log("Logo animation complete");
         }
 
         private IEnumerator FadeCanvasGroup(CanvasGroup group, float startAlpha, float targetAlpha, float duration)
         {
+            if (group == null)
+            {
+                Debug.LogError("CanvasGroup is null in FadeCanvasGroup");
+                yield break;
+            }
+            
+            Debug.Log($"Fading from {startAlpha} to {targetAlpha} over {duration} seconds");
+            
             float elapsed = 0f;
+            
+            // Imposta l'alpha iniziale
+            group.alpha = startAlpha;
             
             while (elapsed < duration)
             {
                 float t = elapsed / duration;
                 group.alpha = Mathf.Lerp(startAlpha, targetAlpha, t);
                 
-                elapsed += Time.unscaledDeltaTime; // Usiamo unscaledDeltaTime per evitare problemi con la pausa
+                elapsed += Time.deltaTime; // Uso deltaTime normale per coerenza
                 yield return null;
             }
             
+            // Imposta il valore finale per garantire che il fade sia completo
             group.alpha = targetAlpha;
+            
+            Debug.Log("Fade completed");
         }
 
         // Funzione di rimbalzo per l'animazione
@@ -165,6 +238,14 @@ namespace RunawayHeroes.Runtime.Boot
                 return 7.5625f * (t -= 0.81818f) * t + 0.9375f;
             else
                 return 7.5625f * (t -= 0.95455f) * t + 0.984375f;
+        }
+        
+        // Metodo per test e debug
+        public void ForceCompleteSequence()
+        {
+            StopAllCoroutines();
+            fadeOverlay.alpha = 1f;
+            SceneManager.LoadScene(nextSceneName);
         }
     }
 }
