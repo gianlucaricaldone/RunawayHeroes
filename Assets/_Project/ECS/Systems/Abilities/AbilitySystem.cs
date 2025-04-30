@@ -100,28 +100,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         ControlledGlitch = 6  // Neo - Glitch Controllato
     }
     
-    /// <summary>
-    /// Componente di input per l'attivazione delle abilità
-    /// </summary>
-    [System.Serializable]
-    public struct AbilityInputComponent : IComponentData
-    {
-        public bool ActivateAbility;       // Flag di attivazione dell'abilità
-        public float2 TargetPosition;      // Posizione target per abilità direzionali
-        public AbilityType CurrentAbilityType; // Tipo di abilità corrente
-    }
-    
-    /// <summary>
-    /// Evento generato quando un'abilità viene attivata
-    /// </summary>
-    [System.Serializable]
-    public struct AbilityActivatedEvent : IComponentData
-    {
-        public Entity EntityID;       // Entità che attiva l'abilità
-        public AbilityType AbilityType; // Tipo di abilità
-        public float3 Position;       // Posizione di attivazione
-        public float Duration;        // Durata dell'abilità
-    }
     
     /// <summary>
     /// Evento generato quando un'abilità termina

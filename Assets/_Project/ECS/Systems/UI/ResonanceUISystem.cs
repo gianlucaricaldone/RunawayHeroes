@@ -6,7 +6,6 @@ using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
-using System.Collections;
 
 namespace RunawayHeroes.ECS.Systems.UI
 {
@@ -33,6 +32,11 @@ namespace RunawayHeroes.ECS.Systems.UI
         // Animazione
         private Animator _menuAnimator;
         private bool _isMenuOpen = false;
+        
+        // Timer per animazioni
+        private float _menuCloseTimer = -1f;
+        private float _waveEffectTimer = -1f;
+        private float _unlockEffectTimer = -1f;
         
         // Query
         private EntityQuery _resonanceQuery;
@@ -114,6 +118,10 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         protected override void OnUpdate()
         {
+            // Aggiornamento timer e animazioni
+            float deltaTime = SystemAPI.Time.DeltaTime;
+            UpdateTimers(deltaTime);
+            
             // Gestisci lo stato del cooldown e aggiorna l'UI
             Entities
                 .WithoutBurst() // Necessario per accedere a oggetti Unity
@@ -144,6 +152,45 @@ namespace RunawayHeroes.ECS.Systems.UI
                         _resonanceLevelText.text = "Risonanza Lvl " + resonance.ResonanceLevel;
                     }
                 }).Run();
+        }
+        
+        /// <summary>
+        /// Aggiorna i timer per le animazioni
+        /// </summary>
+        private void UpdateTimers(float deltaTime)
+        {
+            // Gestione timer menu chiusura
+            if (_menuCloseTimer > 0)
+            {
+                _menuCloseTimer -= deltaTime;
+                if (_menuCloseTimer <= 0)
+                {
+                    _characterMenu.SetActive(false);
+                    _menuCloseTimer = -1f;
+                }
+            }
+            
+            // Gestione timer effetto onda
+            if (_waveEffectTimer > 0)
+            {
+                _waveEffectTimer -= deltaTime;
+                if (_waveEffectTimer <= 0)
+                {
+                    _resonanceWaveEffect.SetActive(false);
+                    _waveEffectTimer = -1f;
+                }
+            }
+            
+            // Gestione timer effetto sblocco
+            if (_unlockEffectTimer > 0)
+            {
+                _unlockEffectTimer -= deltaTime;
+                if (_unlockEffectTimer <= 0)
+                {
+                    _resonanceUnlockEffect.SetActive(false);
+                    _unlockEffectTimer = -1f;
+                }
+            }
         }
         
         /// <summary>
@@ -251,29 +298,24 @@ namespace RunawayHeroes.ECS.Systems.UI
                 _menuAnimator.SetTrigger(_isMenuOpen ? "Open" : "Close");
             }
             
-            // Se si sta chiudendo, disattiva dopo l'animazione
+            // Se si sta chiudendo, configura il timer per disattivarlo dopo l'animazione
             if (!_isMenuOpen)
             {
-                StartCoroutine(DisableMenuAfterAnimation());
+                float animationLength = 0.3f; // Tempo predefinito
+                if (_menuAnimator != null && _menuAnimator.runtimeAnimatorController != null)
+                {
+                    AnimationClip[] clips = _menuAnimator.runtimeAnimatorController.animationClips;
+                    foreach (AnimationClip clip in clips)
+                    {
+                        if (clip.name.Contains("Close"))
+                        {
+                            animationLength = clip.length;
+                            break;
+                        }
+                    }
+                }
+                _menuCloseTimer = animationLength;
             }
-        }
-        
-        /// <summary>
-        /// Disattiva il menu dopo l'animazione di chiusura
-        /// </summary>
-        private IEnumerator DisableMenuAfterAnimation()
-        {
-            // Aspetta che l'animazione termini
-            if (_menuAnimator != null)
-            {
-                yield return new WaitForSeconds(_menuAnimator.GetCurrentAnimatorStateInfo(0).length);
-            }
-            else
-            {
-                yield return new WaitForSeconds(0.3f); // Fallback se non c'è l'animator
-            }
-            
-            _characterMenu.SetActive(false);
         }
         
         /// <summary>
@@ -310,8 +352,8 @@ namespace RunawayHeroes.ECS.Systems.UI
                     waveAnimator.SetTrigger("Play");
                 }
                 
-                // Disattiva dopo l'animazione
-                StartCoroutine(DisableAfterAnimation(_resonanceWaveEffect, 1.5f));
+                // Imposta il timer per disattivare l'effetto
+                _waveEffectTimer = 1.5f;
             }
         }
         
@@ -337,18 +379,9 @@ namespace RunawayHeroes.ECS.Systems.UI
                     unlockAnimator.SetTrigger("Play");
                 }
                 
-                // Disattiva dopo l'animazione
-                StartCoroutine(DisableAfterAnimation(_resonanceUnlockEffect, 3.0f));
+                // Imposta il timer per disattivare l'effetto
+                _unlockEffectTimer = 3.0f;
             }
-        }
-        
-        /// <summary>
-        /// Disattiva un oggetto dopo un ritardo
-        /// </summary>
-        private IEnumerator DisableAfterAnimation(GameObject obj, float delay)
-        {
-            yield return new WaitForSeconds(delay);
-            obj.SetActive(false);
         }
     }
 }

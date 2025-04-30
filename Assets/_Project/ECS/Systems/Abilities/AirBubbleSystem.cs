@@ -1,7 +1,6 @@
 // Path: Assets/_Project/ECS/Systems/Abilities/AirBubbleSystem.cs
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Transforms;
 using Unity.Burst;
 using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
@@ -11,9 +10,11 @@ using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Abilities;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 using RunawayHeroes.ECS.Components.Enemies;
+using RunawayHeroes.ECS.Events;
 
 namespace RunawayHeroes.ECS.Systems.Abilities
 {
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     public partial class AirBubbleSystem : SystemBase
     {
         private EntityQuery _abilityQuery;
@@ -22,24 +23,20 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         
         protected override void OnCreate()
         {
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             
-            _abilityQuery = GetEntityQuery(
-                ComponentType.ReadWrite<AirBubbleAbilityComponent>(),
-                ComponentType.ReadOnly<AbilityInputComponent>(),
-                ComponentType.ReadOnly<MarinaComponent>()
-            );
+            _abilityQuery = SystemAPI.QueryBuilder()
+                .WithAll<AirBubbleAbilityComponent, AbilityInputComponent, MarinaComponent>()
+                .Build();
             
             // Query per nemici acquatici
-            _underwaterEnemyQuery = GetEntityQuery(
-                ComponentType.ReadOnly<EnemyComponent>(),
-                ComponentType.ReadOnly<UnderwaterTag>()
-            );
+            _underwaterEnemyQuery = SystemAPI.QueryBuilder()
+                .WithAll<EnemyComponent, UnderwaterTag>()
+                .Build();
             
             RequireForUpdate(_abilityQuery);
         }
         
-        [BurstCompile]
         protected override void OnUpdate()
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
@@ -64,141 +61,171 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                 }
             }
             
-            Entities
-                .WithName("AirBubbleSystem")
-                .WithReadOnly(underwaterEnemies)
-                .WithReadOnly(enemyPositions)
-                .WithDisposeOnCompletion(underwaterEnemies)
-                .WithDisposeOnCompletion(enemyPositions)
-                .WithDisposeOnCompletion(enemyPhysics)
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref AirBubbleAbilityComponent airBubble,
-                          in AbilityInputComponent abilityInput,
-                          in TransformComponent transform,
-                          in MarinaComponent marinaComponent) => 
+            // Aggiornamento dell'abilità e interazione con i nemici
+            new AirBubbleUpdateJob
+            {
+                DeltaTime = deltaTime,
+                ECB = commandBuffer,
+                UnderwaterEnemies = underwaterEnemies,
+                EnemyPositions = enemyPositions,
+                EnemyPhysics = enemyPhysics
+            }.ScheduleParallel();
+            
+            // Aggiornamento degli effetti visivi - non è possibile usare Burst a causa di EntityManager
+            new AirBubbleVisualUpdateJob
+            {
+                DeltaTime = deltaTime,
+                ECB = commandBuffer,
+                EntityManager = EntityManager
+            }.Run();
+            
+            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+        }
+        
+        [BurstCompile]
+        private partial struct AirBubbleUpdateJob : IJobEntity
+        {
+            public float DeltaTime;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            
+            [ReadOnly] public NativeArray<Entity> UnderwaterEnemies;
+            [ReadOnly] public NativeArray<float3> EnemyPositions;
+            [ReadOnly] public NativeArray<PhysicsComponent> EnemyPhysics;
+            
+            void Execute(
+                Entity entity,
+                [EntityIndexInQuery] int entityIndexInQuery,
+                ref AirBubbleAbilityComponent airBubble,
+                in AbilityInputComponent abilityInput,
+                in TransformComponent transform,
+                in MarinaComponent marinaComponent)
+            {
+                bool stateChanged = false;
+                
+                if (airBubble.IsActive)
                 {
-                    bool stateChanged = false;
+                    airBubble.RemainingTime -= DeltaTime;
                     
-                    if (airBubble.IsActive)
+                    if (airBubble.RemainingTime <= 0)
                     {
-                        airBubble.RemainingTime -= deltaTime;
+                        airBubble.IsActive = false;
+                        airBubble.RemainingTime = 0;
+                        stateChanged = true;
                         
-                        if (airBubble.RemainingTime <= 0)
-                        {
-                            airBubble.IsActive = false;
-                            airBubble.RemainingTime = 0;
-                            stateChanged = true;
-                            
-                            var endAbilityEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, endAbilityEvent, new AbilityEndedEvent
-                            {
-                                EntityID = entity,
-                                AbilityType = AbilityType.AirBubble
-                            });
-                        }
-                        else
-                        {
-                            // Usiamo i dati precalcolati
-                            for (int i = 0; i < underwaterEnemies.Length; i++)
-                            {
-                                float3 enemyPosition = enemyPositions[i];
-                                float distance = math.distance(transform.Position, enemyPosition);
-                                
-                                if (distance <= airBubble.BubbleRadius)
-                                {
-                                    float3 repulsionDir = math.normalize(enemyPosition - transform.Position);
-                                    float repulsionStrength = airBubble.RepelForce * (1.0f - distance / airBubble.BubbleRadius);
-                                    
-                                    var physics = enemyPhysics[i];
-                                    physics.Velocity += repulsionDir * repulsionStrength;
-                                    commandBuffer.SetComponent(entityInQueryIndex, underwaterEnemies[i], physics);
-                                    
-                                    var repulsionEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                    commandBuffer.AddComponent(entityInQueryIndex, repulsionEvent, new EnemyRepulsionEvent
-                                    {
-                                        EnemyEntity = underwaterEnemies[i],
-                                        SourceEntity = entity,
-                                        RepulsionForce = repulsionStrength,
-                                        Direction = repulsionDir
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (airBubble.CooldownRemaining > 0)
-                    {
-                        airBubble.CooldownRemaining -= deltaTime;
-                        
-                        if (airBubble.CooldownRemaining <= 0)
-                        {
-                            airBubble.CooldownRemaining = 0;
-                            stateChanged = true;
-                            
-                            var readyEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, readyEvent, new AbilityReadyEvent
-                            {
-                                EntityID = entity,
-                                AbilityType = AbilityType.AirBubble
-                            });
-                        }
-                    }
-                    
-                    if (abilityInput.ActivateAbility && airBubble.IsAvailable && !airBubble.IsActive)
-                    {
-                        airBubble.IsActive = true;
-                        airBubble.RemainingTime = airBubble.Duration;
-                        airBubble.CooldownRemaining = airBubble.Cooldown;
-                        
-                        // Applicazione dei bonus di Marina
-                        airBubble.BubbleRadius *= (1.0f + marinaComponent.WaterBreathing);
-                        airBubble.RepelForce *= (1.0f + marinaComponent.ElectricResistance * 0.5f);
-                        
-                        var activateEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, activateEvent, new AbilityActivatedEvent
+                        var endAbilityEvent = ECB.CreateEntity(entityIndexInQuery);
+                        ECB.AddComponent(entityIndexInQuery, endAbilityEvent, new AbilityEndedEvent
                         {
                             EntityID = entity,
-                            AbilityType = AbilityType.AirBubble,
-                            Position = transform.Position,
-                            Duration = airBubble.Duration
+                            AbilityType = AbilityType.AirBubble
                         });
-                        
-                        var bubbleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, bubbleEntity, new AirBubbleVisualComponent
-                        {
-                            OwnerEntity = entity,
-                            Radius = airBubble.BubbleRadius,
-                            Duration = airBubble.Duration,
-                            RemainingTime = airBubble.Duration
-                        });
-                    }
-                }).ScheduleParallel();
-            
-            // La seconda parte deve usare anche EntityManager, quindi continua a usare Run()
-            Entities
-                .WithName("AirBubbleVisualUpdater")
-                .WithoutBurst()
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref AirBubbleVisualComponent bubbleVisual,
-                          ref TransformComponent transform) => 
-                {
-                    bubbleVisual.RemainingTime -= deltaTime;
-                    
-                    if (bubbleVisual.RemainingTime <= 0)
-                    {
-                        commandBuffer.DestroyEntity(entityInQueryIndex, entity);
                     }
                     else
                     {
-                        if (EntityManager.Exists(bubbleVisual.OwnerEntity) &&
-                            EntityManager.HasComponent<TransformComponent>(bubbleVisual.OwnerEntity))
+                        // Usiamo i dati precalcolati
+                        for (int i = 0; i < UnderwaterEnemies.Length; i++)
                         {
-                            transform.Position = EntityManager.GetComponentData<TransformComponent>(bubbleVisual.OwnerEntity).Position;
+                            float3 enemyPosition = EnemyPositions[i];
+                            float distance = math.distance(transform.Position, enemyPosition);
+                            
+                            if (distance <= airBubble.BubbleRadius)
+                            {
+                                float3 repulsionDir = math.normalize(enemyPosition - transform.Position);
+                                float repulsionStrength = airBubble.RepelForce * (1.0f - distance / airBubble.BubbleRadius);
+                                
+                                var physics = EnemyPhysics[i];
+                                physics.Velocity += repulsionDir * repulsionStrength;
+                                ECB.SetComponent(entityIndexInQuery, UnderwaterEnemies[i], physics);
+                                
+                                var repulsionEvent = ECB.CreateEntity(entityIndexInQuery);
+                                ECB.AddComponent(entityIndexInQuery, repulsionEvent, new EnemyRepulsionEvent
+                                {
+                                    EnemyEntity = UnderwaterEnemies[i],
+                                    SourceEntity = entity,
+                                    RepulsionForce = repulsionStrength,
+                                    Direction = repulsionDir
+                                });
+                            }
                         }
                     }
-                }).Run();
+                }
+                
+                if (airBubble.CooldownRemaining > 0)
+                {
+                    airBubble.CooldownRemaining -= DeltaTime;
+                    
+                    if (airBubble.CooldownRemaining <= 0)
+                    {
+                        airBubble.CooldownRemaining = 0;
+                        stateChanged = true;
+                        
+                        var readyEvent = ECB.CreateEntity(entityIndexInQuery);
+                        ECB.AddComponent(entityIndexInQuery, readyEvent, new AbilityReadyEvent
+                        {
+                            EntityID = entity,
+                            AbilityType = AbilityType.AirBubble
+                        });
+                    }
+                }
+                
+                if (abilityInput.ActivateAbility && airBubble.IsAvailable && !airBubble.IsActive)
+                {
+                    airBubble.IsActive = true;
+                    airBubble.RemainingTime = airBubble.Duration;
+                    airBubble.CooldownRemaining = airBubble.Cooldown;
+                    
+                    // Applicazione dei bonus di Marina
+                    airBubble.BubbleRadius *= (1.0f + marinaComponent.WaterBreathing);
+                    airBubble.RepelForce *= (1.0f + marinaComponent.ElectricResistance * 0.5f);
+                    
+                    var activateEvent = ECB.CreateEntity(entityIndexInQuery);
+                    ECB.AddComponent(entityIndexInQuery, activateEvent, new AbilityActivatedEvent
+                    {
+                        EntityID = entity,
+                        AbilityType = AbilityType.AirBubble,
+                        Position = transform.Position,
+                        Duration = airBubble.Duration
+                    });
+                    
+                    var bubbleEntity = ECB.CreateEntity(entityIndexInQuery);
+                    ECB.AddComponent(entityIndexInQuery, bubbleEntity, new AirBubbleVisualComponent
+                    {
+                        OwnerEntity = entity,
+                        Radius = airBubble.BubbleRadius,
+                        Duration = airBubble.Duration,
+                        RemainingTime = airBubble.Duration
+                    });
+                }
+            }
+        }
+        
+        private partial struct AirBubbleVisualUpdateJob : IJobEntity
+        {
+            public float DeltaTime;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            [Unity.Collections.LowLevel.Unsafe.NativeDisableUnsafePtrRestriction]
+            public EntityManager EntityManager;
             
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            void Execute(
+                Entity entity,
+                [EntityIndexInQuery] int entityIndexInQuery,
+                ref AirBubbleVisualComponent bubbleVisual,
+                ref TransformComponent transform)
+            {
+                bubbleVisual.RemainingTime -= DeltaTime;
+                
+                if (bubbleVisual.RemainingTime <= 0)
+                {
+                    ECB.DestroyEntity(entityIndexInQuery, entity);
+                }
+                else
+                {
+                    if (EntityManager.Exists(bubbleVisual.OwnerEntity) &&
+                        EntityManager.HasComponent<TransformComponent>(bubbleVisual.OwnerEntity))
+                    {
+                        transform.Position = EntityManager.GetComponentData<TransformComponent>(bubbleVisual.OwnerEntity).Position;
+                    }
+                }
+            }
         }
     }
     
@@ -212,11 +239,5 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     
     public struct UnderwaterTag : IComponentData { }
     
-    public struct EnemyRepulsionEvent : IComponentData
-    {
-        public Entity EnemyEntity;
-        public Entity SourceEntity;
-        public float RepulsionForce;
-        public float3 Direction;
-    }
+
 }
