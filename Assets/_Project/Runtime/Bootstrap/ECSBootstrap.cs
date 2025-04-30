@@ -1,5 +1,8 @@
+// Path: Assets/_Project/Runtime/Bootstrap/ECSBootstrap.cs
 using Unity.Entities;
 using UnityEngine;
+using System;
+using System.Collections.Generic;
 using RunawayHeroes.ECS.Systems.Core;
 using RunawayHeroes.ECS.Systems.Movement;
 using RunawayHeroes.ECS.Systems.Abilities;
@@ -51,158 +54,154 @@ namespace RunawayHeroes.Runtime.Bootstrap
             // Ottiene o crea il mondo predefinito
             _world = World.DefaultGameObjectInjectionWorld;
             
-            // Registra i sistemi core
-            RegisterCoreSystems();
+            // Applica la configurazione dei sistemi
+            var systems = new List<Type>(); 
             
-            // Registra i sistemi di input
-            RegisterInputSystems();
+            // Aggiunge tutti i sistemi necessari
+            AddCoreSystems(systems);
+            AddInputSystems(systems);
+            AddMovementSystems(systems);
+            AddAbilitySystems(systems);
+            AddCombatSystems(systems);
+            AddAISystems(systems);
+            AddGameplaySystems(systems);
+            AddWorldSystems(systems);
+            AddUISystems(systems);
+            AddEventHandlers(systems);
             
-            // Registra i sistemi di movimento
-            RegisterMovementSystems();
+            // Crea un gruppo per i sistemi principali del gioco
+            var simulationSystemGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
             
-            // Registra i sistemi delle abilità
-            RegisterAbilitySystems();
-            
-            // Registra i sistemi di combattimento
-            RegisterCombatSystems();
-            
-            // Registra i sistemi di IA
-            RegisterAISystems();
-            
-            // Registra i sistemi di gameplay
-            RegisterGameplaySystems();
-            
-            // Registra i sistemi del mondo
-            RegisterWorldSystems();
-            
-            // Registra i sistemi UI
-            RegisterUISystems();
-            
-            // Registra i gestori eventi
-            RegisterEventHandlers();
+            // Aggiunge i sistemi al gruppo con UpdateBefore/UpdateAfter come necessario
+            foreach (var systemType in systems)
+            {
+                var system = _world.CreateSystem(systemType);
+                simulationSystemGroup.AddSystemToUpdateList(system);
+            }
             
             _initialized = true;
             Debug.Log("Inizializzazione ECS completata con successo.");
         }
         
         /// <summary>
-        /// Registra i sistemi core di base
+        /// Aggiunge i sistemi core di base
         /// </summary>
-        private void RegisterCoreSystems()
+        private void AddCoreSystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<EntityLifecycleSystem>();
-            _world.GetOrCreateSystemManaged<TransformSystem>();
-            _world.GetOrCreateSystemManaged<PhysicsSystem>();
-            _world.GetOrCreateSystemManaged<RenderSystem>();
-            _world.GetOrCreateSystemManaged<CollisionSystem>();
+            // Sistemi Core
+            systems.Add(typeof(EntityLifecycleSystem));
+            systems.Add(typeof(TransformSystem));
+            systems.Add(typeof(PhysicsSystem));
+            systems.Add(typeof(RenderSystem));
+            systems.Add(typeof(CollisionSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi di input
+        /// Aggiunge i sistemi di input
         /// </summary>
-        private void RegisterInputSystems()
+        private void AddInputSystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<InputSystem>();
-            _world.GetOrCreateSystemManaged<TouchInputSystem>();
-            _world.GetOrCreateSystemManaged<GestureRecognitionSystem>();
+            systems.Add(typeof(InputSystem));
+            systems.Add(typeof(TouchInputSystem));
+            systems.Add(typeof(GestureRecognitionSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi di movimento
+        /// Aggiunge i sistemi di movimento
         /// </summary>
-        private void RegisterMovementSystems()
+        private void AddMovementSystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<PlayerMovementSystem>();
-            _world.GetOrCreateSystemManaged<JumpSystem>();
-            _world.GetOrCreateSystemManaged<SlideSystem>();
-            _world.GetOrCreateSystemManaged<ObstacleCollisionSystem>();
-            _world.GetOrCreateSystemManaged<ObstacleInteractionSystem>(); // Nuovo sistema di interazione con ostacoli
-            _world.GetOrCreateSystemManaged<NavigationSystem>();
-            _world.GetOrCreateSystemManaged<ObstacleAvoidanceSystem>();
+            systems.Add(typeof(PlayerMovementSystem));
+            systems.Add(typeof(JumpSystem));
+            systems.Add(typeof(SlideSystem));
+            systems.Add(typeof(ObstacleCollisionSystem));
+            systems.Add(typeof(ObstacleInteractionSystem));
+            systems.Add(typeof(NavigationSystem));
+            systems.Add(typeof(ObstacleAvoidanceSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi delle abilità
+        /// Aggiunge i sistemi delle abilità
         /// </summary>
-        private void RegisterAbilitySystems()
+        private void AddAbilitySystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<AbilitySystem>();
-            _world.GetOrCreateSystemManaged<FocusTimeSystem>();
-            _world.GetOrCreateSystemManaged<FragmentResonanceSystem>();
-            _world.GetOrCreateSystemManaged<UrbanDashSystem>();
-            _world.GetOrCreateSystemManaged<NatureCallSystem>();
-            _world.GetOrCreateSystemManaged<HeatAuraSystem>();
-            _world.GetOrCreateSystemManaged<FireproofBodySystem>();
-            _world.GetOrCreateSystemManaged<AirBubbleSystem>();
-            _world.GetOrCreateSystemManaged<ControlledGlitchSystem>();
+            systems.Add(typeof(AbilitySystem));
+            systems.Add(typeof(FocusTimeSystem));
+            systems.Add(typeof(FragmentResonanceSystem));
+            systems.Add(typeof(UrbanDashSystem));
+            systems.Add(typeof(NatureCallSystem));
+            systems.Add(typeof(HeatAuraSystem));
+            systems.Add(typeof(FireproofBodySystem));
+            systems.Add(typeof(AirBubbleSystem));
+            systems.Add(typeof(ControlledGlitchSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi di combattimento
+        /// Aggiunge i sistemi di combattimento
         /// </summary>
-        private void RegisterCombatSystems()
+        private void AddCombatSystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<HealthSystem>();
-            _world.GetOrCreateSystemManaged<DamageSystem>();
-            _world.GetOrCreateSystemManaged<HitboxSystem>();
-            _world.GetOrCreateSystemManaged<KnockbackSystem>();
+            systems.Add(typeof(HealthSystem));
+            systems.Add(typeof(DamageSystem));
+            systems.Add(typeof(HitboxSystem));
+            systems.Add(typeof(KnockbackSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi di IA
+        /// Aggiunge i sistemi di IA
         /// </summary>
-        private void RegisterAISystems()
+        private void AddAISystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<EnemyAISystem>();
-            _world.GetOrCreateSystemManaged<PatrolSystem>();
-            _world.GetOrCreateSystemManaged<AttackPatternSystem>();
-            _world.GetOrCreateSystemManaged<BossPhasesSystem>();
-            _world.GetOrCreateSystemManaged<PursuitSystem>();
+            systems.Add(typeof(EnemyAISystem));
+            systems.Add(typeof(PatrolSystem));
+            systems.Add(typeof(AttackPatternSystem));
+            systems.Add(typeof(BossPhasesSystem));
+            systems.Add(typeof(PursuitSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi di gameplay
+        /// Aggiunge i sistemi di gameplay
         /// </summary>
-        private void RegisterGameplaySystems()
+        private void AddGameplaySystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<ScoreSystem>();
-            _world.GetOrCreateSystemManaged<ProgressionSystem>();
-            _world.GetOrCreateSystemManaged<CollectibleSystem>();
-            _world.GetOrCreateSystemManaged<PowerupSystem>();
-            _world.GetOrCreateSystemManaged<DifficultySystem>();
-            _world.GetOrCreateSystemManaged<FocusTimeItemDetectionSystem>();
+            systems.Add(typeof(ScoreSystem));
+            systems.Add(typeof(ProgressionSystem));
+            systems.Add(typeof(CollectibleSystem));
+            systems.Add(typeof(PowerupSystem));
+            systems.Add(typeof(DifficultySystem));
+            systems.Add(typeof(FocusTimeItemDetectionSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi del mondo
+        /// Aggiunge i sistemi del mondo
         /// </summary>
-        private void RegisterWorldSystems()
+        private void AddWorldSystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<LevelGenerationSystem>();
-            _world.GetOrCreateSystemManaged<ObstacleSystem>();
-            _world.GetOrCreateSystemManaged<CheckpointSystem>();
-            _world.GetOrCreateSystemManaged<EnvironmentalEffectSystem>();
-            _world.GetOrCreateSystemManaged<HazardSystem>();
+            systems.Add(typeof(LevelGenerationSystem));
+            systems.Add(typeof(ObstacleSystem));
+            systems.Add(typeof(CheckpointSystem));
+            systems.Add(typeof(EnvironmentalEffectSystem));
+            systems.Add(typeof(HazardSystem));
         }
         
         /// <summary>
-        /// Registra i sistemi UI
+        /// Aggiunge i sistemi UI
         /// </summary>
-        private void RegisterUISystems()
+        private void AddUISystems(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<FocusTimeUISystem>();
-            _world.GetOrCreateSystemManaged<ResonanceUISystem>();
+            systems.Add(typeof(FocusTimeUISystem));
+            systems.Add(typeof(ResonanceUISystem));
         }
         
         /// <summary>
-        /// Registra i gestori di eventi
+        /// Aggiunge i gestori di eventi
         /// </summary>
-        private void RegisterEventHandlers()
+        private void AddEventHandlers(List<Type> systems)
         {
-            _world.GetOrCreateSystemManaged<GameplayEventHandler>();
-            _world.GetOrCreateSystemManaged<CollisionEventHandler>();
-            _world.GetOrCreateSystemManaged<DamageEventHandler>();
-            _world.GetOrCreateSystemManaged<UIEventHandler>();
+            systems.Add(typeof(GameplayEventHandler));
+            systems.Add(typeof(CollisionEventHandler));
+            systems.Add(typeof(DamageEventHandler));
+            systems.Add(typeof(UIEventHandler));
         }
         
         /// <summary>

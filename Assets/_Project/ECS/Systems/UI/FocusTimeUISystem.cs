@@ -254,7 +254,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                 _itemSlots[slotIndex].localScale = Vector3.one * 1.5f;
                 
                 // Reset della scala dopo un breve ritardo
-                MonoBehaviour.FindObjectOfType<MonoBehaviour>().StartCoroutine(ResetSlotScale(slotIndex));
+                MonoBehaviour.FindFirstObjectByType<MonoBehaviour>().StartCoroutine(ResetSlotScale(slotIndex));
             }
         }
         
