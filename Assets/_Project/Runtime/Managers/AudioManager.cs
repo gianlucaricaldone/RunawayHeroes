@@ -322,5 +322,14 @@ namespace RunawayHeroes.Runtime.Managers
             audioSource.Stop();
             audioSource.volume = start;
         }
+
+        /// <summary>
+        /// Riproduce un effetto sonoro (alias per PlaySound).
+        /// </summary>
+        /// <param name="sfxName">Nome dell'effetto sonoro da riprodurre</param>
+        public void PlaySFX(string sfxName)
+        {
+            PlaySound(sfxName);
+        }
     }
 }
