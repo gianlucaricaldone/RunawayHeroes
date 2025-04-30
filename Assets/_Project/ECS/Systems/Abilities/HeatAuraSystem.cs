@@ -19,6 +19,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Si occupa della generazione di un campo di calore che scioglie
     /// il ghiaccio e protegge dal freddo.
     /// </summary>
+    [BurstCompile]
     public partial class HeatAuraSystem : SystemBase
     {
         private EntityQuery _abilityQuery;

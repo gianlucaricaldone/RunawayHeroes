@@ -20,12 +20,12 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Si occupa della trasformazione in forma ignea che permette
     /// di attraversare la lava e resistere al calore estremo.
     /// </summary>
+    [BurstCompile]
     public partial class FireproofBodySystem : SystemBase
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _lavaQuery;
         private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         protected override void OnCreate()
         {
             _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();

@@ -19,6 +19,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ObstacleCollisionSystem))]
+    [BurstCompile]
     public partial class ObstacleInteractionSystem : SystemBase
     {
         private EntityQuery _playerQuery;

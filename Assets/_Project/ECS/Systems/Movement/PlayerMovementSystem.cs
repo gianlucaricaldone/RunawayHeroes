@@ -18,6 +18,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(InputSystem))]
+    [BurstCompile]
     public partial class PlayerMovementSystem : SystemBase
     {
         private EntityQuery _playerQuery;

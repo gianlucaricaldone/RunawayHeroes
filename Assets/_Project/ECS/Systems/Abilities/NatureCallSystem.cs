@@ -22,6 +22,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Si occupa dell'evocazione di animali alleati temporanei che
     /// distraggono i nemici.
     /// </summary>
+    [BurstCompile]
     public partial class NatureCallSystem : SystemBase
     {
         private EntityQuery _abilityQuery;

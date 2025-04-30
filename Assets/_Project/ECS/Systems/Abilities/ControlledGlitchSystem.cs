@@ -19,6 +19,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Si occupa della deformazione temporanea della realtà che permette
     /// di attraversare barriere digitali.
     /// </summary>
+    [BurstCompile]
     public partial class ControlledGlitchSystem : SystemBase
     {
         private EntityQuery _abilityQuery;
