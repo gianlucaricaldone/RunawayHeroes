@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -12,97 +13,114 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Si occupa di avviare le scivolate in risposta all'input, gestire la durata
     /// e gli effetti collaterali come l'altezza ridotta per passare sotto gli ostacoli.
     /// </summary>
-    public partial class SlideSystem : SystemBase
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    public partial struct SlideSystem : ISystem
     {
         private EntityQuery _slidableEntitiesQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
-        protected override void OnCreate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            // Riferimento al command buffer system per generare eventi
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
-            
             // Query per trovare entità che possono scivolare
-            _slidableEntitiesQuery = GetEntityQuery(
+            _slidableEntitiesQuery = state.GetEntityQuery(
                 ComponentType.ReadWrite<PhysicsComponent>(),
                 ComponentType.ReadWrite<MovementComponent>(),
                 ComponentType.ReadOnly<SlideInputComponent>()
             );
             
             // Richiede entità corrispondenti per eseguire l'aggiornamento
-            RequireForUpdate(_slidableEntitiesQuery);
+            state.RequireForUpdate(_slidableEntitiesQuery);
         }
         
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+        }
+        
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
             // Elabora gli input di scivolata
-            Entities
-                .WithName("SlideProcessor")
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref PhysicsComponent physics,
-                          ref MovementComponent movement,
-                          ref TransformComponent transform,
-                          in SlideInputComponent slideInput) => 
+            new SlideProcessorJob
+            {
+                DeltaTime = deltaTime,
+                ECB = commandBuffer.AsParallelWriter()
+            }.ScheduleParallel(_slidableEntitiesQuery, state.Dependency).Complete();
+        }
+        
+        [BurstCompile]
+        private partial struct SlideProcessorJob : IJobEntity
+        {
+            public float DeltaTime;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            
+            public void Execute(Entity entity, [ChunkIndexInQuery] int entityInQueryIndex,
+                               ref PhysicsComponent physics,
+                               ref MovementComponent movement,
+                               ref TransformComponent transform,
+                               in SlideInputComponent slideInput)
+            {
+                // Se è stata richiesta una scivolata e il personaggio può scivolare
+                if (slideInput.SlidePressed && !movement.IsSliding && physics.IsGrounded && movement.IsMoving)
                 {
-                    // Se è stata richiesta una scivolata e il personaggio può scivolare
-                    if (slideInput.SlideRequested && !movement.IsSliding && physics.IsGrounded && movement.IsMoving)
+                    // Avvia la scivolata
+                    movement.IsSliding = true;
+                    movement.SlideTimeRemaining = movement.SlideDuration;
+                    
+                    // Riduce temporaneamente l'altezza del personaggio per passare sotto ostacoli
+                    // Questo verrebbe gestito da un componente separato in un'implementazione più completa
+                    transform.Scale *= 0.5f; // Riduce l'altezza a metà
+                    
+                    // Applica un impulso in avanti per dare il senso di slancio
+                    float3 slideDirection = new float3(0, 0, 1); // Assume che Z sia "avanti"
+                    physics.Velocity += slideDirection * 2.0f; // Boost iniziale
+                    
+                    // Genera un evento di inizio scivolata
+                    var eventEntity = ECB.CreateEntity(entityInQueryIndex);
+                    ECB.AddComponent(entityInQueryIndex, eventEntity, new SlideStartedEvent
                     {
-                        // Avvia la scivolata
-                        movement.IsSliding = true;
-                        movement.SlideTimeRemaining = movement.SlideDuration;
+                        PlayerEntity = entity,
+                        Duration = movement.SlideDuration,
+                        StartPosition = transform.Position,
+                        InitialSpeed = math.length(physics.Velocity)
+                    });
+                }
+                
+                // Gestisce la scivolata in corso
+                if (movement.IsSliding)
+                {
+                    // Diminuisci il tempo rimanente
+                    movement.SlideTimeRemaining -= DeltaTime;
+                    
+                    // Se il tempo è scaduto o la scivolata è stata interrotta
+                    if (movement.SlideTimeRemaining <= 0)
+                    {
+                        // Termina la scivolata
+                        movement.IsSliding = false;
+                        movement.SlideTimeRemaining = 0;
                         
-                        // Riduce temporaneamente l'altezza del personaggio per passare sotto ostacoli
-                        // Questo verrebbe gestito da un componente separato in un'implementazione più completa
-                        transform.Scale *= 0.5f; // Riduce l'altezza a metà
+                        // Ripristina l'altezza normale
+                        transform.Scale *= 2.0f; // Riporta all'altezza originale
                         
-                        // Applica un impulso in avanti per dare il senso di slancio
-                        float3 slideDirection = new float3(0, 0, 1); // Assume che Z sia "avanti"
-                        physics.Velocity += slideDirection * 2.0f; // Boost iniziale
-                        
-                        // Genera un evento di inizio scivolata
-                        var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new SlideStartedEvent
+                        // Genera un evento di fine scivolata
+                        var eventEntity = ECB.CreateEntity(entityInQueryIndex);
+                        ECB.AddComponent(entityInQueryIndex, eventEntity, new SlideEndedEvent
                         {
-                            EntitySliding = entity,
-                            SlideDuration = movement.SlideDuration
+                            PlayerEntity = entity,
+                            EndPosition = transform.Position,
+                            SlideDistance = 0, // Andrebbe calcolata rispetto alla posizione iniziale
+                            ActualDuration = movement.SlideDuration // Andrebbe calcolata come differenza
                         });
                     }
                     
-                    // Gestisce la scivolata in corso
-                    if (movement.IsSliding)
-                    {
-                        // Diminuisci il tempo rimanente
-                        movement.SlideTimeRemaining -= deltaTime;
-                        
-                        // Se il tempo è scaduto o la scivolata è stata interrotta
-                        if (movement.SlideTimeRemaining <= 0 || slideInput.SlideInterrupted)
-                        {
-                            // Termina la scivolata
-                            movement.IsSliding = false;
-                            movement.SlideTimeRemaining = 0;
-                            
-                            // Ripristina l'altezza normale
-                            transform.Scale *= 2.0f; // Riporta all'altezza originale
-                            
-                            // Genera un evento di fine scivolata
-                            var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new SlideEndedEvent
-                            {
-                                EntitySliding = entity
-                            });
-                        }
-                        
-                        // Durante la scivolata, il personaggio è più resistente alle collisioni frontali
-                        // Questa logica sarebbe parte di un sistema di collisione più avanzato
-                    }
-                    
-                }).ScheduleParallel();
-            
-            // Assicura che il command buffer venga eseguito
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+                    // Durante la scivolata, il personaggio è più resistente alle collisioni frontali
+                    // Questa logica sarebbe parte di un sistema di collisione più avanzato
+                }
+            }
         }
     }
 }
