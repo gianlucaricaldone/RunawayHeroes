@@ -1,6 +1,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Burst;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -18,19 +19,20 @@ namespace RunawayHeroes.ECS.Systems.Movement
     {
         private EntityQuery _jumpableEntitiesQuery;
         
-        [BurstCompile]
+        // Rimuovo l'attributo BurstCompile dal metodo OnCreate poiché contiene creazione di array gestiti
         public void OnCreate(ref SystemState state)
         {
-            // Query per trovare entità che possono saltare
-            _jumpableEntitiesQuery = state.GetEntityQuery(
-                ComponentType.ReadWrite<PhysicsComponent>(),
-                ComponentType.ReadWrite<MovementComponent>(),
-                ComponentType.ReadOnly<TransformComponent>(), // Aggiunto per accedere alla posizione
-                ComponentType.ReadOnly<JumpInputComponent>()
-            );
+            // Query per trovare entità che possono saltare usando EntityQueryBuilder
+            _jumpableEntitiesQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<JumpInputComponent, TransformComponent>()
+                .WithAllRW<PhysicsComponent, MovementComponent>()
+                .Build(ref state);
             
             // Richiede entità corrispondenti per eseguire l'aggiornamento
             state.RequireForUpdate(_jumpableEntitiesQuery);
+            
+            // Richiede il singleton di EndSimulationEntityCommandBufferSystem per eventi
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
         [BurstCompile]
