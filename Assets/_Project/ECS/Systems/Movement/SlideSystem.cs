@@ -1,6 +1,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Burst;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -18,15 +19,15 @@ namespace RunawayHeroes.ECS.Systems.Movement
     {
         private EntityQuery _slidableEntitiesQuery;
         
-        [BurstCompile]
+        // Rimuovi l'attributo [BurstCompile] dal metodo OnCreate
         public void OnCreate(ref SystemState state)
         {
             // Query per trovare entità che possono scivolare
-            _slidableEntitiesQuery = state.GetEntityQuery(
-                ComponentType.ReadWrite<PhysicsComponent>(),
-                ComponentType.ReadWrite<MovementComponent>(),
-                ComponentType.ReadOnly<SlideInputComponent>()
-            );
+            _slidableEntitiesQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<PhysicsComponent, MovementComponent, SlideInputComponent>()
+                .WithAllRW<PhysicsComponent, MovementComponent>()
+                .WithAll<TransformComponent>()
+                .Build(ref state);
             
             // Richiede entità corrispondenti per eseguire l'aggiornamento
             state.RequireForUpdate(_slidableEntitiesQuery);

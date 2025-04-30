@@ -32,22 +32,22 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public void OnCreate(ref SystemState state)
         {
             // Definisce la query per identificare le entità giocatore
-            _playerQuery = state.GetEntityQuery(
-                ComponentType.ReadOnly<TagComponent>(),
-                ComponentType.ReadOnly<TransformComponent>(),
-                ComponentType.ReadOnly<PhysicsComponent>(),
-                ComponentType.ReadWrite<HealthComponent>()
-            );
+            _playerQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TagComponent, TransformComponent, PhysicsComponent>()
+                .WithAllRW<HealthComponent>()
+                .Build(ref state);
             
             // Definisce la query per identificare gli ostacoli
-            _obstacleQuery = state.GetEntityQuery(
-                ComponentType.ReadOnly<ObstacleComponent>(),
-                ComponentType.ReadOnly<TransformComponent>()
-            );
+            _obstacleQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<ObstacleComponent, TransformComponent>()
+                .Build(ref state);
             
             // Richiede che ci siano sia giocatori che ostacoli per l'esecuzione
             state.RequireForUpdate(_playerQuery);
             state.RequireForUpdate(_obstacleQuery);
+            
+            // Richiedi il singleton di EndSimulationEntityCommandBufferSystem
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
         [BurstCompile]
@@ -59,7 +59,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Prepara il command buffer per le modifiche strutturali
+            // Ottieni il command buffer dal singleton
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
@@ -79,32 +79,32 @@ namespace RunawayHeroes.ECS.Systems.Movement
                 ObstacleDamageMultiplier = OBSTACLE_DAMAGE_MULTIPLIER,
                 MinImpactVelocity = MIN_IMPACT_VELOCITY,
                 SmallObstacleThreshold = SMALL_OBSTACLE_THRESHOLD,
-                HasComponentLookup = SystemAPI.GetComponentLookup<Entity>(true),
-                UrbanDashLookup = SystemAPI.GetComponentLookup<UrbanDashAbilityComponent>(true),
-                FireproofBodyLookup = SystemAPI.GetComponentLookup<FireproofBodyAbilityComponent>(true),
-                ControlledGlitchLookup = SystemAPI.GetComponentLookup<ControlledGlitchAbilityComponent>(true),
-                HeatAuraLookup = SystemAPI.GetComponentLookup<HeatAuraAbilityComponent>(true),
-                AirBubbleLookup = SystemAPI.GetComponentLookup<AirBubbleAbilityComponent>(true),
-                AlexLookup = SystemAPI.GetComponentLookup<AlexComponent>(true),
-                EmberLookup = SystemAPI.GetComponentLookup<EmberComponent>(true),
-                KaiLookup = SystemAPI.GetComponentLookup<KaiComponent>(true),
-                MarinaLookup = SystemAPI.GetComponentLookup<MarinaComponent>(true),
-                NeoLookup = SystemAPI.GetComponentLookup<NeoComponent>(true),
-                LavaTagLookup = SystemAPI.GetComponentLookup<LavaTag>(true),
-                IceObstacleTagLookup = SystemAPI.GetComponentLookup<IceObstacleTag>(true),
-                DigitalBarrierTagLookup = SystemAPI.GetComponentLookup<DigitalBarrierTag>(true),
-                UnderwaterTagLookup = SystemAPI.GetComponentLookup<UnderwaterTag>(true)
+                UrbanDashLookup = state.GetComponentLookup<UrbanDashAbilityComponent>(true),
+                FireproofBodyLookup = state.GetComponentLookup<FireproofBodyAbilityComponent>(true),
+                ControlledGlitchLookup = state.GetComponentLookup<ControlledGlitchAbilityComponent>(true),
+                HeatAuraLookup = state.GetComponentLookup<HeatAuraAbilityComponent>(true),
+                AirBubbleLookup = state.GetComponentLookup<AirBubbleAbilityComponent>(true),
+                AlexLookup = state.GetComponentLookup<AlexComponent>(true),
+                EmberLookup = state.GetComponentLookup<EmberComponent>(true),
+                KaiLookup = state.GetComponentLookup<KaiComponent>(true),
+                MarinaLookup = state.GetComponentLookup<MarinaComponent>(true),
+                NeoLookup = state.GetComponentLookup<NeoComponent>(true),
+                LavaTagLookup = state.GetComponentLookup<LavaTag>(true),
+                IceObstacleTagLookup = state.GetComponentLookup<IceObstacleTag>(true),
+                DigitalBarrierTagLookup = state.GetComponentLookup<DigitalBarrierTag>(true),
+                UnderwaterTagLookup = state.GetComponentLookup<UnderwaterTag>(true)
             }.Schedule(_playerQuery, state.Dependency);
             
             // Rilascia le risorse temporanee
-            obstacles.Dispose(state.Dependency);
-            obstacleComponents.Dispose(state.Dependency);
-            obstacleTransforms.Dispose(state.Dependency);
+            state.Dependency = obstacles.Dispose(state.Dependency);
+            state.Dependency = obstacleComponents.Dispose(state.Dependency);
+            state.Dependency = obstacleTransforms.Dispose(state.Dependency);
         }
         
         [BurstCompile]
         private partial struct ProcessCollisionsJob : IJobEntity
         {
+            // Resto del codice invariato
             [ReadOnly] public NativeArray<Entity> Obstacles;
             [ReadOnly] public NativeArray<ObstacleComponent> ObstacleComponents;
             [ReadOnly] public NativeArray<TransformComponent> ObstacleTransforms;
@@ -117,7 +117,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
             public float SmallObstacleThreshold;
             
             // Component lookups per verificare se le entità hanno determinati componenti
-            [ReadOnly] public ComponentLookup<Entity> HasComponentLookup;
             [ReadOnly] public ComponentLookup<UrbanDashAbilityComponent> UrbanDashLookup;
             [ReadOnly] public ComponentLookup<FireproofBodyAbilityComponent> FireproofBodyLookup;
             [ReadOnly] public ComponentLookup<ControlledGlitchAbilityComponent> ControlledGlitchLookup;
