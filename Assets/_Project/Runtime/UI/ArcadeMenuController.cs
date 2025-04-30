@@ -1,6 +1,7 @@
 // Path: Assets/_Project/Runtime/UI/ArcadeMenuController.cs
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using TMPro;
 using RunawayHeroes.Runtime.Managers;
@@ -198,7 +199,18 @@ namespace RunawayHeroes.Runtime.UI
         private void OnLevelSelected(string scenePath)
         {
             // Carica il livello selezionato
-            UIManager.Instance.LoadSceneWithTransition(scenePath);
+            if (UIManager.Instance != null)
+            {
+                // Mostra un indicatore di caricamento
+                UIManager.Instance.ShowLoadingIndicator(true);
+                // Avvia il caricamento della scena
+                SceneManager.LoadScene(scenePath);
+            }
+            else
+            {
+                // Fallback in caso UIManager non sia disponibile
+                SceneManager.LoadScene(scenePath);
+            }
         }
         
         private void OnBackButtonClicked()
@@ -211,7 +223,14 @@ namespace RunawayHeroes.Runtime.UI
             else
             {
                 // Torna al menu principale
-                UIManager.Instance.BackToPreviousPanel();
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.BackToPreviousPanel();
+                }
+                else
+                {
+                    SceneManager.LoadScene("MainMenu"); // Fallback
+                }
             }
         }
         
