@@ -352,4 +352,10 @@ public class CharacterAuthoring : MonoBehaviour, IConvertGameObjectToEntity
 ---
 
 Per il documento completo di standard ECS, fare riferimento a:
-`/Users/gianlucaricaldone/Progetti/Runaway DOC/runaway-heroes-ecs-standard.md`
+`/Users/gianlucaricaldone/Progetti/RunawayHeroes/Documentation/Standard/runaway-heroes-ecs-standard.md`
+
+Per file di progettazione fai riferimento ai pdf nella cartella:
+`/Users/gianlucaricaldone/Progetti/RunawayHeroes/Documentation/`
+
+Per il GDD del gioco fare riferimento a:
+`/Users/gianlucaricaldone/Progetti/RunawayHeroes/Documentation/Game Design Document.pdf`
