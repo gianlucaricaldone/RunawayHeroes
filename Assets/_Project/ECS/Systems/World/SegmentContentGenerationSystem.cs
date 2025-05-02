@@ -15,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.World
     public partial class SegmentContentGenerationSystem : SystemBase
     {
         private EntityCommandBufferSystem _commandBufferSystem;
-        private Random _random;
+        private Unity.Mathematics.Random _random;
         private uint _seed;
         
         protected override void OnCreate()
@@ -25,7 +25,7 @@ namespace RunawayHeroes.ECS.Systems.World
             
             // Inizializza il generatore di numeri casuali
             _seed = (uint)DateTime.Now.Ticks;
-            _random = Random.CreateFromIndex(_seed);
+            _random = Unity.Mathematics.Random.CreateFromIndex(_seed);
             
             // Richiedi che il sistema venga eseguito solo quando ci sono segmenti che richiedono generazione
             RequireForUpdate<RequiresContentGenerationTag>();
@@ -51,7 +51,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 {
                     // Inizializza un generatore casuale deterministico per questo segmento specifico
                     // Usiamo l'indice del segmento come parte del seed per garantire risultati coerenti
-                    Random segRandom = Random.CreateFromIndex((uint)(segment.SegmentIndex + _seed));
+                    Unity.Mathematics.Random segRandom = Unity.Mathematics.Random.CreateFromIndex((uint)(segment.SegmentIndex + _seed));
                     
                     // Genera ostacoli
                     GenerateObstacles(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, obstacleConfig, ref commandBuffer, segRandom);
@@ -83,7 +83,7 @@ namespace RunawayHeroes.ECS.Systems.World
                                     DynamicBuffer<SegmentContentBuffer> contentBuffer,
                                     ObstacleSpawnConfigComponent config,
                                     ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                    Random random)
+                                    Unity.Mathematics.Random random)
         {
             // Salta la generazione per segmenti speciali come checkpoint
             if (segment.Type == SegmentType.Checkpoint)
@@ -177,7 +177,7 @@ namespace RunawayHeroes.ECS.Systems.World
                                           WorldTheme theme,
                                           ObstacleSpawnConfigComponent config,
                                           ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                          Random random)
+                                          Unity.Mathematics.Random random)
         {
             // In base al tema, aggiungiamo tag specifici agli ostacoli
             switch (theme)
@@ -252,7 +252,7 @@ namespace RunawayHeroes.ECS.Systems.World
                                    DynamicBuffer<SegmentContentBuffer> contentBuffer,
                                    EnemySpawnConfigComponent config,
                                    ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                   Random random)
+                                   Unity.Mathematics.Random random)
         {
             // Salta la generazione per segmenti speciali come checkpoint
             if (segment.Type == SegmentType.Checkpoint)
@@ -329,7 +329,7 @@ namespace RunawayHeroes.ECS.Systems.World
                               DynamicBuffer<SegmentContentBuffer> contentBuffer,
                               EnemySpawnConfigComponent config,
                               ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                              Random random)
+                              Unity.Mathematics.Random random)
         {
             // Crea l'entità nemico
             Entity enemyEntity = commandBuffer.CreateEntity(entityInQueryIndex);
@@ -391,7 +391,7 @@ namespace RunawayHeroes.ECS.Systems.World
                                        ref PathSegmentComponent segment,
                                        DynamicBuffer<SegmentContentBuffer> contentBuffer,
                                        ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                       Random random)
+                                       Unity.Mathematics.Random random)
         {
             // Implementazione per la generazione di oggetti collezionabili lungo il percorso
             // ...
