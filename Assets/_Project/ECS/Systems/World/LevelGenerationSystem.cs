@@ -62,30 +62,85 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Crea un'entità con configurazione per la generazione di un livello runner casuale
         /// </summary>
-        public Entity CreateRunnerLevelRequest(WorldTheme theme, int levelLength, int seed)
+        /// <param name="theme">Tema del mondo da generare</param>
+        /// <param name="levelLength">Lunghezza del livello in metri</param>
+        /// <param name="seed">Seed per la generazione casuale</param>
+        /// <param name="isTutorial">Indica se il livello è un tutorial (difficoltà ridotta)</param>
+        public Entity CreateRunnerLevelRequest(WorldTheme theme, int levelLength, int seed, bool isTutorial = false)
         {
             // Crea una nuova entità
             var entity = EntityManager.CreateEntity();
             
-            // Aggiungi la configurazione di livello casuale
+            // Ottieni la configurazione di difficoltà se disponibile
+            WorldDifficultyConfigComponent difficultyConfig = default;
+            bool hasDifficultyConfig = false;
+            
+            var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            if (difficultyQuery.HasAnyEntities())
+            {
+                difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
+                hasDifficultyConfig = true;
+            }
+            
+            // Valori predefiniti per la configurazione
+            int startDifficulty = 1;
+            int endDifficulty = 8;
+            float difficultyRamp = 0.6f;
+            float obstacleDensity = 0.7f;
+            float enemyDensity = 0.5f;
+            float segmentVarietyFactor = 0.7f;
+            
+            // Adatta la configurazione in base al tema e alla difficoltà del mondo
+            if (hasDifficultyConfig)
+            {
+                // Imposta la difficoltà iniziale in base al tema
+                startDifficulty = math.max(1, difficultyConfig.GetBaseDifficultyForTheme(theme));
+                
+                // Riduci la difficoltà se è un tutorial
+                if (isTutorial)
+                {
+                    startDifficulty = math.min(startDifficulty, difficultyConfig.TutorialBaseDifficulty);
+                    endDifficulty = math.min(4, startDifficulty + 2); // Massimo difficoltà 4 per tutorial
+                    difficultyRamp = difficultyConfig.TutorialDifficultyRampScale;
+                    obstacleDensity *= difficultyConfig.TutorialObstacleDensityScale;
+                    enemyDensity *= difficultyConfig.TutorialEnemyDensityScale;
+                    segmentVarietyFactor = 0.4f; // Minore varietà nel tutorial
+                }
+                else
+                {
+                    // Per livelli non-tutorial, scala la difficoltà in base al tema
+                    endDifficulty = math.min(10, startDifficulty + 4); // Massimo incremento 4 livelli
+                    difficultyRamp *= difficultyConfig.GetDifficultyRampScaleForTheme(theme);
+                    obstacleDensity *= difficultyConfig.GetObstacleDensityScaleForTheme(theme);
+                    enemyDensity *= difficultyConfig.GetEnemyDensityScaleForTheme(theme);
+                    
+                    // Incrementa la varietà per mondi più avanzati
+                    if (theme == WorldTheme.Volcano || theme == WorldTheme.Abyss)
+                    {
+                        segmentVarietyFactor = 0.9f; // Massima varietà nei mondi avanzati
+                    }
+                }
+            }
+            
+            // Aggiungi la configurazione di livello casuale con i valori scalati
             EntityManager.AddComponentData(entity, new RunnerLevelConfigComponent
             {
                 LevelLength = levelLength,
                 MinSegments = levelLength / 50,  // Un segmento ogni 50 metri circa
                 MaxSegments = levelLength / 20,  // Un segmento ogni 20 metri circa
                 Seed = seed,
-                StartDifficulty = 1,
-                EndDifficulty = 8,
-                DifficultyRamp = 0.6f,
-                ObstacleDensity = 0.7f,
-                EnemyDensity = 0.5f,
-                CollectibleDensity = 0.6f,
+                StartDifficulty = startDifficulty,
+                EndDifficulty = endDifficulty,
+                DifficultyRamp = difficultyRamp,
+                ObstacleDensity = obstacleDensity,
+                EnemyDensity = enemyDensity,
+                CollectibleDensity = isTutorial ? 0.8f : 0.6f, // Più collezionabili nel tutorial
                 PrimaryTheme = theme,
                 SecondaryTheme = GetComplementaryTheme(theme),
-                ThemeBlendFactor = 0.2f,
+                ThemeBlendFactor = isTutorial ? 0.1f : 0.2f, // Minore mescolamento nel tutorial
                 GenerateCheckpoints = true,
-                DynamicDifficulty = true,
-                SegmentVarietyFactor = 0.7f
+                DynamicDifficulty = !isTutorial, // Disabilita difficoltà dinamica nel tutorial
+                SegmentVarietyFactor = segmentVarietyFactor
             });
             
             // Aggiungi il componente transform

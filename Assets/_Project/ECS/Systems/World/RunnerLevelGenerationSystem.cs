@@ -82,15 +82,35 @@ namespace RunawayHeroes.ECS.Systems.World
             // Aggiungi il buffer per i segmenti di percorso
             commandBuffer.AddBuffer<PathSegmentBuffer>(entityInQueryIndex, levelEntity);
             
-            // Aggiungi il componente per le configurazioni di spawn
+            // Cerca la configurazione di difficoltà nel mondo
+            WorldDifficultyConfigComponent difficultyConfig = default;
+            bool hasDifficultyConfig = false;
+            var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            if (difficultyQuery.HasAnyEntities())
+            {
+                difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
+                hasDifficultyConfig = true;
+            }
+            
+            // Determina se è un tutorial (approssimazione)
+            bool isTutorial = config.PrimaryTheme == WorldTheme.City && numSegments <= 20;
+            
+            // Calcola la densità di ostacoli in base al tema e alla configurazione di difficoltà
+            float obstacleDensity = config.ObstacleDensity;
+            if (hasDifficultyConfig)
+            {
+                obstacleDensity *= difficultyConfig.GetObstacleDensityScaleForTheme(config.PrimaryTheme, isTutorial);
+            }
+            
+            // Aggiungi il componente per le configurazioni di spawn con difficoltà scalata
             commandBuffer.AddComponent(entityInQueryIndex, levelEntity, new ObstacleSpawnConfigComponent
             {
-                DensityFactor = config.ObstacleDensity,
-                MinObstacles = 1,
-                MaxObstacles = 5,
-                SmallObstacleProbability = 0.5f,
-                MediumObstacleProbability = 0.3f,
-                LargeObstacleProbability = 0.2f,
+                DensityFactor = obstacleDensity,
+                MinObstacles = isTutorial ? 1 : 2, // Meno ostacoli nel tutorial
+                MaxObstacles = isTutorial ? 3 : 5, // Meno ostacoli nel tutorial
+                SmallObstacleProbability = isTutorial ? 0.7f : 0.5f, // Più ostacoli piccoli nel tutorial
+                MediumObstacleProbability = isTutorial ? 0.25f : 0.3f,
+                LargeObstacleProbability = isTutorial ? 0.05f : 0.2f, // Quasi nessun ostacolo grande nel tutorial
                 // Pesi per tema
                 CityObstacleWeight = config.PrimaryTheme == WorldTheme.City ? 1.0f : 0.2f,
                 ForestObstacleWeight = config.PrimaryTheme == WorldTheme.Forest ? 1.0f : 0.2f,
@@ -98,25 +118,32 @@ namespace RunawayHeroes.ECS.Systems.World
                 VolcanoObstacleWeight = config.PrimaryTheme == WorldTheme.Volcano ? 1.0f : 0.2f,
                 AbyssObstacleWeight = config.PrimaryTheme == WorldTheme.Abyss ? 1.0f : 0.2f,
                 VirtualObstacleWeight = config.PrimaryTheme == WorldTheme.Virtual ? 1.0f : 0.2f,
-                // Probabilità di pericoli speciali
-                LavaObstacleProbability = config.PrimaryTheme == WorldTheme.Volcano ? 0.4f : 0.05f,
-                IceObstacleProbability = config.PrimaryTheme == WorldTheme.Tundra ? 0.4f : 0.05f,
-                DigitalBarrierProbability = config.PrimaryTheme == WorldTheme.Virtual ? 0.4f : 0.05f,
-                UnderwaterProbability = config.PrimaryTheme == WorldTheme.Abyss ? 0.4f : 0.05f,
-                SlipperyProbability = config.PrimaryTheme == WorldTheme.Tundra ? 0.3f : 0.05f,
-                ToxicGroundProbability = 0.1f,
-                CurrentProbability = config.PrimaryTheme == WorldTheme.Abyss ? 0.3f : 0.05f,
-                SpecialHazardDensity = 0.2f
+                // Probabilità di pericoli speciali (ridotte nel tutorial)
+                LavaObstacleProbability = isTutorial ? 0.0f : (config.PrimaryTheme == WorldTheme.Volcano ? 0.4f : 0.05f),
+                IceObstacleProbability = isTutorial ? 0.0f : (config.PrimaryTheme == WorldTheme.Tundra ? 0.4f : 0.05f),
+                DigitalBarrierProbability = isTutorial ? 0.0f : (config.PrimaryTheme == WorldTheme.Virtual ? 0.4f : 0.05f),
+                UnderwaterProbability = isTutorial ? 0.0f : (config.PrimaryTheme == WorldTheme.Abyss ? 0.4f : 0.05f),
+                SlipperyProbability = isTutorial ? 0.0f : (config.PrimaryTheme == WorldTheme.Tundra ? 0.3f : 0.05f),
+                ToxicGroundProbability = isTutorial ? 0.0f : 0.1f,
+                CurrentProbability = isTutorial ? 0.0f : (config.PrimaryTheme == WorldTheme.Abyss ? 0.3f : 0.05f),
+                SpecialHazardDensity = isTutorial ? 0.05f : 0.2f
             });
+            
+            // Calcola la densità di nemici in base al tema e alla configurazione di difficoltà
+            float enemyDensity = config.EnemyDensity;
+            if (hasDifficultyConfig)
+            {
+                enemyDensity *= difficultyConfig.GetEnemyDensityScaleForTheme(config.PrimaryTheme, isTutorial);
+            }
             
             commandBuffer.AddComponent(entityInQueryIndex, levelEntity, new EnemySpawnConfigComponent
             {
-                DensityFactor = config.EnemyDensity,
-                MinEnemies = 0,
-                MaxEnemies = 4,
-                DroneProbability = 0.4f,
-                PatrolProbability = 0.4f,
-                AmbushProbability = 0.2f,
+                DensityFactor = enemyDensity,
+                MinEnemies = isTutorial ? 0 : 1, // Possibilità di nessun nemico nel tutorial
+                MaxEnemies = isTutorial ? 2 : 4, // Meno nemici nel tutorial
+                DroneProbability = isTutorial ? 0.8f : 0.4f, // Più droni (più facili) nel tutorial
+                PatrolProbability = isTutorial ? 0.2f : 0.4f,
+                AmbushProbability = isTutorial ? 0.0f : 0.2f, // Nessuna imboscata nel tutorial
                 // Pesi per tema
                 CityEnemyWeight = config.PrimaryTheme == WorldTheme.City ? 1.0f : 0.2f,
                 ForestEnemyWeight = config.PrimaryTheme == WorldTheme.Forest ? 1.0f : 0.2f,
@@ -124,13 +151,13 @@ namespace RunawayHeroes.ECS.Systems.World
                 VolcanoEnemyWeight = config.PrimaryTheme == WorldTheme.Volcano ? 1.0f : 0.2f,
                 AbyssEnemyWeight = config.PrimaryTheme == WorldTheme.Abyss ? 1.0f : 0.2f,
                 VirtualEnemyWeight = config.PrimaryTheme == WorldTheme.Virtual ? 1.0f : 0.2f,
-                // Boss e gruppi
-                MidBossProbability = 0.1f,
-                BossProbability = 0.01f,
-                GroupSpawnProbability = 0.3f,
+                // Boss e gruppi (ridotti o disabilitati nel tutorial)
+                MidBossProbability = isTutorial ? 0.0f : 0.1f, // Nessun mid-boss nel tutorial
+                BossProbability = isTutorial ? 0.0f : 0.01f, // Nessun boss nel tutorial
+                GroupSpawnProbability = isTutorial ? 0.0f : 0.3f, // Nessun gruppo nel tutorial
                 MinGroupSize = 2,
-                MaxGroupSize = 4,
-                EliteEnemyProbability = 0.1f
+                MaxGroupSize = isTutorial ? 2 : 4, // Gruppi più piccoli nel tutorial
+                EliteEnemyProbability = isTutorial ? 0.0f : 0.1f // Nessun nemico élite nel tutorial
             });
             
             return levelEntity;
@@ -143,8 +170,39 @@ namespace RunawayHeroes.ECS.Systems.World
                                        int numSegments, RunnerLevelConfigComponent config,
                                        ref EntityCommandBuffer.ParallelWriter commandBuffer)
         {
+            // Ottieni la configurazione di difficoltà del mondo se disponibile
+            WorldDifficultyConfigComponent difficultyConfig = default;
+            bool hasDifficultyConfig = false;
+            
+            // Cerca la configurazione di difficoltà nel mondo
+            var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            if (difficultyQuery.HasAnyEntities())
+            {
+                difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
+                hasDifficultyConfig = true;
+            }
+            
             // Calcola la difficoltà iniziale e l'incremento per segmento
-            float difficultyStep = (config.EndDifficulty - config.StartDifficulty) / (float)numSegments;
+            int startDifficulty = config.StartDifficulty;
+            int endDifficulty = config.EndDifficulty;
+            float rampFactor = config.DifficultyRamp;
+            
+            // Applica configurazioni specifiche per tema se disponibili
+            if (hasDifficultyConfig)
+            {
+                // Modifica la difficoltà iniziale in base al tema del mondo
+                startDifficulty = math.max(1, math.min(10, difficultyConfig.GetBaseDifficultyForTheme(config.PrimaryTheme)));
+                
+                // Modifica il fattore di incremento in base al tema
+                bool isTutorial = config.PrimaryTheme == WorldTheme.City && numSegments <= 20; // Approssimazione per identificare il tutorial
+                rampFactor *= difficultyConfig.GetDifficultyRampScaleForTheme(config.PrimaryTheme, isTutorial);
+                
+                // Imposta la difficoltà finale scalando in base al fattore di incremento
+                endDifficulty = math.max(startDifficulty, math.min(10, startDifficulty + (int)(rampFactor * 5)));
+            }
+            
+            // Calcola l'incremento effettivo di difficoltà per segmento
+            float difficultyStep = (endDifficulty - startDifficulty) / (float)numSegments;
             
             // Ottieni il buffer dei segmenti
             var pathBuffer = commandBuffer.SetBuffer<PathSegmentBuffer>(entityInQueryIndex, levelEntity);
@@ -154,8 +212,8 @@ namespace RunawayHeroes.ECS.Systems.World
             
             for (int i = 0; i < numSegments; i++)
             {
-                // Calcola la difficoltà corrente
-                int currentDifficulty = config.StartDifficulty + (int)(difficultyStep * i);
+                // Calcola la difficoltà corrente in base ai valori modificati dal sistema di difficoltà
+                int currentDifficulty = startDifficulty + (int)(difficultyStep * i);
                 
                 // Determina il tipo di segmento in base alla posizione e al fattore di varietà
                 SegmentType segmentType = DetermineSegmentType(i, numSegments, config.SegmentVarietyFactor);

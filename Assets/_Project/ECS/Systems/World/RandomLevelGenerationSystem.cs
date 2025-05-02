@@ -14,7 +14,7 @@ namespace RunawayHeroes.ECS.Systems.World
     public partial class RandomLevelGenerationSystem : SystemBase
     {
         private EntityCommandBufferSystem _commandBufferSystem;
-        private Random _random;
+        private Unity.Mathematics.Random _random;
         
         protected override void OnCreate()
         {
@@ -39,7 +39,7 @@ namespace RunawayHeroes.ECS.Systems.World
                          in LocalTransform transform) =>
                 {
                     // Inizializza il generatore casuale con il seed fornito
-                    _random = Random.CreateFromIndex((uint)config.Seed);
+                    _random = Unity.Mathematics.Random.CreateFromIndex((uint)config.Seed);
                     
                     // Genera la struttura del livello con Binary Space Partitioning
                     // o un altro algoritmo di generazione procedurale

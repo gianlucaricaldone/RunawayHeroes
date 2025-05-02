@@ -168,7 +168,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         }
                         
                         // Evoca gli alleati
-                        Random random = Random.CreateFromIndex((uint)entityInQueryIndex);
+                        Unity.Mathematics.Random random = Random.CreateFromIndex((uint)entityInQueryIndex);
                         for (int i = 0; i < allyCount && i < nearbyEnemies.Length; i++)
                         {
                             // Crea un'entità alleato temporanea

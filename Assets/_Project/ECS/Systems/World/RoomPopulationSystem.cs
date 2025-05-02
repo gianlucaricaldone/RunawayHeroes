@@ -15,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.World
     public partial class RoomPopulationSystem : SystemBase
     {
         private EntityCommandBufferSystem _commandBufferSystem;
-        private Random _random;
+        private Unity.Mathematics.Random _random;
         private uint _seed;
         
         protected override void OnCreate()
@@ -25,7 +25,7 @@ namespace RunawayHeroes.ECS.Systems.World
             
             // Inizializza il generatore di numeri casuali
             _seed = (uint)DateTime.Now.Ticks;
-            _random = Random.CreateFromIndex(_seed);
+            _random = Unity.Mathematics.Random.CreateFromIndex(_seed);
             
             // Richiedi che il sistema venga eseguito solo durante la generazione del livello
             RequireForUpdate<RoomComponent>();
@@ -84,7 +84,7 @@ namespace RunawayHeroes.ECS.Systems.World
                                 float collectibleProbability,
                                 float obstacleProbability,
                                 ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                Random random)
+                                Unity.Mathematics.Random random)
         {
             // Calcola il numero di entità da generare in base alla dimensione della stanza
             int roomArea = room.Size.x * room.Size.y;
@@ -128,7 +128,7 @@ namespace RunawayHeroes.ECS.Systems.World
         private void CreateEnemy(int entityInQueryIndex, Entity roomEntity, 
                                ref RoomComponent room,
                                ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                               Random random)
+                               Unity.Mathematics.Random random)
         {
             // Crea l'entità nemico
             Entity enemyEntity = commandBuffer.CreateEntity(entityInQueryIndex);
@@ -161,7 +161,7 @@ namespace RunawayHeroes.ECS.Systems.World
         private void CreateCollectible(int entityInQueryIndex, Entity roomEntity, 
                                      ref RoomComponent room,
                                      ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                     Random random)
+                                     Unity.Mathematics.Random random)
         {
             // Crea l'entità collezionabile
             Entity collectibleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
@@ -194,7 +194,7 @@ namespace RunawayHeroes.ECS.Systems.World
         private void CreateObstacle(int entityInQueryIndex, Entity roomEntity, 
                                   ref RoomComponent room,
                                   ref EntityCommandBuffer.ParallelWriter commandBuffer,
-                                  Random random)
+                                  Unity.Mathematics.Random random)
         {
             // Crea l'entità ostacolo
             Entity obstacleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
