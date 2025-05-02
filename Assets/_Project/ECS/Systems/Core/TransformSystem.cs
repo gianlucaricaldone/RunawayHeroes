@@ -10,7 +10,6 @@ namespace RunawayHeroes.ECS.Systems.Core
     /// delle entità nel mondo di gioco.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(RenderSystem))]
     public partial class TransformSystem : SystemBase
     {
         /// <summary>

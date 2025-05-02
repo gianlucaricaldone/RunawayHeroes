@@ -110,8 +110,8 @@ namespace RunawayHeroes.Runtime.Bootstrap
         {
             // Sistemi Core
             systems.Add(typeof(EntityLifecycleSystem));
-            systems.Add(typeof(TransformSystem));
             systems.Add(typeof(PhysicsSystem));
+            systems.Add(typeof(TransformSystem));
             systems.Add(typeof(RenderSystem));
             systems.Add(typeof(CollisionSystem));
         }
