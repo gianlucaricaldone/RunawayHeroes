@@ -38,17 +38,21 @@ namespace RunawayHeroes.ECS.Systems.World
             // Ottieni le configurazioni di spawn dal livello
             var obstacleConfig = GetSingleton<ObstacleSpawnConfigComponent>();
             
+            // Creiamo una copia locale delle variabili di istanza
+            var seed = _seed;
+            
             // Genera ostacoli per i segmenti che lo richiedono
             Entities
                 .WithName("GenerateThematicObstacles")
                 .WithAll<RequiresContentGenerationTag>()
-                .ForEach((Entity segmentEntity, int entityInQueryIndex,
-                          ref PathSegmentComponent segment,
-                          ref DynamicBuffer<SegmentContentBuffer> contentBuffer) =>
+                .WithoutBurst()
+                .Run((Entity segmentEntity, int entityInQueryIndex,
+                      ref PathSegmentComponent segment,
+                      ref DynamicBuffer<SegmentContentBuffer> contentBuffer) =>
                 {
                     // Inizializza un generatore casuale deterministico per questo segmento specifico
                     Unity.Mathematics.Random segRandom = Unity.Mathematics.Random.CreateFromIndex(
-                        (uint)(segment.SegmentIndex + _seed));
+                        (uint)(segment.SegmentIndex + seed));
                     
                     // Salta la generazione per segmenti speciali come checkpoint
                     if (segment.Type == SegmentType.Checkpoint)
@@ -63,8 +67,7 @@ namespace RunawayHeroes.ECS.Systems.World
                         obstacleConfig,
                         ref commandBuffer,
                         segRandom);
-                    
-                }).ScheduleParallel();
+                });
             
             // Assicurati che i comandi vengano eseguiti
             _commandBufferSystem.AddJobHandleForProducer(Dependency);

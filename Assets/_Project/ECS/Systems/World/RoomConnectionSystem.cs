@@ -47,9 +47,10 @@ namespace RunawayHeroes.ECS.Systems.World
             Entities
                 .WithName("ConnectRooms")
                 .WithAll<RequiresConnectionTag>()
-                .ForEach((Entity roomEntity, int entityInQueryIndex,
-                         ref RoomComponent room,
-                         ref DynamicBuffer<RoomDoorwayBuffer> doorways) =>
+                .WithoutBurst()
+                .Run((Entity roomEntity, int entityInQueryIndex,
+                     ref RoomComponent room,
+                     ref DynamicBuffer<RoomDoorwayBuffer> doorways) =>
                 {
                     // Trova la stanza più vicina per effettuare una connessione
                     // (Questo richiederebbe un sistema di query più complesso 
@@ -61,8 +62,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     
                     // Rimuovi il tag di richiesta connessione
                     commandBuffer.RemoveComponent<RequiresConnectionTag>(entityInQueryIndex, roomEntity);
-                    
-                }).ScheduleParallel();
+                });
             
             // Assicurati che i comandi vengano eseguiti
             _commandBufferSystem.AddJobHandleForProducer(Dependency);
