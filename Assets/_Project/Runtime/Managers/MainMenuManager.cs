@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using RunawayHeroes.Runtime.UI;
+using System.Collections;
 
 namespace RunawayHeroes.Runtime.Managers
 {
@@ -30,24 +31,40 @@ namespace RunawayHeroes.Runtime.Managers
         [SerializeField] private UITransitionManager transitionManager;
         [SerializeField] private GameObject loadingPanel;
         [SerializeField] private float transitionTime = 1.0f;
+        [SerializeField] private float uiManagerCheckDelay = 0.1f; // Delay per tentativi successivi
 
         // Riferimento al UIManager
         private UIManager _uiManager;
         
         // Flag per indicare se esiste un salvataggio
         private bool _hasSaveGame = false;
+        private bool _initialized = false;
         
         private void Start()
+        {
+            // Tentativo iniziale di inizializzazione
+            TryInitialize();
+        }
+        
+        private void TryInitialize()
         {
             // Ottiene il riferimento al UIManager
             _uiManager = UIManager.Instance;
             if (_uiManager == null)
             {
-                Debug.LogError("UIManager not found! Make sure it's initialized before MainMenuManager.");
+                Debug.LogWarning("UIManager not found! Retrying in " + uiManagerCheckDelay + " seconds.");
+                StartCoroutine(RetryInitialization());
                 return;
             }
             
             InitializeUI();
+            _initialized = true;
+        }
+        
+        private IEnumerator RetryInitialization()
+        {
+            yield return new WaitForSeconds(uiManagerCheckDelay);
+            TryInitialize();
         }
         
         private void InitializeUI()
