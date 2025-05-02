@@ -6,6 +6,7 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
@@ -14,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Si occupa di avviare i salti, gestire i salti multipli e coordinare
     /// con il sistema di fisica per applicare le forze appropriate.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(MovementSystemGroup))]
     public partial struct JumpSystem : ISystem
     {
         private EntityQuery _jumpableEntitiesQuery;

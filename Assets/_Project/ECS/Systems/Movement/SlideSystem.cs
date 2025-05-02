@@ -6,6 +6,7 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
@@ -14,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Si occupa di avviare le scivolate in risposta all'input, gestire la durata
     /// e gli effetti collaterali come l'altezza ridotta per passare sotto gli ostacoli.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(MovementSystemGroup))]
     public partial struct SlideSystem : ISystem
     {
         private EntityQuery _slidableEntitiesQuery;
@@ -24,9 +25,8 @@ namespace RunawayHeroes.ECS.Systems.Movement
         {
             // Query per trovare entità che possono scivolare
             _slidableEntitiesQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<PhysicsComponent, MovementComponent, SlideInputComponent>()
+                .WithAll<SlideInputComponent,TransformComponent>()
                 .WithAllRW<PhysicsComponent, MovementComponent>()
-                .WithAll<TransformComponent>()
                 .Build(ref state);
             
             // Richiede entità corrispondenti per eseguire l'aggiornamento

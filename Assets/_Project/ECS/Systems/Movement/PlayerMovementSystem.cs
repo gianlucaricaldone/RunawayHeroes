@@ -8,6 +8,7 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 using RunawayHeroes.ECS.Systems.Input;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
@@ -16,8 +17,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Elabora la corsa automatica, i movimenti laterali, e coordina con altri sistemi
     /// come salto e scivolata.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(InputSystem))]
+    [UpdateInGroup(typeof(MovementSystemGroup))]
     [BurstCompile]
     public partial class PlayerMovementSystem : SystemBase
     {

@@ -17,11 +17,7 @@ namespace RunawayHeroes.Runtime.UI
         [SerializeField] private GameObject menuBackground;
         [SerializeField] private GameObject logoElement;
         [SerializeField] private Button[] menuButtons;
-        
-        [Header("Character Display")]
-        [SerializeField] private Transform characterDisplayArea;
-        [SerializeField] private GameObject[] characterPrefabs;
-        [SerializeField] private float rotationSpeed = 10f;
+
         
         [Header("Version Info")]
         [SerializeField] private TextMeshProUGUI versionText;
@@ -46,13 +42,6 @@ namespace RunawayHeroes.Runtime.UI
                 menuAnimator.SetTrigger("OpenMenu");
             }
             
-            // Inizializza display del personaggio
-            if (characterPrefabs.Length > 0 && characterDisplayArea != null)
-            {
-                currentCharacterIndex = 0;
-                SpawnCharacterModel(currentCharacterIndex);
-            }
-            
             // Imposta versione
             if (versionText != null)
             {
@@ -66,38 +55,9 @@ namespace RunawayHeroes.Runtime.UI
         
         private void Update()
         {
-            // Fai ruotare il modello del personaggio
-            if (currentCharacterDisplay != null)
-            {
-                currentCharacterDisplay.transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
-            }
+
         }
-        
-        /// <summary>
-        /// Cambia il personaggio visualizzato nella schermata principale
-        /// </summary>
-        public void ChangeCharacter(int direction)
-        {
-            currentCharacterIndex = (currentCharacterIndex + direction + characterPrefabs.Length) % characterPrefabs.Length;
-            SpawnCharacterModel(currentCharacterIndex);
-        }
-        
-        private void SpawnCharacterModel(int index)
-        {
-            // Rimuovi modello corrente
-            if (currentCharacterDisplay != null)
-            {
-                Destroy(currentCharacterDisplay);
-            }
-            
-            // Crea nuovo modello
-            if (characterPrefabs.Length > index && characterPrefabs[index] != null)
-            {
-                currentCharacterDisplay = Instantiate(characterPrefabs[index], characterDisplayArea);
-                currentCharacterDisplay.transform.localPosition = Vector3.zero;
-                currentCharacterDisplay.transform.localRotation = Quaternion.identity;
-            }
-        }
+    
         
         /// <summary>
         /// Gestisce il pulsante back

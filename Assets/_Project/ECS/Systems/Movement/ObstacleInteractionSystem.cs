@@ -9,6 +9,7 @@ using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
@@ -17,8 +18,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Estende le funzionalità di base dell'ObstacleCollisionSystem per supportare l'interazione con tutti i tipi di ostacoli
     /// in base alle abilità dei vari personaggi.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(ObstacleCollisionSystem))]
+    [UpdateInGroup(typeof(MovementSystemGroup))]
     [BurstCompile]
     public partial class ObstacleInteractionSystem : SystemBase
     {

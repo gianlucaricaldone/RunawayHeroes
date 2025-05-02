@@ -8,6 +8,7 @@ using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
@@ -15,8 +16,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Sistema che gestisce le collisioni tra il giocatore e gli ostacoli.
     /// Rileva collisioni, genera eventi appropriati e applica gli effetti delle collisioni.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(PlayerMovementSystem))]
+    [UpdateInGroup(typeof(MovementSystemGroup))]
     public partial struct ObstacleCollisionSystem : ISystem
     {
         private EntityQuery _playerQuery;

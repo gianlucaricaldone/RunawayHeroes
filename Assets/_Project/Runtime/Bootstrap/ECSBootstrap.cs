@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using RunawayHeroes.ECS.Systems.Core;
 using RunawayHeroes.ECS.Systems.Movement;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 using RunawayHeroes.ECS.Systems.Abilities;
 using RunawayHeroes.ECS.Systems.Combat;
 using RunawayHeroes.ECS.Systems.Gameplay;
@@ -72,10 +73,29 @@ namespace RunawayHeroes.Runtime.Bootstrap
             // Crea un gruppo per i sistemi principali del gioco
             var simulationSystemGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
             
-            // Aggiunge i sistemi al gruppo con UpdateBefore/UpdateAfter come necessario
+            // Crea il MovementSystemGroup per organizzare i sistemi di movimento
+            var movementSystemGroup = _world.CreateSystem<MovementSystemGroup>();
+            simulationSystemGroup.AddSystemToUpdateList(movementSystemGroup);
+            
+            // Aggiunge i sistemi al gruppo appropriato
             foreach (var systemType in systems)
             {
                 var system = _world.CreateSystem(systemType);
+                
+                // Se è un sistema di movimento, lo aggiunge al gruppo di movimento
+                // altrimenti lo aggiunge al gruppo di simulazione
+                var attributes = systemType.GetCustomAttributes(typeof(UpdateInGroupAttribute), true);
+                
+                if (attributes.Length > 0)
+                {
+                    var updateInGroupAttr = attributes[0] as UpdateInGroupAttribute;
+                    if (updateInGroupAttr != null && updateInGroupAttr.GroupType == typeof(MovementSystemGroup))
+                    {
+                        // Non è necessario aggiungere qui, l'attributo gestirà
+                        continue;
+                    }
+                }
+                
                 simulationSystemGroup.AddSystemToUpdateList(system);
             }
             
@@ -111,13 +131,14 @@ namespace RunawayHeroes.Runtime.Bootstrap
         /// </summary>
         private void AddMovementSystems(List<Type> systems)
         {
-            systems.Add(typeof(PlayerMovementSystem));
-            systems.Add(typeof(JumpSystem));
-            systems.Add(typeof(SlideSystem));
-            systems.Add(typeof(ObstacleCollisionSystem));
-            systems.Add(typeof(ObstacleInteractionSystem));
-            systems.Add(typeof(NavigationSystem));
-            systems.Add(typeof(ObstacleAvoidanceSystem));
+            // L'ordine in questa lista determinerà l'ordine di esecuzione nel gruppo
+            systems.Add(typeof(PlayerMovementSystem));     // Prima esegui movimento base
+            systems.Add(typeof(JumpSystem));               // Poi il salto
+            systems.Add(typeof(SlideSystem));              // Poi la scivolata
+            systems.Add(typeof(ObstacleCollisionSystem));  // Poi collisioni
+            systems.Add(typeof(ObstacleInteractionSystem)); // Poi interazioni con ostacoli
+            systems.Add(typeof(NavigationSystem));         // Poi navigazione
+            systems.Add(typeof(ObstacleAvoidanceSystem));  // Poi evitamento ostacoli
         }
         
         /// <summary>
