@@ -1,252 +1,355 @@
+// Path: TutorialLevelInitializer.cs
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Entities;
 using Unity.Mathematics;
-using RunawayHeroes.ECS.Components.World;
-using RunawayHeroes.ECS.Systems.World;
+using Unity.Collections;
+using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Components.Core;
+using RunawayHeroes.ECS.Systems.Gameplay;
+using RunawayHeroes.Gameplay;
 
 namespace RunawayHeroes.Runtime.Levels
 {
     /// <summary>
-    /// Componente responsabile per l'inizializzazione del livello tutorial
+    /// Inizializzatore per i livelli tutorial, gestisce la configurazione degli scenari
     /// </summary>
     public class TutorialLevelInitializer : MonoBehaviour
     {
-        [Header("Configurazione Livelli Tutorial")]
-        [Tooltip("Indice del livello tutorial da generare (0-3)")]
-        [Range(0, 3)]
-        public int tutorialLevelIndex = 0;
-        
-        [Tooltip("Sequenza completa dei tutorial")]
-        public TutorialLevelSequence[] tutorialSequence = new TutorialLevelSequence[] 
-        {
-            new TutorialLevelSequence { 
-                description = "Tutorial 1: Comandi Base", 
-                theme = WorldTheme.City, 
-                length = 300, 
-                difficulty = 1 
-            },
-            new TutorialLevelSequence { 
-                description = "Tutorial 2: Ostacoli Avanzati", 
-                theme = WorldTheme.City, 
-                length = 400, 
-                difficulty = 2 
-            },
-            new TutorialLevelSequence { 
-                description = "Tutorial 3: Nemici", 
-                theme = WorldTheme.City, 
-                length = 500, 
-                difficulty = 3 
-            },
-            new TutorialLevelSequence { 
-                description = "Tutorial 4: Abilità Speciali", 
-                theme = WorldTheme.Virtual, 
-                length = 600, 
-                difficulty = 4 
-            }
-        };
-        
-        [Tooltip("Seed per la generazione casuale (0 = random)")]
-        public int seed = 0;
-        
         [Header("Configurazione Tutorial")]
-        [Tooltip("Posizione di partenza del giocatore")]
-        public Vector3 playerStartPosition = new Vector3(0, 0, 0);
+        [Tooltip("Livelli tutorial in sequenza")]
+        public TutorialLevelSequence[] tutorialSequence;
         
-        [Tooltip("Distanza iniziale tra checkpoints")]
-        [Range(50, 200)]
-        public int checkpointDistance = 100;
+        [Header("Debug")]
+        [Tooltip("Se true, mostra gizmo per visualizzare gli scenari nel editor")]
+        public bool showDebugGizmos = true;
         
         private EntityManager _entityManager;
-        private LevelGenerationSystem _levelGenerationSystem;
-        private Entity _tutorialLevelEntity;
+        private float _currentLevelLength;
+        private Vector3 _startPosition;
         
         private void Awake()
         {
-            // Ottieni accesso al mondo ECS
-            var world = World.DefaultGameObjectInjectionWorld;
-            _entityManager = world.EntityManager;
-            
-            // Ottieni il sistema di generazione livelli
-            _levelGenerationSystem = world.GetOrCreateSystemManaged<LevelGenerationSystem>();
-            
-            // Inizializza la configurazione di difficoltà se non esiste già
-            InitializeDifficultyConfig();
+            // Ottieni riferimento all'EntityManager
+            _entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+            _startPosition = transform.position;
         }
         
         private void Start()
         {
-            // Genera il livello tutorial
-            GenerateTutorialLevel();
+            InitializeTutorialLevel();
         }
         
         /// <summary>
-        /// Inizializza la configurazione di difficoltà globale
+        /// Inizializza un livello tutorial con la sequenza definita
         /// </summary>
-        private void InitializeDifficultyConfig()
+        public void InitializeTutorialLevel()
         {
-            // Controlla se esiste già una configurazione di difficoltà
-            var difficultyQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
-            if (!difficultyQuery.HasAnyEntities())
+            if (tutorialSequence == null || tutorialSequence.Length == 0)
             {
-                // Crea una nuova entità per la configurazione
-                var configEntity = _entityManager.CreateEntity(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
-                
-                // Imposta la configurazione predefinita
-                _entityManager.SetComponentData(configEntity, WorldDifficultyConfigComponent.CreateDefault());
-            }
-        }
-        
-        /// <summary>
-        /// Genera il livello tutorial in base all'indice selezionato
-        /// </summary>
-        private void GenerateTutorialLevel()
-        {
-            // Assicurati che l'indice sia valido
-            if (tutorialLevelIndex < 0 || tutorialLevelIndex >= tutorialSequence.Length)
-            {
-                Debug.LogError($"Invalid tutorial level index: {tutorialLevelIndex}. Must be between 0 and {tutorialSequence.Length - 1}");
-                tutorialLevelIndex = 0;
+                Debug.LogWarning("Nessuna sequenza tutorial definita!");
+                return;
             }
             
-            // Ottieni la configurazione del tutorial corrente
-            TutorialLevelSequence currentTutorial = tutorialSequence[tutorialLevelIndex];
-            
-            // Usa un seed casuale se non specificato
-            int actualSeed = seed == 0 ? UnityEngine.Random.Range(1, 99999) : seed;
-            
-            // Crea la richiesta di generazione livello runner con flag tutorial = true
-            _tutorialLevelEntity = _levelGenerationSystem.CreateRunnerLevelRequest(
-                currentTutorial.theme, 
-                currentTutorial.length, 
-                actualSeed, 
-                true);
-                
-            Debug.Log($"Tutorial level {tutorialLevelIndex}: \"{currentTutorial.description}\" generated with seed {actualSeed}");
-            
-            // Aggiungi un tag tutorial all'entità del livello per poterla identificare
-            _entityManager.AddComponentData(_tutorialLevelEntity, new TutorialLevelTag { 
-                TutorialIndex = tutorialLevelIndex 
+            // Crea un'entità singleton per marcare questo come livello tutorial
+            Entity tutorialLevelEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(tutorialLevelEntity, new TutorialLevelTag 
+            {
+                CurrentSequence = 0,
+                Completed = false
             });
             
-            // Aggiungi informazioni sul livello tutorial corrente
-            _entityManager.AddComponentData(_tutorialLevelEntity, new TutorialLevelInfoComponent {
-                Description = currentTutorial.description,
-                Difficulty = currentTutorial.difficulty,
-                IsLastTutorial = (tutorialLevelIndex == tutorialSequence.Length - 1)
-            });
+            // Configura il primo tutorial della sequenza
+            SetupTutorialScenarios(tutorialSequence[0]);
             
-            // Posiziona il giocatore all'inizio del tutorial
-            SetupPlayer();
-            
-            // Configura gli scenari di insegnamento specifici per questo livello tutorial
-            SetupTutorialScenarios(currentTutorial);
+            Debug.Log($"Tutorial inizializzato: {tutorialSequence[0].description}");
         }
         
         /// <summary>
-        /// Configura gli scenari di insegnamento specifici per questo livello tutorial
+        /// Avanza alla prossima sequenza tutorial
+        /// </summary>
+        public void AdvanceToNextTutorialSequence()
+        {
+            // Trova l'entità tutorial
+            var tutorialQuery = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<TutorialLevelTag>());
+            
+            if (tutorialQuery.CalculateEntityCount() == 0)
+            {
+                Debug.LogWarning("Nessun tutorial attivo trovato!");
+                return;
+            }
+            
+            Entity tutorialEntity = tutorialQuery.GetSingletonEntity();
+            var tutorialTag = _entityManager.GetComponentData<TutorialLevelTag>(tutorialEntity);
+            
+            int nextSequence = tutorialTag.CurrentSequence + 1;
+            
+            if (nextSequence >= tutorialSequence.Length)
+            {
+                // Completato tutti i tutorial
+                tutorialTag.Completed = true;
+                _entityManager.SetComponentData(tutorialEntity, tutorialTag);
+                Debug.Log("Tutte le sequenze tutorial completate!");
+                return;
+            }
+            
+            // Avanza alla prossima sequenza
+            tutorialTag.CurrentSequence = nextSequence;
+            _entityManager.SetComponentData(tutorialEntity, tutorialTag);
+            
+            // Pulisci scenari precedenti
+            CleanupPreviousScenarios();
+            
+            // Configura la nuova sequenza
+            SetupTutorialScenarios(tutorialSequence[nextSequence]);
+            
+            Debug.Log($"Avanzato alla sequenza tutorial: {tutorialSequence[nextSequence].description}");
+        }
+        
+        /// <summary>
+        /// Configura gli scenari tutorial per una sequenza
         /// </summary>
         private void SetupTutorialScenarios(TutorialLevelSequence tutorial)
         {
-            // Se non ci sono scenari configurati, esci
             if (tutorial.scenarios == null || tutorial.scenarios.Length == 0)
-                return;
-                
-            // Crea un buffer per gli scenari
-            var scenarioBuffer = _entityManager.AddBuffer<TutorialScenarioBuffer>(_tutorialLevelEntity);
-            
-            // Aggiungi tutti gli scenari al buffer
-            foreach (var scenario in tutorial.scenarios)
             {
-                // Crea il buffer principale per lo scenario
-                var scenarioEntity = _entityManager.CreateEntity();
+                Debug.LogWarning("Nessuno scenario definito per questo tutorial!");
+                return;
+            }
+            
+            _currentLevelLength = tutorial.length;
+            
+            // Crea entità e buffer per ogni scenario
+            for (int i = 0; i < tutorial.scenarios.Length; i++)
+            {
+                var scenario = tutorial.scenarios[i];
                 
-                // Aggiungi le informazioni di base dello scenario
-                var scenarioData = new TutorialScenarioBuffer {
-                    Name = scenario.name,
+                // Crea l'entità per lo scenario
+                Entity scenarioEntity = _entityManager.CreateEntity();
+                
+                // Aggiungi il componente principale dello scenario
+                _entityManager.AddComponentData(scenarioEntity, new TutorialScenarioComponent
+                {
+                    Name = new FixedString64Bytes(scenario.name),
                     DistanceFromStart = scenario.distanceFromStart,
-                    InstructionMessage = scenario.instructionMessage,
+                    InstructionMessage = new FixedString128Bytes(scenario.instructionMessage),
                     MessageDuration = scenario.messageDuration,
                     RandomPlacement = scenario.randomPlacement,
-                    ObstacleSpacing = scenario.obstacleSpacing > 0 ? scenario.obstacleSpacing : 5.0f, // Default 5 metri
-                    Triggered = false
-                };
+                    ObstacleSpacing = scenario.obstacleSpacing
+                });
                 
-                // Aggiungi il buffer al livello tutorial
-                scenarioBuffer.Add(scenarioData);
+                // Crea il buffer per gli ostacoli
+                var obstacleBuffer = _entityManager.AddBuffer<TutorialObstacleBuffer>(scenarioEntity);
                 
-                // Aggiungi un buffer separato per gli ostacoli
+                // Aggiungi tutti i tipi di ostacoli al buffer
                 if (scenario.obstacles != null && scenario.obstacles.Length > 0)
                 {
-                    var obstacleBuffer = _entityManager.AddBuffer<TutorialObstacleBuffer>(scenarioEntity);
-                    
-                    // Calcola l'offset iniziale per ogni tipo di ostacolo
-                    float currentOffset = 0;
-                    
-                    // Aggiungi tutti i tipi di ostacoli
                     foreach (var obstacle in scenario.obstacles)
                     {
-                        obstacleBuffer.Add(new TutorialObstacleBuffer {
-                            ObstacleCode = obstacle.obstacleCode,
+                        obstacleBuffer.Add(new TutorialObstacleBuffer
+                        {
+                            ObstacleCode = new FixedString32Bytes(obstacle.obstacleCode),
                             Count = obstacle.count,
                             Placement = (byte)obstacle.placement,
                             RandomizeHeight = obstacle.randomizeHeight,
+                            HeightRange = new float2(obstacle.heightRange.x, obstacle.heightRange.y),
                             RandomizeScale = obstacle.randomizeScale,
-                            StartOffset = currentOffset
+                            ScaleRange = new float2(obstacle.scaleRange.x, obstacle.scaleRange.y),
+                            StartOffset = obstacle.startOffset
                         });
-                        
-                        // Incrementa l'offset se gli ostacoli non sono posizionati casualmente
-                        if (!scenario.randomPlacement)
-                        {
-                            currentOffset += obstacle.count * scenario.obstacleSpacing;
-                        }
                     }
-                    
-                    // Collega lo scenario entity al livello tutorial
-                    _entityManager.AddComponentData(scenarioEntity, new ScenarioReference { 
-                        TutorialLevelEntity = _tutorialLevelEntity,
-                        ScenarioIndex = scenarioBuffer.Length - 1 // L'ultimo aggiunto
+                }
+                else
+                {
+                    // Aggiungi un ostacolo predefinito se non specificato
+                    var defaultSetup = ObstacleSetup.CreateDefault();
+                    obstacleBuffer.Add(new TutorialObstacleBuffer
+                    {
+                        ObstacleCode = new FixedString32Bytes(defaultSetup.obstacleCode),
+                        Count = defaultSetup.count,
+                        Placement = (byte)defaultSetup.placement,
+                        RandomizeHeight = defaultSetup.randomizeHeight,
+                        HeightRange = new float2(defaultSetup.heightRange.x, defaultSetup.heightRange.y),
+                        RandomizeScale = defaultSetup.randomizeScale,
+                        ScaleRange = new float2(defaultSetup.scaleRange.x, defaultSetup.scaleRange.y),
+                        StartOffset = defaultSetup.startOffset
                     });
                 }
             }
-            
-            Debug.Log($"Added {tutorial.scenarios.Length} teaching scenarios to tutorial level {tutorialLevelIndex}");
         }
         
         /// <summary>
-        /// Configura il giocatore all'inizio del tutorial
+        /// Pulisce gli scenari tutorial precedenti
         /// </summary>
-        private void SetupPlayer()
+        private void CleanupPreviousScenarios()
         {
-            // Trova il giocatore nella scena (in una implementazione reale, avrai un sistema più robusto)
-            var player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
+            // Trova tutte le entità scenario
+            var scenarioQuery = _entityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<TutorialScenarioComponent>()
+            );
+            
+            var scenarios = scenarioQuery.ToEntityArray(Allocator.Temp);
+            
+            // Rimuovi tutte le entità scenario
+            foreach (var entity in scenarios)
             {
-                // Posiziona il giocatore all'inizio del tutorial
-                player.transform.position = playerStartPosition;
-                
-                // Potrebbe essere necessario configurare altri aspetti del giocatore
-                // come velocità iniziale ridotta, invulnerabilità temporanea, ecc.
-                
-                Debug.Log($"Player positioned at {playerStartPosition}");
+                _entityManager.DestroyEntity(entity);
             }
-            else
-            {
-                Debug.LogWarning("Player not found in scene. Cannot set up tutorial starting position.");
-            }
+            
+            scenarios.Dispose();
+            
+            // Trova tutti gli ostacoli del tutorial e rimuovili
+            var obstacleQuery = _entityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<ObstacleTag>(),
+                ComponentType.ReadOnly<ObstacleTypeComponent>()
+            );
+            
+            _entityManager.DestroyEntity(obstacleQuery);
         }
         
-        private void OnDestroy()
+        /// <summary>
+        /// Visualizza gizmo per debug nel mondo
+        /// </summary>
+        private void OnDrawGizmos()
         {
-            // Pulizia quando si esce dal tutorial (se necessario)
-            if (_entityManager.Exists(_tutorialLevelEntity))
+            if (!showDebugGizmos || tutorialSequence == null)
+                return;
+                
+            Vector3 startPos = transform.position;
+            
+            // Per ogni tutorial nella sequenza
+            for (int t = 0; t < tutorialSequence.Length; t++)
             {
-                _entityManager.DestroyEntity(_tutorialLevelEntity);
+                var tutorial = tutorialSequence[t];
+                
+                if (tutorial.scenarios == null)
+                    continue;
+                    
+                // Per ogni scenario nel tutorial
+                for (int i = 0; i < tutorial.scenarios.Length; i++)
+                {
+                    var scenario = tutorial.scenarios[i];
+                    
+                    // Colore diverso per ogni scenario
+                    Color scenarioColor = new Color(
+                        0.2f + (i % 3) * 0.25f,
+                        0.2f + ((i + 1) % 3) * 0.25f,
+                        0.2f + ((i + 2) % 3) * 0.25f,
+                        0.7f
+                    );
+                    
+                    Gizmos.color = scenarioColor;
+                    
+                    // Disegna una linea orizzontale all'inizio dello scenario
+                    Vector3 scenarioStart = startPos + new Vector3(0, 0, scenario.distanceFromStart);
+                    Gizmos.DrawLine(
+                        scenarioStart + new Vector3(-5, 0, 0),
+                        scenarioStart + new Vector3(5, 0, 0)
+                    );
+                    
+                    // Disegna un punto per ogni ostacolo
+                    if (scenario.obstacles != null)
+                    {
+                        foreach (var obstacleSetup in scenario.obstacles)
+                        {
+                            // Usa un colore leggermente diverso per ogni tipo di ostacolo
+                            Color obstacleColor = scenarioColor;
+                            obstacleColor.r = Mathf.Clamp01(obstacleColor.r + 0.2f);
+                            obstacleColor.g = Mathf.Clamp01(obstacleColor.g - 0.1f);
+                            Gizmos.color = obstacleColor;
+                            
+                            float startZ = scenario.distanceFromStart + obstacleSetup.startOffset;
+                            
+                            // Posizionamento in base al tipo
+                            for (int j = 0; j < obstacleSetup.count; j++)
+                            {
+                                float xPos = 0;
+                                switch (obstacleSetup.placement)
+                                {
+                                    case ObstaclePlacement.Center:
+                                        xPos = 0;
+                                        break;
+                                    case ObstaclePlacement.Left:
+                                        xPos = -3;
+                                        break;
+                                    case ObstaclePlacement.Right:
+                                        xPos = 3;
+                                        break;
+                                    case ObstaclePlacement.Pattern:
+                                        // Distribuzione uniforme degli ostacoli in un pattern attraverso la corsia
+                                        float pattern = (float)j / Mathf.Max(1, (float)(obstacleSetup.count - 1));
+                                        xPos = Mathf.Lerp(-4.5f, 4.5f, pattern);
+                                        break;
+                                    case ObstaclePlacement.Random:
+                                        // Per debug, mostra in posizioni equidistanti
+                                        xPos = Mathf.Lerp(-4.5f, 4.5f, (float)j / Mathf.Max(1, (float)obstacleSetup.count));
+                                        break;
+                                }
+                                
+                                float zPos;
+                                if (scenario.randomPlacement)
+                                {
+                                    // Per debug, mostra in posizioni equidistanti
+                                    zPos = startZ + (j * (scenario.obstacleSpacing / 2));
+                                }
+                                else
+                                {
+                                    zPos = startZ + (j * scenario.obstacleSpacing);
+                                }
+                                
+                                Vector3 obstaclePos = startPos + new Vector3(xPos, 0, zPos);
+                                float radius = 0.5f;
+                                
+                                // Scala il raggio se randomizeScale è attivo
+                                if (obstacleSetup.randomizeScale)
+                                {
+                                    radius = 0.5f * (obstacleSetup.scaleRange.x + obstacleSetup.scaleRange.y) / 2;
+                                }
+                                
+                                Gizmos.DrawSphere(obstaclePos, radius);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
     
     /// <summary>
-    /// Tag per identificare i livelli tutorial
+    /// Definisce una sequenza di livelli tutorial
     /// </summary>
-    public struct TutorialLevelTag : IComponentData { }
+    [Serializable]
+    public class TutorialLevelSequence
+    {
+        [Tooltip("Descrizione della sequenza tutorial")]
+        public string description;
+        
+        [Tooltip("Tema del mondo per questo tutorial")]
+        public WorldTheme theme;
+        
+        [Tooltip("Lunghezza del livello in metri")]
+        public float length = 500f;
+        
+        [Tooltip("Livello di difficoltà (1-10)")]
+        [Range(1, 10)]
+        public int difficulty = 1;
+        
+        [Tooltip("Scenari di insegnamento per questo tutorial")]
+        public TutorialScenario[] scenarios;
+    }
+    
+    /// <summary>
+    /// Temi di mondo disponibili
+    /// </summary>
+    public enum WorldTheme
+    {
+        Tutorial,
+        City,
+        Forest,
+        Tundra,
+        Volcano,
+        Abyss,
+        Virtual
+    }
 }

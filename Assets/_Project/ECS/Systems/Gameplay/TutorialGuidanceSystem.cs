@@ -1,650 +1,353 @@
+// Path: TutorialGuidanceSystem.cs
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Collections;
+using Unity.Burst;
+using Unity.Jobs;
+using System;
 using UnityEngine;
-using RunawayHeroes.ECS.Components.World;
+using Random = Unity.Mathematics.Random;
 using RunawayHeroes.ECS.Components.Gameplay;
-using RunawayHeroes.ECS.Components.World.Obstacles;
+using RunawayHeroes.ECS.Components.Core;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
     /// <summary>
-    /// Sistema responsabile della gestione delle meccaniche di tutorial,
-    /// fornendo istruzioni al giocatore e assicurando un'esperienza guidata.
+    /// Sistema che gestisce l'avanzamento del tutorial e la generazione degli scenari didattici
     /// </summary>
-    [UpdateAfter(typeof(DifficultySystem))]
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     public partial class TutorialGuidanceSystem : SystemBase
     {
-        // Sezioni del tutorial
-        private enum TutorialSection
-        {
-            Introduction,     // Introduzione ai controlli base
-            BasicMovement,    // Movimento base (corsa)
-            JumpingSection,   // Salti semplici
-            SlidingSection,   // Scivolate sotto ostacoli
-            SideStepSection,  // Passi laterali
-            CombinedMoves,    // Combinazione di mosse
-            Completion        // Completamento del tutorial
-        }
+        private EntityQuery _activePlayerQuery;
+        private EntityQuery _scenarioQuery;
+        private EntityCommandBufferSystem _endSimulationECBSystem;
+        private Random _random;
+        private uint _seed;
         
-        private TutorialSection _currentSection = TutorialSection.Introduction;
-        private EntityQuery _playerQuery;
-        private EntityQuery _tutorialQuery;
-        private Entity _tutorialLevelEntity;
-        private float _tutorialProgress = 0f;
-        private float _timeInCurrentSection = 0f;
-        private const float SECTION_TRANSITION_TIME = 5.0f; // Secondi tra sezioni
-        
-        // Riferimento per l'UI del tutorial (in un progetto reale questo sarebbe gestito da un sistema UI)
-        private GameObject _tutorialUIObject;
-        private UnityEngine.UI.Text _tutorialText;
+        // Costanti per il posizionamento degli ostacoli
+        private const float LANE_WIDTH = 9f; // Larghezza totale della corsia
+        private const float LEFT_POSITION = -3f; // Posizione laterale sinistra
+        private const float CENTER_POSITION = 0f; // Posizione centrale
+        private const float RIGHT_POSITION = 3f; // Posizione laterale destra
         
         protected override void OnCreate()
         {
-            // Crea query per il giocatore
-            _playerQuery = GetEntityQuery(ComponentType.ReadOnly<PlayerTag>());
+            base.OnCreate();
             
-            // Crea query per il livello tutorial
-            _tutorialQuery = GetEntityQuery(ComponentType.ReadOnly<TutorialLevelTag>());
+            // Inizializza il generatore di numeri casuali
+            _seed = (uint)UnityEngine.Random.Range(1, 1000000);
+            _random = new Random(_seed);
             
-            // Richiedi aggiornamento solo se c'è un livello tutorial attivo
-            RequireForUpdate<TutorialLevelTag>();
-        }
-
-        protected override void OnStartRunning()
-        {
-            // Cerca l'entità del livello tutorial
-            if (_tutorialQuery.HasAnyEntities())
-            {
-                _tutorialLevelEntity = _tutorialQuery.GetSingletonEntity();
-                
-                // Ottieni informazioni sul tutorial corrente
-                var tutorialTag = GetComponent<TutorialLevelTag>(_tutorialLevelEntity);
-                var tutorialInfo = GetComponent<TutorialLevelInfoComponent>(_tutorialLevelEntity);
-                
-                Debug.Log($"Starting Tutorial #{tutorialTag.TutorialIndex}: {tutorialInfo.Description}");
-                
-                // Inizializza l'UI del tutorial (in un progetto reale, questo sarebbe fatto attraverso un sistema UI)
-                InitializeTutorialUI();
-                
-                // Avvia il tutorial
-                StartTutorial(tutorialTag.TutorialIndex, tutorialInfo);
-            }
+            // Configura query per il giocatore attivo
+            _activePlayerQuery = GetEntityQuery(
+                ComponentType.ReadOnly<PlayerTag>(),
+                ComponentType.ReadOnly<ActiveTag>(),
+                ComponentType.ReadOnly<TransformComponent>()
+            );
+            
+            // Configura query per gli scenari di tutorial
+            _scenarioQuery = GetEntityQuery(
+                ComponentType.ReadOnly<TutorialScenarioComponent>(),
+                ComponentType.ReadOnly<TutorialObstacleBuffer>()
+            );
+            
+            // Buffer per le operazioni di entità
+            _endSimulationECBSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            
+            // Richiedi aggiornamento solo quando esiste un giocatore attivo
+            RequireForUpdate(_activePlayerQuery);
         }
         
         protected override void OnUpdate()
         {
-            // Aggiorna il tempo nella sezione corrente
-            _timeInCurrentSection += Time.DeltaTime;
-            
-            // Ottieni la posizione del giocatore
-            if (_playerQuery.HasAnyEntities())
-            {
-                Entity playerEntity = _playerQuery.GetSingletonEntity();
-                LocalTransform playerTransform = GetComponent<LocalTransform>(playerEntity);
-                
-                // Aggiorna il progresso del tutorial in base alla posizione del giocatore
-                _tutorialProgress = playerTransform.Position.z / 500f; // Assumiamo 500 metri di lunghezza tutorial
-                
-                // Gestisci la progressione del tutorial
-                UpdateTutorialProgression(playerEntity, playerTransform);
-            }
-            
-            // Aggiorna l'UI del tutorial (in un progetto reale, questo sarebbe fatto attraverso eventi o un sistema UI)
-            UpdateTutorialUI();
-        }
-        
-        /// <summary>
-        /// Inizializza l'UI del tutorial
-        /// </summary>
-        private void InitializeTutorialUI()
-        {
-            // Questo è solo uno stub - in un progetto reale, questo dovrebbe cercare e configurare l'UI effettiva
-            Debug.Log("Tutorial UI initialized");
-            
-            // Cerca l'oggetto UI tutorial (in un progetto reale sarebbe un riferimento)
-            _tutorialUIObject = GameObject.Find("TutorialUI");
-            
-            if (_tutorialUIObject != null)
-            {
-                _tutorialText = _tutorialUIObject.GetComponentInChildren<UnityEngine.UI.Text>();
-                _tutorialUIObject.SetActive(true);
-            }
-            else
-            {
-                Debug.LogWarning("Tutorial UI not found. Creating a temporary text display.");
-                
-                // Crea un oggetto UI temporaneo (solo per debug)
-                _tutorialUIObject = new GameObject("TutorialUI");
-                var canvas = _tutorialUIObject.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                
-                var textObj = new GameObject("TutorialText");
-                textObj.transform.SetParent(_tutorialUIObject.transform);
-                _tutorialText = textObj.AddComponent<UnityEngine.UI.Text>();
-                _tutorialText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                _tutorialText.fontSize = 24;
-                _tutorialText.alignment = TextAnchor.MiddleCenter;
-                
-                var rectTransform = textObj.GetComponent<RectTransform>();
-                rectTransform.anchorMin = new Vector2(0.5f, 0.8f);
-                rectTransform.anchorMax = new Vector2(0.5f, 0.9f);
-                rectTransform.sizeDelta = new Vector2(600, 80);
-                rectTransform.anchoredPosition = Vector2.zero;
-            }
-        }
-        
-        /// <summary>
-        /// Avvia il tutorial in base all'indice
-        /// </summary>
-        private void StartTutorial(int tutorialIndex, TutorialLevelInfoComponent tutorialInfo)
-        {
-            _currentSection = TutorialSection.Introduction;
-            _timeInCurrentSection = 0f;
-            
-            // Mostra il messaggio di avvio appropriato in base al tutorial
-            switch (tutorialIndex)
-            {
-                case 0: // Tutorial 1: Comandi Base
-                    ShowTutorialMessage("Tutorial 1: Comandi Base\nUsa le frecce per muoverti.");
-                    break;
-                    
-                case 1: // Tutorial 2: Ostacoli Avanzati
-                    ShowTutorialMessage("Tutorial 2: Ostacoli Avanzati\nImpariamo a superare ostacoli più complessi.");
-                    break;
-                    
-                case 2: // Tutorial 3: Nemici
-                    ShowTutorialMessage("Tutorial 3: Nemici\nImpariamo ad affrontare gli avversari.");
-                    break;
-                    
-                case 3: // Tutorial 4: Abilità Speciali
-                    ShowTutorialMessage("Tutorial 4: Abilità Speciali\nScopriamo i poteri unici del tuo personaggio.");
-                    break;
-                    
-                default:
-                    ShowTutorialMessage($"Tutorial {tutorialIndex + 1}: {tutorialInfo.Description}\nPreparati a imparare nuove abilità!");
-                    break;
-            }
-            
-            // Altre inizializzazioni...
-            Debug.Log($"Tutorial {tutorialIndex} started with difficulty {tutorialInfo.Difficulty}");
-            
-            // Verifichiamo se ci sono scenari di insegnamento specifici
-            CheckForTeachingScenarios();
-        }
-        
-        /// <summary>
-        /// Controlla se ci sono scenari di insegnamento per questo tutorial
-        /// </summary>
-        private void CheckForTeachingScenarios()
-        {
-            if (!EntityManager.HasBuffer<TutorialScenarioBuffer>(_tutorialLevelEntity))
+            if (!SystemAPI.HasSingleton<TutorialLevelTag>())
                 return;
                 
-            var scenarios = EntityManager.GetBuffer<TutorialScenarioBuffer>(_tutorialLevelEntity);
-            Debug.Log($"Found {scenarios.Length} teaching scenarios for this tutorial");
-        }
-        
-        /// <summary>
-        /// Aggiorna l'UI del tutorial
-        /// </summary>
-        private void UpdateTutorialUI()
-        {
-            if (_tutorialText != null)
+            var commandBuffer = _endSimulationECBSystem.CreateCommandBuffer().AsParallelWriter();
+            var playerEntities = _activePlayerQuery.ToEntityArray(Allocator.TempJob);
+            
+            if (playerEntities.Length == 0)
             {
-                // Aggiungi un indicatore di progresso
-                _tutorialText.text += $"\n\nProgresso: {Mathf.Floor(_tutorialProgress * 100)}%";
+                playerEntities.Dispose();
+                return;
             }
-        }
-        
-        /// <summary>
-        /// Gestisce la progressione del tutorial in base alla posizione e alla sezione
-        /// </summary>
-        private void UpdateTutorialProgression(Entity playerEntity, LocalTransform playerTransform)
-        {
-            // Logica di progressione basata sul tempo e sulla posizione
-            switch (_currentSection)
-            {
-                case TutorialSection.Introduction:
-                    if (_timeInCurrentSection > SECTION_TRANSITION_TIME || _tutorialProgress > 0.1f)
+            
+            var playerEntity = playerEntities[0];
+            var playerPosition = SystemAPI.GetComponent<TransformComponent>(playerEntity).Position;
+            playerEntities.Dispose();
+            
+            float3 playerPos = playerPosition;
+            
+            // Controlla se il giocatore ha raggiunto nuovi scenari
+            Entities
+                .WithAll<TutorialScenarioComponent>()
+                .WithNone<TriggeredTag>()
+                .ForEach((Entity entity, int entityInQueryIndex, 
+                          ref TutorialScenarioComponent scenario,
+                          in DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer) => 
+                {
+                    // Se il giocatore ha raggiunto la distanza di inizio scenario
+                    if (playerPos.z >= scenario.DistanceFromStart)
                     {
-                        AdvanceToSection(TutorialSection.BasicMovement);
-                    }
-                    break;
-                    
-                case TutorialSection.BasicMovement:
-                    if (_timeInCurrentSection > SECTION_TRANSITION_TIME || _tutorialProgress > 0.2f)
-                    {
-                        AdvanceToSection(TutorialSection.JumpingSection);
+                        // Marca questo scenario come attivato
+                        commandBuffer.AddComponent<TriggeredTag>(entityInQueryIndex, entity);
                         
-                        // Crea configurazioni per barriere basse da saltare
-                        ObstacleSetup[] jumpObstacles = new ObstacleSetup[]
+                        // Mostra messaggio di istruzione
+                        if (!string.IsNullOrEmpty(scenario.InstructionMessage))
                         {
-                            // Barriera bassa standard
-                            new ObstacleSetup
-                            {
-                                Type = "U01",
-                                Placement = PlacementStrategy.Center,
-                                HeightOffset = 0f,
-                                Scale = 1.0f,
-                                RandomizeHeight = false,
-                                RandomizeScale = false
-                            }
-                        };
-                        
-                        // Spawna gli ostacoli da saltare
-                        SpawnTutorialObstaclesAdvanced(jumpObstacles, playerTransform.Position.z + 20f, 3);
-                    }
-                    break;
-                    
-                case TutorialSection.JumpingSection:
-                    if (_timeInCurrentSection > SECTION_TRANSITION_TIME || _tutorialProgress > 0.4f)
-                    {
-                        AdvanceToSection(TutorialSection.SlidingSection);
-                        
-                        // Crea configurazioni per più tipi di ostacoli da scivolare sotto
-                        ObstacleSetup[] slidingObstacles = new ObstacleSetup[]
-                        {
-                            // Barriera alta standard al centro
-                            new ObstacleSetup
-                            {
-                                Type = "U02",
-                                Placement = PlacementStrategy.Center,
-                                HeightOffset = 0f,
-                                Scale = 1.0f,
-                                RandomizeHeight = false,
-                                RandomizeScale = false
-                            },
+                            // Qui andrebbe implementata la logica per mostrare il messaggio UI
+                            // Es. entityCommandBuffer.AddComponent(entityInQueryIndex, uiEntity, 
+                            //     new UIMessageComponent { 
+                            //         Message = scenario.InstructionMessage,
+                            //         Duration = scenario.MessageDuration 
+                            //     });
                             
-                            // Barriera più alta a sinistra o destra con altezza variabile
-                            new ObstacleSetup
-                            {
-                                Type = "U02",
-                                Placement = PlacementStrategy.Random,
-                                HeightOffset = 0.2f,
-                                Scale = 1.2f,
-                                RandomizeHeight = true,
-                                MinHeightOffset = 0.1f,
-                                MaxHeightOffset = 0.3f,
-                                RandomizeScale = true,
-                                MinScale = 1.1f,
-                                MaxScale = 1.3f
-                            }
-                        };
-                        
-                        // Spawna gli ostacoli con configurazioni multiple
-                        SpawnTutorialObstaclesAdvanced(slidingObstacles, playerTransform.Position.z + 20f, 3);
-                    }
-                    break;
-                    
-                case TutorialSection.SlidingSection:
-                    if (_timeInCurrentSection > SECTION_TRANSITION_TIME || _tutorialProgress > 0.6f)
-                    {
-                        AdvanceToSection(TutorialSection.SideStepSection);
-                        
-                        // Crea configurazioni per ostacoli laterali
-                        ObstacleSetup[] lateralObstacles = new ObstacleSetup[]
-                        {
-                            // Ostacolo sul lato sinistro
-                            new ObstacleSetup
-                            {
-                                Type = "U04",
-                                Placement = PlacementStrategy.Left,
-                                HeightOffset = 0f,
-                                Scale = 1.0f,
-                                RandomizeHeight = false,
-                                RandomizeScale = false
-                            },
-                            
-                            // Ostacolo sul lato destro
-                            new ObstacleSetup
-                            {
-                                Type = "U04",
-                                Placement = PlacementStrategy.Right,
-                                HeightOffset = 0f,
-                                Scale = 1.0f,
-                                RandomizeHeight = false,
-                                RandomizeScale = false
-                            }
-                        };
-                        
-                        // Spawna gli ostacoli laterali alternati
-                        SpawnTutorialObstaclesAdvanced(lateralObstacles, playerTransform.Position.z + 20f, 3);
-                    }
-                    break;
-                    
-                case TutorialSection.SideStepSection:
-                    if (_timeInCurrentSection > SECTION_TRANSITION_TIME || _tutorialProgress > 0.8f)
-                    {
-                        AdvanceToSection(TutorialSection.CombinedMoves);
-                        
-                        // Sequenza di ostacoli con pattern
-                        
-                        // 1. Pattern di barriere basse distribuite
-                        var lowBarriers = new ObstacleSetup[]
-                        {
-                            new ObstacleSetup
-                            {
-                                Type = "U01",
-                                Placement = PlacementStrategy.Pattern, // Distribuite sulla larghezza
-                                HeightOffset = 0f,
-                                Scale = 0.8f,
-                                RandomizeHeight = false,
-                                RandomizeScale = true,
-                                MinScale = 0.7f,
-                                MaxScale = 0.9f
-                            }
-                        };
-                        SpawnTutorialObstaclesAdvanced(lowBarriers, playerTransform.Position.z + 20f, 3);
-                        
-                        // 2. Barriera alta al centro con scala maggiore
-                        var highBarrier = new ObstacleSetup[]
-                        {
-                            new ObstacleSetup
-                            {
-                                Type = "U02",
-                                Placement = PlacementStrategy.Center,
-                                HeightOffset = 0.1f,
-                                Scale = 1.3f,
-                                RandomizeHeight = false,
-                                RandomizeScale = false
-                            }
-                        };
-                        SpawnTutorialObstaclesAdvanced(highBarrier, playerTransform.Position.z + 30f, 1);
-                        
-                        // 3. Combinazione di ostacoli laterali con diversi tipi
-                        var mixedObstacles = new ObstacleSetup[]
-                        {
-                            new ObstacleSetup
-                            {
-                                Type = "U01", // Barriera bassa
-                                Placement = PlacementStrategy.Left,
-                                HeightOffset = 0f,
-                                Scale = 1.0f
-                            },
-                            new ObstacleSetup
-                            {
-                                Type = "U02", // Barriera alta
-                                Placement = PlacementStrategy.Right,
-                                HeightOffset = 0.1f,
-                                Scale = 0.9f
-                            },
-                            new ObstacleSetup
-                            {
-                                Type = "U04", // Ostacolo laterale
-                                Placement = PlacementStrategy.Center,
-                                HeightOffset = 0f,
-                                Scale = 1.0f,
-                                RandomizeHeight = true,
-                                MinHeightOffset = 0f,
-                                MaxHeightOffset = 0.2f
-                            }
-                        };
-                        SpawnTutorialObstaclesAdvanced(mixedObstacles, playerTransform.Position.z + 40f, 3);
-                    }
-                    break;
-                    
-                case TutorialSection.CombinedMoves:
-                    if (_timeInCurrentSection > SECTION_TRANSITION_TIME || _tutorialProgress > 0.95f)
-                    {
-                        AdvanceToSection(TutorialSection.Completion);
-                    }
-                    break;
-                    
-                case TutorialSection.Completion:
-                    // Gestisci il completamento del tutorial
-                    if (_tutorialProgress >= 1.0f)
-                    {
-                        CompleteTutorial();
-                    }
-                    break;
-            }
-        }
-        
-        /// <summary>
-        /// Avanza alla sezione specificata del tutorial
-        /// </summary>
-        private void AdvanceToSection(TutorialSection newSection)
-        {
-            _currentSection = newSection;
-            _timeInCurrentSection = 0f;
-            
-            // Mostra il messaggio appropriato per la nuova sezione
-            switch (newSection)
-            {
-                case TutorialSection.BasicMovement:
-                    ShowTutorialMessage("Ottimo! Ora continua a correre verso la fine del percorso.");
-                    break;
-                    
-                case TutorialSection.JumpingSection:
-                    ShowTutorialMessage("Premi SPAZIO per saltare sopra le barriere basse.");
-                    break;
-                    
-                case TutorialSection.SlidingSection:
-                    ShowTutorialMessage("Premi GIÙ per scivolare sotto le barriere alte.");
-                    break;
-                    
-                case TutorialSection.SideStepSection:
-                    ShowTutorialMessage("Premi SINISTRA o DESTRA per evitare gli ostacoli laterali.");
-                    break;
-                    
-                case TutorialSection.CombinedMoves:
-                    ShowTutorialMessage("Ora prova a combinare i movimenti per superare ostacoli in sequenza.");
-                    break;
-                    
-                case TutorialSection.Completion:
-                    ShowTutorialMessage("Ottimo lavoro! Hai quasi completato il tutorial.");
-                    break;
-            }
-            
-            Debug.Log($"Advanced to tutorial section: {newSection}");
-        }
-        
-        /// <summary>
-        /// Mostra un messaggio nell'interfaccia del tutorial
-        /// </summary>
-        private void ShowTutorialMessage(string message)
-        {
-            if (_tutorialText != null)
-            {
-                _tutorialText.text = message;
-            }
-            
-            Debug.Log($"Tutorial message: {message}");
-        }
-        
-        /// <summary>
-        /// Completa il tutorial
-        /// </summary>
-        private void CompleteTutorial()
-        {
-            ShowTutorialMessage("Congratulazioni! Hai completato il tutorial.\nOra sei pronto per l'avventura!");
-            
-            // Logica aggiuntiva per il completamento del tutorial
-            Debug.Log("Tutorial completed!");
-            
-            // In un gioco reale, qui si potrebbe sbloccare il primo livello, mostrare una sequenza narrativa, ecc.
-        }
-        
-        /// <summary>
-        /// Definizione di configurazione per un singolo ostacolo
-        /// </summary>
-        private struct ObstacleSetup
-        {
-            // Tipo di ostacolo da generare
-            public string Type;
-            
-            // Strategia di posizionamento
-            public PlacementStrategy Placement;
-            
-            // Offset verticale (altezza)
-            public float HeightOffset;
-            
-            // Scala dell'ostacolo (1.0f = dimensione normale)
-            public float Scale;
-            
-            // Se l'altezza deve essere randomizzata in un range
-            public bool RandomizeHeight;
-            
-            // Range min per randomizzazione altezza
-            public float MinHeightOffset;
-            
-            // Range max per randomizzazione altezza
-            public float MaxHeightOffset;
-            
-            // Se la scala deve essere randomizzata in un range
-            public bool RandomizeScale;
-            
-            // Range min per randomizzazione scala
-            public float MinScale;
-            
-            // Range max per randomizzazione scala
-            public float MaxScale;
-            
-            /// <summary>
-            /// Crea un setup standard per un tipo di ostacolo
-            /// </summary>
-            public static ObstacleSetup CreateDefault(string type)
-            {
-                return new ObstacleSetup
-                {
-                    Type = type,
-                    Placement = PlacementStrategy.Center,
-                    HeightOffset = 0f,
-                    Scale = 1.0f,
-                    RandomizeHeight = false,
-                    MinHeightOffset = 0f,
-                    MaxHeightOffset = 0f,
-                    RandomizeScale = false,
-                    MinScale = 1.0f,
-                    MaxScale = 1.0f
-                };
-            }
-        }
-        
-        /// <summary>
-        /// Strategie di posizionamento degli ostacoli
-        /// </summary>
-        private enum PlacementStrategy
-        {
-            Center,     // Al centro della corsia
-            Left,       // A sinistra
-            Right,      // A destra
-            Random,     // Posizione casuale tra sinistra e destra
-            Pattern     // Pattern specifico (per più ostacoli)
-        }
-        
-        /// <summary>
-        /// Spawna ostacoli specifici per il tutorial con supporto per più tipi e strategie di posizionamento
-        /// </summary>
-        private void SpawnTutorialObstacles(string obstacleCode, float zPosition, int count)
-        {
-            // Crea una configurazione di default per l'ostacolo richiesto
-            var setup = ObstacleSetup.CreateDefault(obstacleCode);
-            
-            // Genera gli ostacoli con la configurazione di default
-            SpawnTutorialObstaclesAdvanced(new ObstacleSetup[] { setup }, zPosition, count);
-        }
-        
-        /// <summary>
-        /// Spawna ostacoli complessi per il tutorial con supporto per configurazioni multiple
-        /// </summary>
-        private void SpawnTutorialObstaclesAdvanced(ObstacleSetup[] setups, float zPosition, int count)
-        {
-            // Questa funzione dovrebbe essere gestita da un sistema dedicato al posizionamento di ostacoli
-            // Ma per semplicità, qui implementiamo direttamente
-            
-            var commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-            var random = new Unity.Mathematics.Random((uint)System.DateTime.Now.Ticks);
-            
-            // Larghezza totale della corsia del giocatore
-            const float LANE_WIDTH = 6.0f;
-            
-            // Per ogni ostacolo da generare
-            for (int i = 0; i < count; i++)
-            {
-                // Per configurazioni multiple, seleziona una configurazione casuale
-                ObstacleSetup setup = setups[random.NextInt(0, setups.Length)];
-                
-                // Calcola la posizione in base alla strategia di posizionamento
-                float xPosition = 0f;
-                
-                switch (setup.Placement)
-                {
-                    case PlacementStrategy.Center:
-                        xPosition = 0f;
-                        break;
-                        
-                    case PlacementStrategy.Left:
-                        xPosition = -LANE_WIDTH / 3f;
-                        break;
-                        
-                    case PlacementStrategy.Right:
-                        xPosition = LANE_WIDTH / 3f;
-                        break;
-                        
-                    case PlacementStrategy.Random:
-                        xPosition = random.NextFloat(-LANE_WIDTH / 2f, LANE_WIDTH / 2f);
-                        break;
-                        
-                    case PlacementStrategy.Pattern:
-                        // Per pattern distribuiti, posiziona in base all'indice
-                        if (count > 1)
-                        {
-                            // Distribuisce in modo uniforme su tutta la larghezza
-                            xPosition = math.lerp(-LANE_WIDTH / 2f, LANE_WIDTH / 2f, (float)i / (count - 1));
+                            UnityEngine.Debug.Log($"[Tutorial] Messaggio: {scenario.InstructionMessage}");
                         }
-                        else
-                        {
-                            xPosition = 0f;
-                        }
-                        break;
-                }
-                
-                // Determina l'altezza dell'ostacolo (randomizzata o fissa)
-                float heightOffset = setup.HeightOffset;
-                if (setup.RandomizeHeight)
-                {
-                    heightOffset = random.NextFloat(setup.MinHeightOffset, setup.MaxHeightOffset);
-                }
-                
-                // Determina la scala dell'ostacolo (randomizzata o fissa)
-                float scale = setup.Scale;
-                if (setup.RandomizeScale)
-                {
-                    scale = random.NextFloat(setup.MinScale, setup.MaxScale);
-                }
-                
-                // Posizione finale dell'ostacolo
-                float3 position = new float3(
-                    xPosition,
-                    heightOffset,
-                    zPosition + i * 5.0f  // Distanziati 5 metri
-                );
-                
-                // Crea l'ostacolo usando la factory
-                ObstacleFactory.CreateObstacle(
+                        
+                        // Genera gli ostacoli per questo scenario
+                        SpawnObstaclesForScenario(commandBuffer, entityInQueryIndex, scenario, obstacleBuffer);
+                    }
+                })
+                .ScheduleParallel();
+            
+            _endSimulationECBSystem.AddJobHandleForProducer(Dependency);
+        }
+        
+        /// <summary>
+        /// Genera gli ostacoli per uno scenario di tutorial
+        /// </summary>
+        private void SpawnObstaclesForScenario(
+            EntityCommandBuffer.ParallelWriter commandBuffer,
+            int entityInQueryIndex,
+            TutorialScenarioComponent scenario,
+            DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer)
+        {
+            // Genera ostacoli per ogni configurazione nel buffer
+            for (int i = 0; i < obstacleBuffer.Length; i++)
+            {
+                var obstacleSetup = obstacleBuffer[i];
+                SpawnTutorialObstaclesAdvanced(
                     commandBuffer,
-                    setup.Type,
-                    position,
-                    quaternion.identity,
+                    entityInQueryIndex,
+                    scenario.DistanceFromStart + obstacleSetup.StartOffset,
+                    scenario.ObstacleSpacing,
+                    scenario.RandomPlacement,
+                    obstacleSetup
+                );
+            }
+        }
+
+        /// <summary>
+        /// Genera ostacoli per un tutorial con impostazioni avanzate
+        /// </summary>
+        private void SpawnTutorialObstaclesAdvanced(
+            EntityCommandBuffer.ParallelWriter commandBuffer,
+            int entityInQueryIndex,
+            float startZ,
+            float spacing,
+            bool randomPlacement,
+            TutorialObstacleBuffer obstacleSetup)
+        {
+            // Crea un nuovo seed per ogni chiamata per evitare pattern ripetuti
+            uint localSeed = _seed + (uint)(obstacleSetup.ObstacleCode.GetHashCode() + entityInQueryIndex);
+            var random = new Random(localSeed);
+            
+            for (int i = 0; i < obstacleSetup.Count; i++)
+            {
+                // Calcola la posizione Z (avanzamento)
+                float zPos;
+                if (randomPlacement)
+                {
+                    // Posizionamento casuale lungo un segmento di percorso
+                    float segmentLength = spacing * obstacleSetup.Count;
+                    zPos = startZ + random.NextFloat(0, segmentLength);
+                }
+                else
+                {
+                    // Posizionamento a intervalli regolari
+                    zPos = startZ + (i * spacing);
+                }
+                
+                // Calcola la posizione X (laterale) in base al tipo di posizionamento
+                float xPos = 0;
+                switch (obstacleSetup.Placement)
+                {
+                    case 0: // Center
+                        xPos = CENTER_POSITION;
+                        break;
+                    case 1: // Left
+                        xPos = LEFT_POSITION;
+                        break;
+                    case 2: // Right
+                        xPos = RIGHT_POSITION;
+                        break;
+                    case 3: // Random
+                        xPos = random.NextFloat(-LANE_WIDTH/2f, LANE_WIDTH/2f);
+                        break;
+                    case 4: // Pattern
+                        // Distribuzione uniforme degli ostacoli in un pattern attraverso la corsia
+                        float pattern = (float)i / (float)(obstacleSetup.Count - 1);
+                        xPos = math.lerp(-LANE_WIDTH/2f, LANE_WIDTH/2f, pattern);
+                        break;
+                }
+                
+                // Calcola altezza e scala in base alle impostazioni
+                float height = 1.0f; // Altezza predefinita
+                if (obstacleSetup.RandomizeHeight)
+                {
+                    // Genera un'altezza casuale nel range definito
+                    float minHeight = math.max(0.3f, obstacleSetup.HeightRange.x);
+                    float maxHeight = math.max(minHeight, obstacleSetup.HeightRange.y);
+                    height = random.NextFloat(minHeight, maxHeight);
+                }
+                
+                float scale = 1.0f; // Scala predefinita
+                if (obstacleSetup.RandomizeScale)
+                {
+                    // Genera una scala casuale nel range definito
+                    float minScale = math.max(0.5f, obstacleSetup.ScaleRange.x);
+                    float maxScale = math.max(minScale, obstacleSetup.ScaleRange.y);
+                    scale = random.NextFloat(minScale, maxScale);
+                }
+                
+                // Crea l'entità ostacolo tramite il factory
+                Entity obstacleEntity = SpawnObstacle(
+                    commandBuffer,
+                    entityInQueryIndex,
+                    obstacleSetup.ObstacleCode.ToString(),
+                    new float3(xPos, 0, zPos),
+                    height,
                     scale
                 );
             }
+        }
+        
+        /// <summary>
+        /// Crea un'entità ostacolo utilizzando il factory
+        /// </summary>
+        private Entity SpawnObstacle(
+            EntityCommandBuffer.ParallelWriter commandBuffer,
+            int entityInQueryIndex,
+            string obstacleCode,
+            float3 position,
+            float height,
+            float scale)
+        {
+            // Questo metodo dovrebbe richiamare l'ObstacleFactory per creare l'ostacolo appropriato
+            // In questa implementazione di esempio, creiamo un'entità base con i componenti necessari
             
-            commandBuffer.Playback(EntityManager);
-            commandBuffer.Dispose();
+            var obstacleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
             
-            Debug.Log($"Spawned {count} tutorial obstacles at z={zPosition} with {setups.Length} configurations");
+            // Aggiungi i componenti di base dell'ostacolo
+            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleComponent
+            {
+                Height = height,
+                Width = 1.0f * scale,
+                CollisionRadius = 0.5f * scale,
+                Strength = 100.0f,
+                DamageValue = 25.0f,
+                IsDestructible = true
+            });
+            
+            // Aggiungi il tag dell'ostacolo
+            commandBuffer.AddComponent<ObstacleTag>(entityInQueryIndex, obstacleEntity);
+            
+            // Aggiungi la posizione
+            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new TransformComponent
+            {
+                Position = position,
+                Rotation = quaternion.identity,
+                Scale = scale
+            });
+            
+            // Aggiungi un componente per tenere traccia del codice dell'ostacolo
+            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleTypeComponent
+            {
+                TypeCode = new Unity.Collections.FixedString32Bytes(obstacleCode)
+            });
+            
+            // Qui andrebbe aggiunta la logica per configurare ostacoli specifici in base al codice
+            // Ad esempio, se il codice inizia con "L" potrebbe essere un ostacolo di lava
+            if (obstacleCode.StartsWith("L", StringComparison.OrdinalIgnoreCase))
+            {
+                commandBuffer.AddComponent<LavaTag>(entityInQueryIndex, obstacleEntity);
+                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
+                {
+                    ToxicType = 1, // Tipo fuoco/lava
+                    DamagePerSecond = 20.0f
+                });
+            }
+            // Ghiaccio
+            else if (obstacleCode.StartsWith("I", StringComparison.OrdinalIgnoreCase))
+            {
+                commandBuffer.AddComponent<IceObstacleTag>(entityInQueryIndex, obstacleEntity);
+                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
+                {
+                    MaxIntegrity = 100.0f,
+                    CurrentIntegrity = 100.0f
+                });
+            }
+            // Barriere digitali
+            else if (obstacleCode.StartsWith("D", StringComparison.OrdinalIgnoreCase))
+            {
+                commandBuffer.AddComponent<DigitalBarrierTag>(entityInQueryIndex, obstacleEntity);
+            }
+            
+            return obstacleEntity;
         }
         
         protected override void OnDestroy()
         {
-            // Pulizia delle risorse
-            if (_tutorialUIObject != null)
-            {
-                GameObject.Destroy(_tutorialUIObject);
-            }
+            base.OnDestroy();
         }
+    }
+
+    /// <summary>
+    /// Componente che identifica uno scenario tutorial
+    /// </summary>
+    public struct TutorialScenarioComponent : IComponentData
+    {
+        public FixedString64Bytes Name;
+        public float DistanceFromStart;
+        public FixedString128Bytes InstructionMessage;
+        public float MessageDuration;
+        public bool RandomPlacement;
+        public float ObstacleSpacing;
+        public float StartOffset;
+    }
+    
+    /// <summary>
+    /// Buffer per gli ostacoli di un tutorial
+    /// </summary>
+    public struct TutorialObstacleBuffer : IBufferElementData
+    {
+        public FixedString32Bytes ObstacleCode;
+        public int Count;
+        public byte Placement; // 0=Center, 1=Left, 2=Right, 3=Random, 4=Pattern
+        public bool RandomizeHeight;
+        public float2 HeightRange;
+        public bool RandomizeScale;
+        public float2 ScaleRange;
+        public float StartOffset;
+    }
+    
+    /// <summary>
+    /// Tag per gli scenari tutorial già attivati
+    /// </summary>
+    [System.Serializable]
+    public struct TriggeredTag : IComponentData
+    {
+    }
+    
+    /// <summary>
+    /// Tag per identificare i livelli tutorial
+    /// </summary>
+    [System.Serializable]
+    public struct TutorialLevelTag : IComponentData
+    {
+        public int CurrentSequence;
+        public bool Completed;
     }
 }
