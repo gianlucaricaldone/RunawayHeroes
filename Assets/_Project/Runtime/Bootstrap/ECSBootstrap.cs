@@ -50,62 +50,95 @@ namespace RunawayHeroes.Runtime.Bootstrap
         /// </summary>
         private void InitializeECS()
         {
-            Debug.Log("Inizializzazione del sistema ECS...");
-            
-            // Ottiene o crea il mondo predefinito
-            _world = World.DefaultGameObjectInjectionWorld;
-            
-            // Applica la configurazione dei sistemi
-            var systems = new List<Type>(); 
-            
-            // Aggiunge tutti i sistemi necessari
-            AddCoreSystems(systems);
-            AddInputSystems(systems);
-            AddMovementSystems(systems);
-            AddAbilitySystems(systems);
-            AddCombatSystems(systems);
-            AddAISystems(systems);
-            AddGameplaySystems(systems);
-            AddWorldSystems(systems);
-            AddUISystems(systems);
-            AddEventHandlers(systems);
-            
-            // Crea un gruppo per i sistemi principali del gioco
-            var simulationSystemGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
-            
-            // Crea il MovementSystemGroup per organizzare i sistemi di movimento
-            var movementSystemGroup = _world.CreateSystem<MovementSystemGroup>();
-            simulationSystemGroup.AddSystemToUpdateList(movementSystemGroup);
-            
-            // Aggiunge i sistemi al gruppo appropriato
-            foreach (var systemType in systems)
+            try
             {
-                var system = _world.CreateSystem(systemType);
+                Debug.Log("Inizializzazione del sistema ECS...");
                 
-                // Se è un sistema di movimento, lo aggiunge al gruppo di movimento
-                // altrimenti lo aggiunge al gruppo di simulazione
-                var attributes = systemType.GetCustomAttributes(typeof(UpdateInGroupAttribute), true);
+                // Ottiene o crea il mondo predefinito
+                _world = World.DefaultGameObjectInjectionWorld;
                 
-                if (attributes.Length > 0)
-                {
-                    var updateInGroupAttr = attributes[0] as UpdateInGroupAttribute;
-                    if (updateInGroupAttr != null && updateInGroupAttr.GroupType == typeof(MovementSystemGroup))
-                    {
-                        // Non è necessario aggiungere qui, l'attributo gestirà
-                        continue;
-                    }
-                }
+                // Applica la configurazione dei sistemi
+                var systems = new List<Type>(); 
                 
-                simulationSystemGroup.AddSystemToUpdateList(system);
+                // Aggiunge tutti i sistemi necessari
+                AddCoreSystems(systems);
+                AddInputSystems(systems);
+                AddMovementSystems(systems);
+                AddAbilitySystems(systems);
+                AddCombatSystems(systems);
+                AddAISystems(systems);
+                AddGameplaySystems(systems);
+                AddWorldSystems(systems);
+                AddUISystems(systems);
+                AddEventHandlers(systems);
+                
+                // Otteniamo i gruppi di sistema esistenti
+                var simulationSystemGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
+                
+                // Crea il MovementSystemGroup
+                var movementSystemGroup = _world.CreateSystemManaged<MovementSystemGroup>();
+                simulationSystemGroup.AddSystemToUpdateList(movementSystemGroup);
+                
+                // Metodo sicuro per aggiungere i sistemi
+                AddSystemsSafely(systems, simulationSystemGroup);
+                
+                _initialized = true;
+                Debug.Log("Inizializzazione ECS completata con successo.");
             }
-            
-            _initialized = true;
-            Debug.Log("Inizializzazione ECS completata con successo.");
+            catch (Exception e)
+            {
+                Debug.LogError($"Errore durante l'inizializzazione ECS: {e.Message}\n{e.StackTrace}");
+            }
         }
         
         /// <summary>
-        /// Aggiunge i sistemi core di base
+        /// Aggiunge i sistemi in modo sicuro, evitando dipendenze circolari
         /// </summary>
+        private void AddSystemsSafely(List<Type> systems, SimulationSystemGroup simulationSystemGroup)
+        {
+            // Manteniamo un elenco di sistemi già aggiunti per evitare duplicati
+            HashSet<Type> addedSystems = new HashSet<Type>();
+            
+            foreach (var systemType in systems)
+            {
+                if (addedSystems.Contains(systemType))
+                    continue;
+                
+                try
+                {
+                    // Crea il sistema
+                    ComponentSystemBase system = _world.GetOrCreateSystemManaged(systemType);
+                    
+                    // Verifica se deve essere aggiunto al MovementSystemGroup
+                    bool isMovementSystem = false;
+                    var attributes = systemType.GetCustomAttributes(typeof(UpdateInGroupAttribute), true);
+                    
+                    foreach (var attr in attributes)
+                    {
+                        if (attr is UpdateInGroupAttribute updateInGroup && 
+                            updateInGroup.GroupType == typeof(MovementSystemGroup))
+                        {
+                            isMovementSystem = true;
+                            break;
+                        }
+                    }
+                    
+                    // Aggiunge il sistema al gruppo appropriato
+                    if (!isMovementSystem)
+                    {
+                        simulationSystemGroup.AddSystemToUpdateList(system);
+                    }
+                    
+                    addedSystems.Add(systemType);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"Impossibile creare il sistema {systemType.Name}: {e.Message}");
+                }
+            }
+        }
+        
+        // I metodi AddXXXSystems rimangono invariati
         private void AddCoreSystems(List<Type> systems)
         {
             // Sistemi Core
@@ -116,9 +149,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(CollisionSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi di input
-        /// </summary>
         private void AddInputSystems(List<Type> systems)
         {
             systems.Add(typeof(InputSystem));
@@ -126,9 +156,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(GestureRecognitionSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi di movimento
-        /// </summary>
         private void AddMovementSystems(List<Type> systems)
         {
             // L'ordine in questa lista determinerà l'ordine di esecuzione nel gruppo
@@ -141,9 +168,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(ObstacleAvoidanceSystem));  // Poi evitamento ostacoli
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi delle abilità
-        /// </summary>
         private void AddAbilitySystems(List<Type> systems)
         {
             systems.Add(typeof(AbilitySystem));
@@ -157,9 +181,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(ControlledGlitchSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi di combattimento
-        /// </summary>
         private void AddCombatSystems(List<Type> systems)
         {
             systems.Add(typeof(HealthSystem));
@@ -168,9 +189,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(KnockbackSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi di IA
-        /// </summary>
         private void AddAISystems(List<Type> systems)
         {
             systems.Add(typeof(EnemyAISystem));
@@ -180,9 +198,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(PursuitSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi di gameplay
-        /// </summary>
         private void AddGameplaySystems(List<Type> systems)
         {
             systems.Add(typeof(ScoreSystem));
@@ -193,9 +208,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(FocusTimeItemDetectionSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi del mondo
-        /// </summary>
         private void AddWorldSystems(List<Type> systems)
         {
             systems.Add(typeof(LevelGenerationSystem));
@@ -205,18 +217,12 @@ namespace RunawayHeroes.Runtime.Bootstrap
             systems.Add(typeof(HazardSystem));
         }
         
-        /// <summary>
-        /// Aggiunge i sistemi UI
-        /// </summary>
         private void AddUISystems(List<Type> systems)
         {
             systems.Add(typeof(FocusTimeUISystem));
             systems.Add(typeof(ResonanceUISystem));
         }
         
-        /// <summary>
-        /// Aggiunge i gestori di eventi
-        /// </summary>
         private void AddEventHandlers(List<Type> systems)
         {
             systems.Add(typeof(GameplayEventHandler));
