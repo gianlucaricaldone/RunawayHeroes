@@ -437,7 +437,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &142078923
 RectTransform:
   m_ObjectHideFlags: 0
@@ -785,7 +785,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &344335562
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1320,6 +1320,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 558108151}
   m_CullTransparentMesh: 1
+--- !u!1 &605226146
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 605226148}
+  - component: {fileID: 605226147}
+  m_Layer: 0
+  m_Name: UIManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &605226147
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 605226146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b010c4668edae42a288ae6121b8ec7ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panels: []
+  transitionAnimator: {fileID: 0}
+  transitionTime: 0.5
+  globalBackButton: {fileID: 0}
+  loadingIndicator: {fileID: 0}
+--- !u!4 &605226148
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 605226146}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 933.4149, y: 1224.653, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &618050895
 GameObject:
   m_ObjectHideFlags: 0
@@ -1572,6 +1621,7 @@ MonoBehaviour:
   transitionManager: {fileID: 0}
   loadingPanel: {fileID: 0}
   transitionTime: 1
+  uiManagerCheckDelay: 0.1
 --- !u!1 &770845393
 GameObject:
   m_ObjectHideFlags: 0
@@ -1837,7 +1887,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &948305225
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2305,7 +2355,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1546099572
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2731,6 +2781,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 6735147}
   - {fileID: 1523742414}
+  - {fileID: 605226148}
   - {fileID: 1128200032}
   - {fileID: 970499760}
   - {fileID: 762529393}
