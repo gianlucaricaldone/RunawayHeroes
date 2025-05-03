@@ -19,11 +19,17 @@ namespace RunawayHeroes.ECS.Systems.Movement
     [BurstCompile]
     public partial struct ObstacleAvoidanceSystem : ISystem
     {
+        #region Fields
+        
         // Query per entità che devono evitare ostacoli
         private EntityQuery _avoidersQuery;
         
         // Query per gli ostacoli
         private EntityQuery _obstaclesQuery;
+        
+        #endregion
+        
+        #region Lifecycle
         
         /// <summary>
         /// Inizializza il sistema di obstacle avoidance
@@ -83,7 +89,11 @@ namespace RunawayHeroes.ECS.Systems.Movement
             state.Dependency = obstaclePositions.Dispose(state.Dependency);
             state.Dependency = obstacleComponents.Dispose(state.Dependency);
         }
+        
+        #endregion
     }
+    
+    #region Jobs
     
     /// <summary>
     /// Job che implementa il comportamento di obstacle avoidance
@@ -194,6 +204,10 @@ namespace RunawayHeroes.ECS.Systems.Movement
         }
     }
     
+    #endregion
+    
+    #region Components
+    
     /// <summary>
     /// Componente che definisce il comportamento di obstacle avoidance
     /// </summary>
@@ -205,4 +219,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public float MaxSteeringForce;   // Massima forza di steering
         public float MoveSpeed;          // Velocità di movimento desiderata
     }
+    
+    #endregion
 }

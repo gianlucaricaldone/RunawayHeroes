@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.UI;
 using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Systems.Gameplay;
 
 namespace RunawayHeroes.ECS.Events.Handlers
 {
@@ -15,13 +16,30 @@ namespace RunawayHeroes.ECS.Events.Handlers
     [BurstCompile]
     public partial struct UIEventHandler : ISystem
     {
+        #region Private Fields
+        
         // Query per i vari tipi di eventi UI
-        private EntityQuery _genericUIEventsQuery;
+        private EntityQuery _uiVisibilityEventsQuery;
+        private EntityQuery _uiGenericEventsQuery;
+        
         private EntityQuery _scoreUIEventsQuery;
+        private EntityQuery _finalScoreUIEventsQuery;
+        
         private EntityQuery _healthUIEventsQuery;
+        private EntityQuery _healthChangeAnimationEventsQuery;
+        
         private EntityQuery _objectiveUIEventsQuery;
-        private EntityQuery _collectibleUIEventsQuery;
-        private EntityQuery _notificationUIEventsQuery;
+        private EntityQuery _missionUIEventsQuery;
+        
+        private EntityQuery _collectibleFeedbackEventsQuery;
+        private EntityQuery _fragmentUIEventsQuery;
+        
+        private EntityQuery _notificationEventsQuery;
+        private EntityQuery _tooltipEventsQuery;
+        
+        #endregion
+        
+        #region Initialization
         
         /// <summary>
         /// Inizializza il sistema e configura le query per i diversi tipi di eventi UI
@@ -29,35 +47,29 @@ namespace RunawayHeroes.ECS.Events.Handlers
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            // Configura la query per eventi UI generici
-            _genericUIEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<UIGenericEvent, UIVisibilityEvent>()
-                .Build(ref state);
+            // Configura le query per eventi UI generici
+            _uiVisibilityEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<UIVisibilityEvent>());
+            _uiGenericEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<UIGenericEvent>());
                 
-            // Configura la query per eventi UI punteggio
-            _scoreUIEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<ScoreUIUpdateEvent, FinalScoreUIEvent>()
-                .Build(ref state);
+            // Configura le query per eventi UI punteggio
+            _scoreUIEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<ScoreUIUpdateEvent>());
+            _finalScoreUIEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<FinalScoreUIEvent>());
                 
-            // Configura la query per eventi UI salute
-            _healthUIEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<HealthUIUpdateEvent, HealthChangeAnimationEvent>()
-                .Build(ref state);
+            // Configura le query per eventi UI salute
+            _healthUIEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<HealthUIUpdateEvent>());
+            _healthChangeAnimationEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<HealthChangeAnimationEvent>());
                 
-            // Configura la query per eventi UI obiettivi
-            _objectiveUIEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<ObjectiveUIUpdateEvent, MissionUIUpdateEvent>()
-                .Build(ref state);
+            // Configura le query per eventi UI obiettivi
+            _objectiveUIEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<ObjectiveUIUpdateEvent>());
+            _missionUIEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<MissionUIUpdateEvent>());
                 
-            // Configura la query per eventi UI collezionabili
-            _collectibleUIEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<CollectibleFeedbackEvent, FragmentUIUpdateEvent>()
-                .Build(ref state);
+            // Configura le query per eventi UI collezionabili
+            _collectibleFeedbackEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<CollectibleFeedbackEvent>());
+            _fragmentUIEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<FragmentUIUpdateEvent>());
                 
-            // Configura la query per eventi UI notifiche
-            _notificationUIEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<NotificationEvent, TooltipEvent>()
-                .Build(ref state);
+            // Configura le query per eventi UI notifiche
+            _notificationEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<NotificationEvent>());
+            _tooltipEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<TooltipEvent>());
                 
             // Richiedi un command buffer per modifiche strutturali
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -71,7 +83,11 @@ namespace RunawayHeroes.ECS.Events.Handlers
         {
             // Nessuna risorsa da pulire
         }
+        
+        #endregion
 
+        #region System Lifecycle
+        
         /// <summary>
         /// Elabora i vari tipi di eventi UI e li invia ai componenti UI appropriati
         /// </summary>
@@ -82,16 +98,25 @@ namespace RunawayHeroes.ECS.Events.Handlers
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
-            // 1. Elabora eventi UI generici (come apertura/chiusura pannelli)
-            if (!_genericUIEventsQuery.IsEmpty)
+            // 1. Elabora eventi UI visibilità
+            if (!_uiVisibilityEventsQuery.IsEmpty)
             {
-                state.Dependency = new ProcessGenericUIEventsJob
+                state.Dependency = new ProcessUIVisibilityEventsJob
                 {
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_genericUIEventsQuery, state.Dependency);
+                }.ScheduleParallel(_uiVisibilityEventsQuery, state.Dependency);
             }
             
-            // 2. Elabora eventi UI punteggio
+            // 2. Elabora eventi UI generici
+            if (!_uiGenericEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessUIGenericEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_uiGenericEventsQuery, state.Dependency);
+            }
+            
+            // 3. Elabora eventi UI punteggio
             if (!_scoreUIEventsQuery.IsEmpty)
             {
                 state.Dependency = new ProcessScoreUIEventsJob
@@ -100,7 +125,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 }.ScheduleParallel(_scoreUIEventsQuery, state.Dependency);
             }
             
-            // 3. Elabora eventi UI salute
+            // 4. Elabora eventi UI punteggio finale
+            if (!_finalScoreUIEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessFinalScoreUIEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_finalScoreUIEventsQuery, state.Dependency);
+            }
+            
+            // 5. Elabora eventi UI salute
             if (!_healthUIEventsQuery.IsEmpty)
             {
                 state.Dependency = new ProcessHealthUIEventsJob
@@ -109,7 +143,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 }.ScheduleParallel(_healthUIEventsQuery, state.Dependency);
             }
             
-            // 4. Elabora eventi UI obiettivi
+            // 6. Elabora eventi UI animazione cambio salute
+            if (!_healthChangeAnimationEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessHealthChangeAnimationEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_healthChangeAnimationEventsQuery, state.Dependency);
+            }
+            
+            // 7. Elabora eventi UI obiettivi
             if (!_objectiveUIEventsQuery.IsEmpty)
             {
                 state.Dependency = new ProcessObjectiveUIEventsJob
@@ -118,36 +161,64 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 }.ScheduleParallel(_objectiveUIEventsQuery, state.Dependency);
             }
             
-            // 5. Elabora eventi UI collezionabili
-            if (!_collectibleUIEventsQuery.IsEmpty)
+            // 8. Elabora eventi UI missioni
+            if (!_missionUIEventsQuery.IsEmpty)
             {
-                state.Dependency = new ProcessCollectibleUIEventsJob
+                state.Dependency = new ProcessMissionUIEventsJob
                 {
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_collectibleUIEventsQuery, state.Dependency);
+                }.ScheduleParallel(_missionUIEventsQuery, state.Dependency);
             }
             
-            // 6. Elabora eventi UI notifiche
-            if (!_notificationUIEventsQuery.IsEmpty)
+            // 9. Elabora eventi UI feedback collezionabili
+            if (!_collectibleFeedbackEventsQuery.IsEmpty)
             {
-                state.Dependency = new ProcessNotificationUIEventsJob
+                state.Dependency = new ProcessCollectibleFeedbackEventsJob
                 {
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_notificationUIEventsQuery, state.Dependency);
+                }.ScheduleParallel(_collectibleFeedbackEventsQuery, state.Dependency);
+            }
+            
+            // 10. Elabora eventi UI frammenti
+            if (!_fragmentUIEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessFragmentUIEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_fragmentUIEventsQuery, state.Dependency);
+            }
+            
+            // 11. Elabora eventi UI notifiche
+            if (!_notificationEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessNotificationEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_notificationEventsQuery, state.Dependency);
+            }
+            
+            // 12. Elabora eventi UI tooltip
+            if (!_tooltipEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessTooltipEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_tooltipEventsQuery, state.Dependency);
             }
         }
         
+        #endregion
+        
+        #region Generic UI Events Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi UI generici
+        /// Job che elabora gli eventi di visibilità UI
         /// </summary>
         [BurstCompile]
-        private partial struct ProcessGenericUIEventsJob : IJobEntity
+        private partial struct ProcessUIVisibilityEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di visibilità UI
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -185,10 +256,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento originale
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi generici UI
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessUIGenericEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi UI generici
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -268,17 +345,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Score UI Events Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi UI relativi al punteggio
+        /// Job che elabora gli eventi di aggiornamento punteggio
         /// </summary>
         [BurstCompile]
         private partial struct ProcessScoreUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di aggiornamento punteggio
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -318,10 +396,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento originale
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di punteggio finale
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessFinalScoreUIEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di punteggio finale
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -349,17 +433,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Health UI Events Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi UI relativi alla salute
+        /// Job che elabora gli eventi di aggiornamento salute
         /// </summary>
         [BurstCompile]
         private partial struct ProcessHealthUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di aggiornamento salute
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -402,10 +487,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento originale
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di animazione cambio salute
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessHealthChangeAnimationEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di animazione cambio salute
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -419,17 +510,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Objective UI Events Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi UI relativi agli obiettivi
+        /// Job che elabora gli eventi di aggiornamento obiettivi
         /// </summary>
         [BurstCompile]
         private partial struct ProcessObjectiveUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di aggiornamento obiettivi
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -473,9 +565,24 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 ECB.DestroyEntity(sortKey, entity);
             }
             
-            /// <summary>
-            /// Elabora eventi di aggiornamento missione
-            /// </summary>
+            // Helper per trovare l'entità UI per un obiettivo specifico
+            // In un'implementazione reale, questo verrebbe gestito attraverso 
+            // un sistema più avanzato di lookup o registry
+            private Entity FindObjectiveUIEntity(int objectiveID)
+            {
+                // Implementazione simulata
+                return Entity.Null;
+            }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di aggiornamento missione
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessMissionUIEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
+            
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -519,15 +626,6 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 ECB.DestroyEntity(sortKey, entity);
             }
             
-            // Helper per trovare l'entità UI per un obiettivo specifico
-            // In un'implementazione reale, questo verrebbe gestito attraverso 
-            // un sistema più avanzato di lookup o registry
-            private Entity FindObjectiveUIEntity(int objectiveID)
-            {
-                // Implementazione simulata
-                return Entity.Null;
-            }
-            
             // Helper per trovare l'entità UI per una missione specifica
             private Entity FindMissionUIEntity(int missionID)
             {
@@ -536,17 +634,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Collectible UI Events Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi UI relativi ai collezionabili
+        /// Job che elabora gli eventi di feedback collezionabili
         /// </summary>
         [BurstCompile]
-        private partial struct ProcessCollectibleUIEventsJob : IJobEntity
+        private partial struct ProcessCollectibleFeedbackEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di feedback collezionabili
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -566,10 +665,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento originale
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi UI per frammenti
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessFragmentUIEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi UI per frammenti
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -601,17 +706,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Notification UI Events Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi UI relativi alle notifiche
+        /// Job che elabora gli eventi di notifica
         /// </summary>
         [BurstCompile]
-        private partial struct ProcessNotificationUIEventsJob : IJobEntity
+        private partial struct ProcessNotificationEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            /// <summary>
-            /// Elabora eventi di notifica
-            /// </summary>
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -650,9 +756,22 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 ECB.DestroyEntity(sortKey, entity);
             }
             
-            /// <summary>
-            /// Elabora eventi tooltip
-            /// </summary>
+            // Helper per trovare il gestore delle notifiche
+            private Entity FindNotificationManager()
+            {
+                // Implementazione simulata
+                return Entity.Null;
+            }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi tooltip
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessTooltipEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
+            
             [BurstCompile]
             private void Execute(
                 Entity entity,
@@ -703,13 +822,6 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 ECB.DestroyEntity(sortKey, entity);
             }
             
-            // Helper per trovare il gestore delle notifiche
-            private Entity FindNotificationManager()
-            {
-                // Implementazione simulata
-                return Entity.Null;
-            }
-            
             // Helper per trovare il gestore dei tooltip
             private Entity FindTooltipManager()
             {
@@ -717,9 +829,11 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 return Entity.Null;
             }
         }
+        
+        #endregion
     }
     
-    #region Componenti e Eventi UI
+    #region Eventi UI
     
     /// <summary>
     /// Tipi di animazione UI
@@ -898,6 +1012,81 @@ namespace RunawayHeroes.ECS.Events.Handlers
         public byte TotalObjectives;     // Obiettivi totali
         public bool IsCompleted;         // Se completata
         public bool IsFailed;            // Se fallita
+    }
+    
+    /// <summary>
+    /// Evento aggiornamento punteggio UI
+    /// </summary>
+    [System.Serializable]
+    public struct ScoreUIUpdateEvent : IComponentData
+    {
+        public Entity PlayerEntity;      // Entità giocatore
+        public float NewScore;           // Nuovo punteggio totale
+        public float ScoreIncrement;     // Incremento di punteggio
+        public byte ScoreSource;         // Fonte del punteggio
+    }
+    
+    /// <summary>
+    /// Evento punteggio finale
+    /// </summary>
+    [System.Serializable]
+    public struct FinalScoreUIEvent : IComponentData
+    {
+        public int LevelID;              // ID del livello
+        public Entity PlayerEntity;      // Entità giocatore
+        public float FinalScore;         // Punteggio finale
+        public bool IsHighScore;         // Se è un nuovo record
+        public int TotalCollectibles;    // Collezionabili raccolti
+        public int TotalEnemiesDefeated; // Nemici sconfitti
+        public float TimeBonus;          // Bonus tempo
+    }
+    
+    /// <summary>
+    /// Evento aggiornamento salute UI
+    /// </summary>
+    [System.Serializable]
+    public struct HealthUIUpdateEvent : IComponentData
+    {
+        public Entity PlayerEntity;      // Entità giocatore
+        public float NewHealth;          // Nuova salute
+        public float MaxHealth;          // Salute massima
+        public float HealthChange;       // Cambio di salute
+        public bool IsCritical;          // Se critico
+    }
+    
+    /// <summary>
+    /// Evento aggiornamento obiettivo UI
+    /// </summary>
+    [System.Serializable]
+    public struct ObjectiveUIUpdateEvent : IComponentData
+    {
+        public int ObjectiveID;          // ID obiettivo
+        public float Progress;           // Progresso (0-1)
+        public bool IsCompleted;         // Se completato
+        public bool IsFailed;            // Se fallito
+    }
+    
+    /// <summary>
+    /// Evento di feedback collezionabile
+    /// </summary>
+    [System.Serializable]
+    public struct CollectibleFeedbackEvent : IComponentData
+    {
+        public Entity CollectorEntity;   // Entità che ha raccolto
+        public byte CollectibleType;     // Tipo di collezionabile
+        public float Value;              // Valore del collezionabile
+        public float3 CollectionPoint;   // Punto di raccolta nel mondo
+    }
+    
+    /// <summary>
+    /// Evento di aggiornamento frammento
+    /// </summary>
+    [System.Serializable]
+    public struct FragmentUIUpdateEvent : IComponentData
+    {
+        public int FragmentID;           // ID del frammento
+        public byte FragmentType;        // Tipo di frammento
+        public Entity CollectorEntity;   // Entità che ha raccolto
     }
     
     #endregion

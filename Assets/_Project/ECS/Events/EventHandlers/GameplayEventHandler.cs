@@ -14,11 +14,25 @@ namespace RunawayHeroes.ECS.Events.Handlers
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct GameplayEventHandler : ISystem
     {
+        #region Private Fields
+        
         // Query per diversi tipi di eventi
-        private EntityQuery _objectiveEventsQuery;
-        private EntityQuery _levelEventsQuery;
-        private EntityQuery _fragmentEventsQuery;
+        private EntityQuery _objectiveCompletedEventsQuery;
+        private EntityQuery _objectiveFailedEventsQuery;
+        private EntityQuery _objectiveUpdatedEventsQuery;
+        
+        private EntityQuery _levelStartEventsQuery;
+        private EntityQuery _levelCompletedEventsQuery;
+        private EntityQuery _levelFailedEventsQuery;
+        
+        private EntityQuery _fragmentCollectedEventsQuery;
+        private EntityQuery _fragmentResonanceEventsQuery;
+        
         private EntityQuery _checkpointEventsQuery;
+        
+        #endregion
+        
+        #region Initialization
         
         /// <summary>
         /// Inizializza il sistema e configura le query per i vari tipi di eventi
@@ -26,25 +40,22 @@ namespace RunawayHeroes.ECS.Events.Handlers
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            // Query per eventi obiettivi
-            _objectiveEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<ObjectiveCompletedEvent, ObjectiveFailedEvent, ObjectiveUpdatedEvent>()
-                .Build(ref state);
+            // Query per eventi obiettivi - separati in tre query distinte
+            _objectiveCompletedEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<ObjectiveCompletedEvent>());
+            _objectiveFailedEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<ObjectiveFailedEvent>());
+            _objectiveUpdatedEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<ObjectiveUpdatedEvent>());
                 
-            // Query per eventi livello
-            _levelEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<LevelStartEvent, LevelCompletedEvent, LevelFailedEvent>()
-                .Build(ref state);
+            // Query per eventi livello - separati in tre query distinte
+            _levelStartEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<LevelStartEvent>());
+            _levelCompletedEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<LevelCompletedEvent>());
+            _levelFailedEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<LevelFailedEvent>());
                 
-            // Query per eventi frammenti
-            _fragmentEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<FragmentCollectedEvent, FragmentResonanceEvent>()
-                .Build(ref state);
+            // Query per eventi frammenti - separati in due query distinte
+            _fragmentCollectedEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<FragmentCollectedEvent>());
+            _fragmentResonanceEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<FragmentResonanceEvent>());
                 
             // Query per eventi checkpoint
-            _checkpointEventsQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<CheckpointActivatedEvent>()
-                .Build(ref state);
+            _checkpointEventsQuery = state.GetEntityQuery(ComponentType.ReadOnly<CheckpointActivatedEvent>());
                 
             // Richiedi il singleton del buffer di comandi
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -58,6 +69,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
         {
             // Nessuna risorsa da pulire
         }
+        
+        #endregion
+        
+        #region System Lifecycle
 
         /// <summary>
         /// Gestisce tutti gli eventi di gameplay nel frame corrente
@@ -69,31 +84,76 @@ namespace RunawayHeroes.ECS.Events.Handlers
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
-            // Processa eventi obiettivi
-            if (!_objectiveEventsQuery.IsEmpty)
+            // Processa eventi obiettivi completati
+            if (!_objectiveCompletedEventsQuery.IsEmpty)
             {
-                state.Dependency = new ProcessObjectiveEventsJob
+                state.Dependency = new ProcessObjectiveCompletedEventsJob
                 {
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_objectiveEventsQuery, state.Dependency);
+                }.ScheduleParallel(_objectiveCompletedEventsQuery, state.Dependency);
             }
             
-            // Processa eventi livello
-            if (!_levelEventsQuery.IsEmpty)
+            // Processa eventi obiettivi falliti
+            if (!_objectiveFailedEventsQuery.IsEmpty)
             {
-                state.Dependency = new ProcessLevelEventsJob
+                state.Dependency = new ProcessObjectiveFailedEventsJob
                 {
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_levelEventsQuery, state.Dependency);
+                }.ScheduleParallel(_objectiveFailedEventsQuery, state.Dependency);
             }
             
-            // Processa eventi frammenti
-            if (!_fragmentEventsQuery.IsEmpty)
+            // Processa eventi obiettivi aggiornati
+            if (!_objectiveUpdatedEventsQuery.IsEmpty)
             {
-                state.Dependency = new ProcessFragmentEventsJob
+                state.Dependency = new ProcessObjectiveUpdatedEventsJob
                 {
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_fragmentEventsQuery, state.Dependency);
+                }.ScheduleParallel(_objectiveUpdatedEventsQuery, state.Dependency);
+            }
+            
+            // Processa eventi livello - inizio
+            if (!_levelStartEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessLevelStartEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_levelStartEventsQuery, state.Dependency);
+            }
+            
+            // Processa eventi livello - completato
+            if (!_levelCompletedEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessLevelCompletedEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_levelCompletedEventsQuery, state.Dependency);
+            }
+            
+            // Processa eventi livello - fallito
+            if (!_levelFailedEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessLevelFailedEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_levelFailedEventsQuery, state.Dependency);
+            }
+            
+            // Processa eventi frammenti - raccolti
+            if (!_fragmentCollectedEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessFragmentCollectedEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_fragmentCollectedEventsQuery, state.Dependency);
+            }
+            
+            // Processa eventi frammenti - risonanza
+            if (!_fragmentResonanceEventsQuery.IsEmpty)
+            {
+                state.Dependency = new ProcessFragmentResonanceEventsJob
+                {
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(_fragmentResonanceEventsQuery, state.Dependency);
             }
             
             // Processa eventi checkpoint
@@ -106,15 +166,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Objective Event Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi relativi agli obiettivi
+        /// Job che elabora gli eventi di completamento obiettivi
         /// </summary>
         [BurstCompile]
-        private partial struct ProcessObjectiveEventsJob : IJobEntity
+        private partial struct ProcessObjectiveCompletedEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi completamento obiettivo
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in ObjectiveCompletedEvent evt)
             {
@@ -152,8 +215,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento dopo l'elaborazione
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di fallimento obiettivi
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessObjectiveFailedEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi fallimento obiettivo
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in ObjectiveFailedEvent evt)
             {
@@ -182,8 +253,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento dopo l'elaborazione
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di aggiornamento obiettivi
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessObjectiveUpdatedEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi aggiornamento obiettivo
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in ObjectiveUpdatedEvent evt)
             {
@@ -202,15 +281,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Level Event Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi relativi ai livelli
+        /// Job che elabora gli eventi di inizio livello
         /// </summary>
         [BurstCompile]
-        private partial struct ProcessLevelEventsJob : IJobEntity
+        private partial struct ProcessLevelStartEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi inizio livello
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in LevelStartEvent evt)
             {
@@ -225,8 +307,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento dopo l'elaborazione
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di completamento livello
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessLevelCompletedEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi completamento livello
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in LevelCompletedEvent evt)
             {
@@ -247,8 +337,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento dopo l'elaborazione
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di fallimento livello
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessLevelFailedEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi fallimento livello
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in LevelFailedEvent evt)
             {
@@ -266,15 +364,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Fragment Event Jobs
+        
         /// <summary>
-        /// Job che elabora gli eventi relativi ai frammenti
+        /// Job che elabora gli eventi di raccolta frammenti
         /// </summary>
         [BurstCompile]
-        private partial struct ProcessFragmentEventsJob : IJobEntity
+        private partial struct ProcessFragmentCollectedEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi raccolta frammenti
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in FragmentCollectedEvent evt)
             {
@@ -302,8 +403,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Distruggi l'evento dopo l'elaborazione
                 ECB.DestroyEntity(sortKey, entity);
             }
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di risonanza frammenti
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessFragmentResonanceEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi risonanza frammenti
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in FragmentResonanceEvent evt)
             {
@@ -321,6 +430,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
             }
         }
         
+        #endregion
+        
+        #region Checkpoint Event Jobs
+        
         /// <summary>
         /// Job che elabora gli eventi relativi ai checkpoint
         /// </summary>
@@ -329,7 +442,6 @@ namespace RunawayHeroes.ECS.Events.Handlers
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             
-            // Metodo per elaborare eventi attivazione checkpoint
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in CheckpointActivatedEvent evt)
             {
@@ -348,20 +460,12 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 ECB.DestroyEntity(sortKey, entity);
             }
         }
+        
+        #endregion
     }
     
     #region Eventi UI
     
-    /// <summary>
-    /// Evento UI per aggiornamenti obiettivi
-    /// </summary>
-    public struct ObjectiveUIUpdateEvent : IComponentData
-    {
-        public int ObjectiveID;      // ID dell'obiettivo
-        public float Progress;       // Progresso (0-1)
-        public bool IsCompleted;     // Se è completato
-        public bool IsFailed;        // Se è fallito
-    }
     
     /// <summary>
     /// Evento UI per aggiornamenti livello
@@ -374,16 +478,6 @@ namespace RunawayHeroes.ECS.Events.Handlers
         public float TimeElapsed;    // Tempo impiegato
         public byte FragmentsCollected; // Frammenti raccolti
         public byte FailReason;      // Motivo del fallimento
-    }
-    
-    /// <summary>
-    /// Evento UI per aggiornamenti frammenti
-    /// </summary>
-    public struct FragmentUIUpdateEvent : IComponentData
-    {
-        public int FragmentID;        // ID del frammento
-        public byte FragmentType;     // Tipo di frammento
-        public Entity CollectorEntity; // Entità che ha raccolto il frammento
     }
     
     /// <summary>

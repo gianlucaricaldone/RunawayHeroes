@@ -18,9 +18,15 @@ namespace RunawayHeroes.ECS.Systems.Movement
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct NavigationSystem : ISystem
     {
+        #region Fields
+
         // Query per entità che devono navigare
         private EntityQuery _navigatorQuery;
         
+        #endregion
+        
+        #region Lifecycle
+
         /// <summary>
         /// Inizializza il sistema di navigazione, configurando le query e altre risorse necessarie
         /// </summary>
@@ -142,7 +148,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
                             navigator.ValueRO.PathStatus == PathStatus.Failed)
                     {
                         // Calcola un nuovo percorso utilizzando NavMesh di Unity
-                        CalculatePath(ref navigator.ValueRW, transform.ValueRO.Position);
+                        CalculatePath(ref state, ref navigator.ValueRW, transform.ValueRO.Position);
                     }
                     // Se il percorso è in fase di calcolo, aspetta
                     else if (navigator.ValueRO.PathStatus == PathStatus.Calculating)
@@ -155,11 +161,15 @@ namespace RunawayHeroes.ECS.Systems.Movement
             }
         }
         
+        #endregion
+
+        #region Helpers
+        
         /// <summary>
         /// Calcola un percorso utilizzando il NavMesh di Unity
         /// </summary>
         [BurstDiscard] // Non compatibile con Burst perché usa NavMesh di Unity
-        private void CalculatePath(ref NavigatorComponent navigator, float3 startPosition)
+        private static void CalculatePath(ref SystemState state, ref NavigatorComponent navigator, float3 startPosition)
         {
             navigator.PathStatus = PathStatus.Calculating;
             
@@ -195,6 +205,8 @@ namespace RunawayHeroes.ECS.Systems.Movement
                 navigator.PathPoints = new float3[0];
             }
         }
+        
+        #endregion
     }
     
     /// <summary>

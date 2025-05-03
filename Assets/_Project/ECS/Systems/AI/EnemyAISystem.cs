@@ -5,8 +5,9 @@ using Unity.Burst;
 using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
-using RunawayHeroes.ECS.Components.AI;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Systems.AI;
+using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.AI
 {
