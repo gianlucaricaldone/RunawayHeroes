@@ -13,7 +13,7 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// Sistema che gestisce l'interfaccia utente per la Risonanza dei Frammenti,
     /// permettendo al giocatore di cambiare personaggio durante il gameplay.
     /// </summary>
-    public partial class ResonanceUISystem : SystemBase
+    public partial struct ResonanceUISystem : ISystem
     {
         // Riferimenti UI
         private GameObject _resonanceButton;       // Pulsante principale in basso
@@ -31,31 +31,36 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         // Animazione
         private Animator _menuAnimator;
-        private bool _isMenuOpen = false;
+        private bool _isMenuOpen;
         
         // Timer per animazioni
-        private float _menuCloseTimer = -1f;
-        private float _waveEffectTimer = -1f;
-        private float _unlockEffectTimer = -1f;
+        private float _menuCloseTimer;
+        private float _waveEffectTimer;
+        private float _unlockEffectTimer;
         
         // Query
         private EntityQuery _resonanceQuery;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
+            // Inizializza i valori che normalmente sarebbero inizializzati in-line
+            _isMenuOpen = false;
+            _menuCloseTimer = -1f;
+            _waveEffectTimer = -1f;
+            _unlockEffectTimer = -1f;
+            
             // Richiedi il singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Definisci la query per le entità con Risonanza
-            _resonanceQuery = GetEntityQuery(
-                ComponentType.ReadOnly<FragmentResonanceComponent>(),
-                ComponentType.ReadWrite<ResonanceInputComponent>()
-            );
+            _resonanceQuery = new EntityQueryBuilder(Unity.Collections.Allocator.Temp)
+                .WithAll<FragmentResonanceComponent, ResonanceInputComponent>()
+                .Build(ref state);
             
-            RequireForUpdate(_resonanceQuery);
+            state.RequireForUpdate(_resonanceQuery);
         }
         
-        protected override void OnStartRunning()
+        public void OnStartRunning(ref SystemState state)
         {
             // Trova i riferimenti UI necessari
             GameObject uiRoot = GameObject.FindGameObjectWithTag("ResonanceUI");
@@ -115,10 +120,15 @@ namespace RunawayHeroes.ECS.Systems.UI
             }
         }
         
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state)
+        {
+            // Nessuna pulizia speciale richiesta
+        }
+        
+        public void OnUpdate(ref SystemState state)
         {
             // Aggiornamento timer e animazioni
-            float deltaTime = SystemAPI.Time.DeltaTime;
+            float deltaTime = (float)SystemAPI.Time.DeltaTime;
             UpdateTimers(deltaTime);
             
             // Usa SystemAPI.Query invece di Entities.ForEach per accedere agli oggetti Unity
@@ -339,20 +349,28 @@ namespace RunawayHeroes.ECS.Systems.UI
             // Chiudi menu
             ToggleCharacterMenu();
             
-            // Ottieni l'entità del giocatore
-            Entity playerEntity = _resonanceQuery.GetSingletonEntity();
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
-            
-            // Aggiorna il componente di input della Risonanza
-            commandBuffer.SetComponent(playerEntity, new ResonanceInputComponent
+            // Ottiene il mondo corrente dal TLS (ThreadLocalSystemGroup)
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world != null)
             {
-                SwitchToCharacterIndex = characterIndex,
-                NewCharacterUnlocked = false,
-                NewCharacterEntity = Entity.Null,
-                ResonanceLevelUp = false,
-                NewResonanceLevel = 0
-            });
+                // Ottieni un riferimento alla SystemState per accedere all'EntityManager
+                var systemState = world.GetExistingSystemManaged<ResonanceUISystemGroup>().SystemState;
+                
+                // Ottieni l'entità del giocatore
+                Entity playerEntity = systemState.GetEntityQuery(_resonanceQuery.GetQueryTypes()).GetSingletonEntity();
+                var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+                var commandBuffer = ecbSingleton.CreateCommandBuffer(world.Unmanaged);
+                
+                // Aggiorna il componente di input della Risonanza
+                commandBuffer.SetComponent(playerEntity, new ResonanceInputComponent
+                {
+                    SwitchToCharacterIndex = characterIndex,
+                    NewCharacterUnlocked = false,
+                    NewCharacterEntity = Entity.Null,
+                    ResonanceLevelUp = false,
+                    NewResonanceLevel = 0
+                });
+            }
             
             // Mostra l'effetto onda
             if (_resonanceWaveEffect != null)
@@ -369,6 +387,13 @@ namespace RunawayHeroes.ECS.Systems.UI
                 // Imposta il timer per disattivare l'effetto
                 _waveEffectTimer = 1.5f;
             }
+        }
+        
+        // Classe di comodo per poter accedere alla SystemState dal metodo OnCharacterSelected
+        [UpdateInGroup(typeof(PresentationSystemGroup))]
+        public class ResonanceUISystemGroup : ComponentSystemGroup
+        {
+            public SystemState SystemState => this.CheckedState();
         }
         
         /// <summary>

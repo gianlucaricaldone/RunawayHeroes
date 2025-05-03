@@ -15,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// inclusi i messaggi di istruzione del tutorial, notifiche e avvisi.
     /// </summary>
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    public partial class UIMessageSystem : ISystem
+    public partial struct UIMessageSystem : ISystem
     {
         // Riferimenti UI
         private GameObject _messagePanel;
@@ -24,18 +24,13 @@ namespace RunawayHeroes.ECS.Systems.UI
         private Image _backgroundImage;
         
         // Configurazione visiva per diversi tipi di messaggi
-        private readonly Color[] _messageTypeColors = new Color[]
-        {
-            new Color(0.1f, 0.6f, 1f, 0.85f),  // Tutorial - Blu
-            new Color(0.2f, 0.9f, 0.2f, 0.85f), // Notifica - Verde
-            new Color(1f, 0.6f, 0.1f, 0.85f)   // Avviso - Arancione
-        };
+        private Color[] _messageTypeColors;
         
         // Gestione stati e coda
-        private bool _isMessageVisible = false;
-        private float _messageTimer = 0f;
-        private Entity _currentMessageEntity = Entity.Null;
-        private Queue<Entity> _messageQueue = new Queue<Entity>();
+        private bool _isMessageVisible;
+        private float _messageTimer;
+        private Entity _currentMessageEntity;
+        private Queue<Entity> _messageQueue;
         
         // Costanti di animazione
         private const float FADE_IN_TIME = 0.5f;
@@ -43,6 +38,19 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         public void OnCreate(ref SystemState state)
         {
+            // Inizializza i valori che normalmente sarebbero inizializzati in-line
+            _messageTypeColors = new Color[]
+            {
+                new Color(0.1f, 0.6f, 1f, 0.85f),  // Tutorial - Blu
+                new Color(0.2f, 0.9f, 0.2f, 0.85f), // Notifica - Verde
+                new Color(1f, 0.6f, 0.1f, 0.85f)   // Avviso - Arancione
+            };
+            
+            _isMessageVisible = false;
+            _messageTimer = 0f;
+            _currentMessageEntity = Entity.Null;
+            _messageQueue = new Queue<Entity>();
+            
             // Richiedi singleton per il command buffer
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
@@ -177,6 +185,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// </summary>
         private void UpdateCurrentMessage(ref SystemState state)
         {
+            // Accedi al deltaTime dalla state passata come parametro
             var deltaTime = SystemAPI.Time.DeltaTime;
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
@@ -187,13 +196,13 @@ namespace RunawayHeroes.ECS.Systems.UI
                 var message = state.EntityManager.GetComponentData<UIMessageComponent>(_currentMessageEntity);
                 
                 // Aggiorna il timer del messaggio
-                message.RemainingTime -= deltaTime;
+                message.RemainingTime -= (float)deltaTime;
                 state.EntityManager.SetComponentData(_currentMessageEntity, message);
                 
                 // Se il tempo è scaduto e il messaggio non è persistente, nascondilo
                 if (message.RemainingTime <= 0 && !message.IsPersistent)
                 {
-                    HideCurrentMessage();
+                    HideCurrentMessage(state);
                     
                     // Genera un evento di nascondiglio messaggio
                     Entity hideEvent = commandBuffer.CreateEntity();
@@ -211,7 +220,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             else
             {
                 // Se l'entità non esiste più, puliamo lo stato
-                HideCurrentMessage();
+                HideCurrentMessage(state);
                 _currentMessageEntity = Entity.Null;
             }
         }
@@ -245,7 +254,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                     }
                     
                     // Mostra il messaggio con animazione
-                    ShowMessage();
+                    ShowMessage(state);
                     
                     // Inizializza il timer
                     message.RemainingTime = message.Duration;
@@ -291,7 +300,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Mostra il pannello dei messaggi con animazione
         /// </summary>
-        private void ShowMessage()
+        private void ShowMessage(SystemState state)
         {
             if (_messagePanel != null)
             {
@@ -312,7 +321,16 @@ namespace RunawayHeroes.ECS.Systems.UI
                     }
                     
                     canvasGroup.alpha = 0f;
-                    MonoBehaviour.FindObjectOfType<MonoBehaviour>().StartCoroutine(FadeIn(canvasGroup));
+                    // Utilizziamo UIManager per gestire le coroutine invece di FindObjectOfType
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.StartCoroutine(FadeIn(canvasGroup));
+                    }
+                    else
+                    {
+                        // Fallback senza coroutine
+                        canvasGroup.alpha = 1f;
+                    }
                 }
             }
         }
@@ -320,7 +338,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Nasconde il pannello dei messaggi con animazione
         /// </summary>
-        private void HideCurrentMessage()
+        private void HideCurrentMessage(SystemState state)
         {
             if (_messagePanel != null)
             {
@@ -329,8 +347,16 @@ namespace RunawayHeroes.ECS.Systems.UI
                     _messageAnimator.SetTrigger("Hide");
                     
                     // Disattiva il pannello dopo la fine dell'animazione
-                    MonoBehaviour.FindObjectOfType<MonoBehaviour>().StartCoroutine(
-                        DisableAfterDelay(_messagePanel, FADE_OUT_TIME));
+                    // Utilizziamo UIManager per gestire le coroutine invece di FindObjectOfType
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.StartCoroutine(DisableAfterDelay(_messagePanel, FADE_OUT_TIME));
+                    }
+                    else
+                    {
+                        // Fallback senza coroutine
+                        GameObject.Destroy(_messagePanel, FADE_OUT_TIME);
+                    }
                 }
                 else
                 {
@@ -341,7 +367,17 @@ namespace RunawayHeroes.ECS.Systems.UI
                         canvasGroup = _messagePanel.AddComponent<CanvasGroup>();
                     }
                     
-                    MonoBehaviour.FindObjectOfType<MonoBehaviour>().StartCoroutine(FadeOut(canvasGroup, _messagePanel));
+                    // Utilizziamo UIManager per gestire le coroutine invece di FindObjectOfType
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.StartCoroutine(FadeOut(canvasGroup, _messagePanel));
+                    }
+                    else
+                    {
+                        // Fallback senza coroutine
+                        canvasGroup.alpha = 0f;
+                        _messagePanel.SetActive(false);
+                    }
                 }
                 
                 _isMessageVisible = false;
@@ -350,12 +386,13 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         // Helper di animazione
         
+        // Utilizza UnityEngine.Time.deltaTime perché queste coroutine vengono eseguite nel contesto MonoBehaviour
         private System.Collections.IEnumerator FadeIn(CanvasGroup canvasGroup)
         {
             float time = 0f;
             while (time < FADE_IN_TIME)
             {
-                time += SystemAPI.Time.DeltaTime;
+                time += UnityEngine.Time.deltaTime;
                 canvasGroup.alpha = Mathf.Lerp(0f, 1f, time / FADE_IN_TIME);
                 yield return null;
             }
@@ -367,7 +404,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             float time = 0f;
             while (time < FADE_OUT_TIME)
             {
-                time += SystemAPI.Time.DeltaTime;
+                time += UnityEngine.Time.deltaTime;
                 canvasGroup.alpha = Mathf.Lerp(1f, 0f, time / FADE_OUT_TIME);
                 yield return null;
             }

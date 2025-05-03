@@ -93,7 +93,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public void OnStartRunning(ref SystemState state)
         {
             // Reimposta contatori per la sessione
-            ResetSessionCounters();
+            ResetSessionCounters(ref state);
             
             // Identifica il livello attivo
             IdentifyActiveLevel(ref state);
@@ -131,12 +131,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Reimposta i contatori per una nuova sessione di gioco
         /// </summary>
-        private void ResetSessionCounters()
+        private void ResetSessionCounters(ref SystemState state)
         {
             _currentSessionScore = 0;
             _currentSessionCollectibles = 0;
             _currentSessionTreasures = 0;
-            _currentSessionStartTime = SystemAPI.Time.time;
+            _currentSessionStartTime = (float)SystemAPI.Time.ElapsedTime;
             _bonusObjectiveCompleted = false;
             _activeWorldIndex = -1;
             _activeLevelIndex = -1;
@@ -147,12 +147,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void IdentifyActiveLevel(ref SystemState state)
         {
-            foreach (var levelTag in SystemAPI.Query<RefRO<LevelTag>>())
+            foreach (var tagRef in SystemAPI.Query<RefRO<LevelTag>>())
             {
-                if (levelTag.ValueRO.IsActive)
+                var levelTag = tagRef.ValueRO;
+                if (levelTag.IsActive)
                 {
-                    _activeWorldIndex = levelTag.ValueRO.WorldIndex;
-                    _activeLevelIndex = levelTag.ValueRO.LevelIndex;
+                    _activeWorldIndex = levelTag.WorldIndex;
+                    _activeLevelIndex = levelTag.LevelIndex;
                     
                     Debug.Log($"Livello attivo identificato: Mondo {_activeWorldIndex}, Livello {_activeLevelIndex}");
                 }
@@ -166,22 +167,23 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, completionEvent) in SystemAPI.Query<RefRO<LevelCompletionEvent>>().WithEntityAccess())
+            foreach (var (entity, eventRef) in SystemAPI.Query<RefRO<LevelCompletionEvent>>().WithEntityAccess())
             {
-                int worldIndex = completionEvent.ValueRO.WorldIndex;
-                int levelIndex = completionEvent.ValueRO.LevelIndex;
+                var completionEvent = eventRef.ValueRO;
+                int worldIndex = completionEvent.WorldIndex;
+                int levelIndex = completionEvent.LevelIndex;
                 
                 Debug.Log($"Livello {levelIndex} del Mondo {worldIndex} completato!");
                 
                 // Calcola tempo di completamento
-                float completionTime = completionEvent.ValueRO.CompletionTime;
+                float completionTime = completionEvent.CompletionTime;
                 if (completionTime <= 0)
                 {
-                    completionTime = SystemAPI.Time.time - _currentSessionStartTime;
+                    completionTime = (float)SystemAPI.Time.ElapsedTime - _currentSessionStartTime;
                 }
                 
                 // Determina quante stelle guadagnate
-                byte starsEarned = CalculateStars(completionTime, completionEvent.ValueRO.StarsEarned);
+                byte starsEarned = CalculateStars(completionTime, completionEvent.StarsEarned);
                 
                 // Se il livello è nuovo o i dati sono migliori, aggiorna la progressione
                 Entity levelProgressEntity = GetOrCreateLevelProgressionEntity(worldIndex, levelIndex, ref state);
@@ -203,16 +205,16 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     levelProgress.LastPlayedTimestamp = DateTime.Now.Ticks;
                     
                     // Aggiorna con dati di collezionabili e obiettivi bonus
-                    if (completionEvent.ValueRO.BonusObjectiveCompleted || _bonusObjectiveCompleted)
+                    if (completionEvent.BonusObjectiveCompleted || _bonusObjectiveCompleted)
                     {
                         levelProgress.IsBonusObjectiveCompleted = true;
                     }
                     
                     // Aggiorna bitmap tesori se ci sono nuovi tesori
-                    if (completionEvent.ValueRO.TreasuresFound > 0 || _currentSessionTreasures > 0)
+                    if (completionEvent.TreasuresFound > 0 || _currentSessionTreasures > 0)
                     {
-                        int treasuresFound = completionEvent.ValueRO.TreasuresFound > 0 ? 
-                            completionEvent.ValueRO.TreasuresFound : _currentSessionTreasures;
+                        int treasuresFound = completionEvent.TreasuresFound > 0 ? 
+                            completionEvent.TreasuresFound : _currentSessionTreasures;
                             
                         // Ogni bit nel byte rappresenta un tesoro
                         for (int i = 0; i < treasuresFound; i++)
@@ -238,7 +240,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 CreateLevelCompletionMessage(commandBuffer, worldIndex, levelIndex, starsEarned, isNewBest);
                 
                 // Reimposta contatori sessione
-                ResetSessionCounters();
+                ResetSessionCounters(ref state);
                 
                 // Rimuovi l'evento dopo l'elaborazione
                 entityManager.DestroyEntity(entity);
@@ -263,12 +265,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, completionEvent) in SystemAPI.Query<RefRO<ObjectiveCompletedEvent>>().WithEntityAccess())
+            foreach (var (entity, eventRef) in SystemAPI.Query<RefRO<ObjectiveCompletedEvent>>().WithEntityAccess())
             {
+                var completionEvent = eventRef.ValueRO;
                 // Se è un'obiettivo bonus, marcalo come completato
-                if (completionEvent.ValueRO.ObjectiveType == 2 || 
-                    completionEvent.ValueRO.ObjectiveType == 3 || 
-                    completionEvent.ValueRO.ObjectiveType == 5)
+                if (completionEvent.ObjectiveType == 2 || 
+                    completionEvent.ObjectiveType == 3 || 
+                    completionEvent.ObjectiveType == 5)
                 {
                     _bonusObjectiveCompleted = true;
                     
@@ -322,9 +325,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             Entity worldProgressEntity = Entity.Null;
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, worldProgress) in SystemAPI.Query<RefRW<WorldProgressionComponent>>().WithEntityAccess())
+            foreach (var (entity, progressRef) in SystemAPI.Query<RefRW<WorldProgressionComponent>>().WithEntityAccess())
             {
-                if (worldProgress.ValueRO.WorldIndex == worldIndex)
+                if (progressRef.ValueRO.WorldIndex == worldIndex)
                 {
                     worldProgressEntity = entity;
                     
@@ -332,21 +335,21 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     if (levelIndex < 8) // Massimo 8 bit in un byte
                     {
                         // Marca questo livello come completato
-                        worldProgress.ValueRW.CompletedLevelsBitmap |= (byte)(1 << levelIndex);
+                        progressRef.ValueRW.CompletedLevelsBitmap |= (byte)(1 << levelIndex);
                         
                         // Se è stato completato al 100% (3 stelle + bonus)
                         if (starsEarned == 3 && bonusObjectiveCompleted)
                         {
-                            worldProgress.ValueRW.FullyCompletedLevelsBitmap |= (byte)(1 << levelIndex);
+                            progressRef.ValueRW.FullyCompletedLevelsBitmap |= (byte)(1 << levelIndex);
                         }
                     }
                     
                     // Aggiorna conteggio stelle
-                    int previousStars = worldProgress.ValueRO.StarsCollected;
+                    int previousStars = progressRef.ValueRO.StarsCollected;
                     
                     // Calcola quante stelle sono già associate a questo livello
                     int levelBitPosition = levelIndex % 8;
-                    bool isLevelCompleted = (worldProgress.ValueRO.CompletedLevelsBitmap & (1 << levelBitPosition)) != 0;
+                    bool isLevelCompleted = (progressRef.ValueRO.CompletedLevelsBitmap & (1 << levelBitPosition)) != 0;
                     
                     // Ottieni stelle precedenti
                     int previousLevelStars = GetStarsForLevel(worldIndex, levelIndex, ref state);
@@ -355,7 +358,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     int starDifference = starsEarned - previousLevelStars;
                     if (starDifference > 0)
                     {
-                        worldProgress.ValueRW.StarsCollected += starDifference;
+                        progressRef.ValueRW.StarsCollected += starDifference;
                     }
                 }
             }
@@ -396,20 +399,20 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             int nextLevelIndex = levelIndex + 1;
             
             // Trova l'entità di progressione mondo
-            foreach (var worldProgress in SystemAPI.Query<RefRW<WorldProgressionComponent>>())
+            foreach (var progressRef in SystemAPI.Query<RefRW<WorldProgressionComponent>>())
             {
-                if (worldProgress.ValueRO.WorldIndex == worldIndex)
+                if (progressRef.ValueRO.WorldIndex == worldIndex)
                 {
                     // Se il prossimo livello è valido, sbloccalo
                     if (nextLevelIndex < 8) // Massimo 8 bit in un byte
                     {
                         // Verifica che non sia già sbloccato
-                        bool isAlreadyUnlocked = (worldProgress.ValueRO.UnlockedLevelsBitmap & (1 << nextLevelIndex)) != 0;
+                        bool isAlreadyUnlocked = (progressRef.ValueRO.UnlockedLevelsBitmap & (1 << nextLevelIndex)) != 0;
                         
                         if (!isAlreadyUnlocked)
                         {
                             // Sblocca il prossimo livello
-                            worldProgress.ValueRW.UnlockedLevelsBitmap |= (byte)(1 << nextLevelIndex);
+                            progressRef.ValueRW.UnlockedLevelsBitmap |= (byte)(1 << nextLevelIndex);
                             
                             // Crea evento di sblocco
                             Entity unlockEvent = commandBuffer.CreateEntity();
@@ -430,14 +433,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                     // Se abbiamo completato l'ultimo livello, considera il mondo completato
                     else if (nextLevelIndex >= GetMaxLevelsForWorld(worldIndex) &&
-                             !worldProgress.ValueRO.IsBossDefeated)
+                             !progressRef.ValueRO.IsBossDefeated)
                     {
                         // Crea evento di completamento mondo
                         Entity worldCompletionEvent = commandBuffer.CreateEntity();
                         commandBuffer.AddComponent(worldCompletionEvent, new WorldCompletionEvent
                         {
                             WorldIndex = worldIndex,
-                            IsFullyCompleted = IsWorldFullyCompleted(worldProgress.ValueRO),
+                            IsFullyCompleted = IsWorldFullyCompleted(progressRef.ValueRO),
                             NextWorldToUnlock = worldIndex + 1,
                             FragmentIndex = worldIndex,
                             CharacterUnlocked = worldIndex // Mappa indice mondo a indice personaggio
@@ -465,12 +468,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             int totalBonusObjectives = 0;
             
             // Scorri mondi
-            foreach (var worldProgress in SystemAPI.Query<RefRO<WorldProgressionComponent>>())
+            foreach (var progressRef in SystemAPI.Query<RefRO<WorldProgressionComponent>>())
             {
-                totalStars += worldProgress.ValueRO.StarsCollected;
+                totalStars += progressRef.ValueRO.StarsCollected;
                 
                 // Conta livelli completati
-                byte completedLevels = worldProgress.ValueRO.CompletedLevelsBitmap;
+                byte completedLevels = progressRef.ValueRO.CompletedLevelsBitmap;
                 while (completedLevels > 0)
                 {
                     totalLevels += (completedLevels & 1);
@@ -479,9 +482,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             }
                 
             // Scorri livelli per obiettivi bonus
-            foreach (var levelProgress in SystemAPI.Query<RefRO<LevelProgressionComponent>>())
+            foreach (var progressRef in SystemAPI.Query<RefRO<LevelProgressionComponent>>())
             {
-                if (levelProgress.ValueRO.IsBonusObjectiveCompleted)
+                if (progressRef.ValueRO.IsBonusObjectiveCompleted)
                 {
                     totalBonusObjectives++;
                 }
@@ -558,9 +561,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             Entity levelEntity = Entity.Null;
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, levelProgress) in SystemAPI.Query<RefRO<LevelProgressionComponent>>().WithEntityAccess())
+            foreach (var (entity, progressRef) in SystemAPI.Query<RefRO<LevelProgressionComponent>>().WithEntityAccess())
             {
-                if (levelProgress.ValueRO.WorldIndex == worldIndex && levelProgress.ValueRO.LevelIndex == levelIndex)
+                if (progressRef.ValueRO.WorldIndex == worldIndex && progressRef.ValueRO.LevelIndex == levelIndex)
                 {
                     levelEntity = entity;
                     break;
@@ -692,11 +695,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             int stars = 0;
             
-            foreach (var levelProgress in SystemAPI.Query<RefRO<LevelProgressionComponent>>())
+            foreach (var progressRef in SystemAPI.Query<RefRO<LevelProgressionComponent>>())
             {
-                if (levelProgress.ValueRO.WorldIndex == worldIndex && levelProgress.ValueRO.LevelIndex == levelIndex)
+                if (progressRef.ValueRO.WorldIndex == worldIndex && progressRef.ValueRO.LevelIndex == levelIndex)
                 {
-                    stars = levelProgress.ValueRO.StarCount;
+                    stars = progressRef.ValueRO.StarCount;
                     break;
                 }
             }

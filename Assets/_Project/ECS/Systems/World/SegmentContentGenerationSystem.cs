@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Enemies;
@@ -12,76 +13,99 @@ namespace RunawayHeroes.ECS.Systems.World
     /// <summary>
     /// Sistema responsabile della generazione dei contenuti (ostacoli, nemici, ecc.) in un segmento di percorso
     /// </summary>
-    public partial class SegmentContentGenerationSystem : SystemBase
+    public partial struct SegmentContentGenerationSystem : ISystem
     {
-        private Unity.Mathematics.Random _random;
         private uint _seed;
+        private EntityQuery _segmentQuery;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
             // Richiedi il singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Inizializza il generatore di numeri casuali
             _seed = (uint)DateTime.Now.Ticks;
-            _random = Unity.Mathematics.Random.CreateFromIndex(_seed);
             
+            // Crea la query per i segmenti che richiedono generazione di contenuto
+            _segmentQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<PathSegmentComponent, RequiresContentGenerationTag, DynamicBuffer<SegmentContentBuffer>>()
+                .Build(ref state);
+                
             // Richiedi che il sistema venga eseguito solo quando ci sono segmenti che richiedono generazione
-            RequireForUpdate<RequiresContentGenerationTag>();
+            state.RequireForUpdate<RequiresContentGenerationTag>();
         }
 
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state) 
+        {
+        }
+
+        public void OnUpdate(ref SystemState state)
         {
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
-            var random = _random;
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
             // Ottieni le configurazioni di spawn dal livello
             // Nota: in una implementazione reale, dovresti ottenerle per ogni singolo livello
             var obstacleConfig = SystemAPI.GetSingleton<ObstacleSpawnConfigComponent>();
             var enemyConfig = SystemAPI.GetSingleton<EnemySpawnConfigComponent>();
             
-            // Genera contenuti per i segmenti che lo richiedono
-            Entities
-                .WithName("GenerateSegmentContents")
-                .WithAll<RequiresContentGenerationTag>()
-                .ForEach((Entity segmentEntity, int entityInQueryIndex,
-                          ref PathSegmentComponent segment,
-                          ref DynamicBuffer<SegmentContentBuffer> contentBuffer) =>
-                {
-                    // Inizializza un generatore casuale deterministico per questo segmento specifico
-                    // Usiamo l'indice del segmento come parte del seed per garantire risultati coerenti
-                    Unity.Mathematics.Random segRandom = Unity.Mathematics.Random.CreateFromIndex((uint)(segment.SegmentIndex + _seed));
-                    
-                    // Genera ostacoli
-                    GenerateObstacles(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, obstacleConfig, ref commandBuffer, segRandom);
-                    
-                    // Genera nemici
-                    GenerateEnemies(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, enemyConfig, ref commandBuffer, segRandom);
-                    
-                    // Genera collezionabili
-                    GenerateCollectibles(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, ref commandBuffer, segRandom);
-                    
-                    // Segna il segmento come generato
-                    segment.IsGenerated = true;
-                    
-                    // Rimuovi il tag di generazione richiesta
-                    commandBuffer.RemoveComponent<RequiresContentGenerationTag>(entityInQueryIndex, segmentEntity);
-                    
-                }).ScheduleParallel();
+            // Esegui il job per generare i contenuti dei segmenti
+            state.Dependency = new GenerateSegmentContentsJob
+            {
+                ECB = commandBuffer,
+                Seed = _seed,
+                ObstacleConfig = obstacleConfig,
+                EnemyConfig = enemyConfig
+            }.ScheduleParallel(_segmentQuery, state.Dependency);
+        }
+    }
+    
+    /// <summary>
+    /// Job per generare i contenuti dei segmenti
+    /// </summary>
+    [BurstCompile]
+    public partial struct GenerateSegmentContentsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public uint Seed;
+        public ObstacleSpawnConfigComponent ObstacleConfig;
+        public EnemySpawnConfigComponent EnemyConfig;
+        
+        [BurstDiscard]
+        public void Execute(Entity segmentEntity, 
+                         [EntityIndexInQuery] int entityInQueryIndex,
+                         ref PathSegmentComponent segment,
+                         ref DynamicBuffer<SegmentContentBuffer> contentBuffer)
+        {
+            // Inizializza un generatore casuale deterministico per questo segmento specifico
+            // Usiamo l'indice del segmento come parte del seed per garantire risultati coerenti
+            Unity.Mathematics.Random segRandom = Unity.Mathematics.Random.CreateFromIndex((uint)(segment.SegmentIndex + Seed));
             
-            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
+            // Genera ostacoli
+            GenerateObstacles(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, ObstacleConfig, segRandom);
+            
+            // Genera nemici
+            GenerateEnemies(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, EnemyConfig, segRandom);
+            
+            // Genera collezionabili
+            GenerateCollectibles(entityInQueryIndex, segmentEntity, ref segment, contentBuffer, segRandom);
+            
+            // Segna il segmento come generato
+            segment.IsGenerated = true;
+            
+            // Rimuovi il tag di generazione richiesta
+            ECB.RemoveComponent<RequiresContentGenerationTag>(entityInQueryIndex, segmentEntity);
         }
         
         /// <summary>
         /// Genera ostacoli all'interno di un segmento
         /// </summary>
+        [BurstDiscard]
         private void GenerateObstacles(int entityInQueryIndex,
                                     Entity segmentEntity,
                                     ref PathSegmentComponent segment,
                                     DynamicBuffer<SegmentContentBuffer> contentBuffer,
                                     ObstacleSpawnConfigComponent config,
-                                    ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                     Unity.Mathematics.Random random)
         {
             // Salta la generazione per segmenti speciali come checkpoint
@@ -143,13 +167,13 @@ namespace RunawayHeroes.ECS.Systems.World
                 obstaclePos.x += lateralPosition;
                 
                 // Crea l'entità ostacolo
-                Entity obstacleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+                Entity obstacleEntity = ECB.CreateEntity(entityInQueryIndex);
                 
                 // Aggiungi il componente ostacolo
-                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, obstacle);
+                ECB.AddComponent(entityInQueryIndex, obstacleEntity, obstacle);
                 
                 // Aggiungi il componente transform
-                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new LocalTransform
+                ECB.AddComponent(entityInQueryIndex, obstacleEntity, new LocalTransform
                 {
                     Position = obstaclePos,
                     Rotation = quaternion.EulerZXY(0, random.NextFloat(0, math.PI * 2), 0),
@@ -157,7 +181,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 });
                 
                 // Aggiungi tag speciali in base al tema
-                AddSpecialObstacleTags(entityInQueryIndex, obstacleEntity, segment.Theme, config, ref commandBuffer, random);
+                AddSpecialObstacleTags(entityInQueryIndex, obstacleEntity, segment.Theme, config, random);
                 
                 // Aggiungi l'ostacolo al buffer del segmento
                 contentBuffer.Add(new SegmentContentBuffer
@@ -171,11 +195,11 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Aggiunge tag speciali agli ostacoli in base al tema del segmento
         /// </summary>
+        [BurstDiscard]
         private void AddSpecialObstacleTags(int entityInQueryIndex,
                                           Entity obstacleEntity,
                                           WorldTheme theme,
                                           ObstacleSpawnConfigComponent config,
-                                          ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                           Unity.Mathematics.Random random)
         {
             // In base al tema, aggiungiamo tag specifici agli ostacoli
@@ -184,15 +208,15 @@ namespace RunawayHeroes.ECS.Systems.World
                 case WorldTheme.Volcano:
                     if (random.NextFloat() < config.LavaObstacleProbability)
                     {
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new LavaTag());
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new LavaTag());
                     }
                     break;
                     
                 case WorldTheme.Tundra:
                     if (random.NextFloat() < config.IceObstacleProbability)
                     {
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new IceObstacleTag());
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new IceObstacleTag());
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
                         {
                             MaxIntegrity = 100f,
                             CurrentIntegrity = 100f
@@ -200,7 +224,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     }
                     else if (random.NextFloat() < config.SlipperyProbability)
                     {
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new SlipperyTag
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new SlipperyTag
                         {
                             SlipFactor = random.NextFloat(0.3f, 0.9f)
                         });
@@ -210,18 +234,18 @@ namespace RunawayHeroes.ECS.Systems.World
                 case WorldTheme.Virtual:
                     if (random.NextFloat() < config.DigitalBarrierProbability)
                     {
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new DigitalBarrierTag());
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new DigitalBarrierTag());
                     }
                     break;
                     
                 case WorldTheme.Abyss:
                     if (random.NextFloat() < config.UnderwaterProbability)
                     {
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new UnderwaterTag());
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new UnderwaterTag());
                     }
                     else if (random.NextFloat() < config.CurrentProbability)
                     {
-                        commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new CurrentTag
+                        ECB.AddComponent(entityInQueryIndex, obstacleEntity, new CurrentTag
                         {
                             Direction = new float3(random.NextFloat(-1f, 1f), 0, random.NextFloat(-1f, 1f)),
                             Strength = random.NextFloat(0.5f, 2f),
@@ -234,7 +258,7 @@ namespace RunawayHeroes.ECS.Systems.World
             // Elementi speciali che possono apparire in qualsiasi tema
             if (random.NextFloat() < config.ToxicGroundProbability)
             {
-                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
+                ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
                 {
                     ToxicType = (byte)random.NextInt(0, 3),
                     DamagePerSecond = random.NextFloat(5f, 15f)
@@ -245,12 +269,12 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Genera nemici all'interno di un segmento
         /// </summary>
+        [BurstDiscard]
         private void GenerateEnemies(int entityInQueryIndex,
                                    Entity segmentEntity,
                                    ref PathSegmentComponent segment,
                                    DynamicBuffer<SegmentContentBuffer> contentBuffer,
                                    EnemySpawnConfigComponent config,
-                                   ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                    Unity.Mathematics.Random random)
         {
             // Salta la generazione per segmenti speciali come checkpoint
@@ -295,7 +319,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     float3 offset = new float3(math.sin(angle) * radius, 0, math.cos(angle) * radius);
                     
                     SpawnEnemy(entityInQueryIndex, segmentEntity, groupCenter + offset, 
-                             segment.Theme, contentBuffer, config, ref commandBuffer, random);
+                             segment.Theme, contentBuffer, config, random);
                 }
                 
                 // Riduci il numero di nemici rimasti da generare
@@ -314,27 +338,27 @@ namespace RunawayHeroes.ECS.Systems.World
                 enemyPos.x += lateralPosition;
                 
                 SpawnEnemy(entityInQueryIndex, segmentEntity, enemyPos, 
-                         segment.Theme, contentBuffer, config, ref commandBuffer, random);
+                         segment.Theme, contentBuffer, config, random);
             }
         }
         
         /// <summary>
         /// Genera un singolo nemico nella posizione specificata
         /// </summary>
+        [BurstDiscard]
         private void SpawnEnemy(int entityInQueryIndex,
                               Entity segmentEntity,
                               float3 position,
                               WorldTheme theme,
                               DynamicBuffer<SegmentContentBuffer> contentBuffer,
                               EnemySpawnConfigComponent config,
-                              ref EntityCommandBuffer.ParallelWriter commandBuffer,
                               Unity.Mathematics.Random random)
         {
             // Crea l'entità nemico
-            Entity enemyEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            Entity enemyEntity = ECB.CreateEntity(entityInQueryIndex);
             
             // Aggiungi il componente base nemico
-            commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new EnemyComponent());
+            ECB.AddComponent(entityInQueryIndex, enemyEntity, new EnemyComponent());
             
             // Determina il tipo di nemico
             float typeRoll = random.NextFloat();
@@ -342,17 +366,17 @@ namespace RunawayHeroes.ECS.Systems.World
             
             if (typeRoll < config.DroneProbability)
             {
-                commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new DroneComponent());
+                ECB.AddComponent(entityInQueryIndex, enemyEntity, new DroneComponent());
                 contentType = SegmentContentType.Drone;
             }
             else if (typeRoll < config.DroneProbability + config.PatrolProbability)
             {
-                commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new PatrolComponent());
+                ECB.AddComponent(entityInQueryIndex, enemyEntity, new PatrolComponent());
                 contentType = SegmentContentType.Patrol;
             }
             else if (random.NextFloat() < config.MidBossProbability)
             {
-                commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new MidBossComponent());
+                ECB.AddComponent(entityInQueryIndex, enemyEntity, new MidBossComponent());
                 contentType = SegmentContentType.MidBoss;
             }
             else
@@ -361,13 +385,13 @@ namespace RunawayHeroes.ECS.Systems.World
             }
             
             // Aggiungi il componente di attacco
-            commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new AttackComponent());
+            ECB.AddComponent(entityInQueryIndex, enemyEntity, new AttackComponent());
             
             // Aggiungi il componente di stato AI
-            commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new AIStateComponent());
+            ECB.AddComponent(entityInQueryIndex, enemyEntity, new AIStateComponent());
             
             // Aggiungi il componente transform
-            commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new LocalTransform
+            ECB.AddComponent(entityInQueryIndex, enemyEntity, new LocalTransform
             {
                 Position = position,
                 Rotation = quaternion.EulerZXY(0, random.NextFloat(0, math.PI * 2), 0),
@@ -385,11 +409,11 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Genera collezionabili all'interno di un segmento
         /// </summary>
+        [BurstDiscard]
         private void GenerateCollectibles(int entityInQueryIndex,
                                        Entity segmentEntity,
                                        ref PathSegmentComponent segment,
                                        DynamicBuffer<SegmentContentBuffer> contentBuffer,
-                                       ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                        Unity.Mathematics.Random random)
         {
             // Implementazione per la generazione di oggetti collezionabili lungo il percorso
