@@ -95,15 +95,17 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             
             // Il job si prenderà cura della disposal dei NativeArray
             
-            // Aggiorna i visualizzatori dell'aura con un job personalizzato
-            new HeatAuraVisualUpdateJob
+            // Aggiorna i visualizzatori dell'aura con un IJobEntity
+            var visualQuery = SystemAPI.QueryBuilder()
+                .WithAll<HeatAuraVisualComponent, TransformComponent>()
+                .Build(ref state);
+                
+            state.Dependency = new HeatAuraVisualUpdateJob
             {
                 DeltaTime = deltaTime,
-                EntityManager = state.EntityManager,
-                ECB = commandBuffer
-            }.Run(state.EntityManager, SystemAPI.QueryBuilder()
-                .WithAll<HeatAuraVisualComponent, TransformComponent>()
-                .Build(ref state));
+                ECB = commandBuffer,
+                TransformLookup = state.GetComponentLookup<TransformComponent>(true)
+            }.ScheduleParallel(visualQuery, state.Dependency);
             
             // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
@@ -302,45 +304,37 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// <summary>
     /// Job per aggiornare le visualizzazioni dell'aura di calore
     /// </summary>
-    public struct HeatAuraVisualUpdateJob
+    [BurstCompile]
+    public partial struct HeatAuraVisualUpdateJob : IJobEntity
     {
         public float DeltaTime;
-        public EntityManager EntityManager;
         public EntityCommandBuffer.ParallelWriter ECB;
         
-        public void Run(EntityManager entityManager, EntityQuery query)
+        [ReadOnly] public ComponentLookup<TransformComponent> TransformLookup;
+        
+        // Metodo Execute chiamato per ogni entità nel query
+        public void Execute([ChunkIndexInQuery] int chunkIndexInQuery, 
+                          Entity entity,
+                          ref HeatAuraVisualComponent auraVisual,
+                          ref TransformComponent transform)
         {
-            var entities = query.ToEntityArray(Allocator.Temp);
+            // Aggiorna il tempo rimanente
+            auraVisual.RemainingTime -= DeltaTime;
             
-            foreach (var entity in entities)
+            // Se il tempo è scaduto, distruggi l'entità visiva
+            if (auraVisual.RemainingTime <= 0)
             {
-                var auraVisual = entityManager.GetComponentData<HeatAuraVisualComponent>(entity);
-                var transform = entityManager.GetComponentData<TransformComponent>(entity);
-                int entityInQueryIndex = entity.Index;
-                
-                // Aggiorna il tempo rimanente
-                auraVisual.RemainingTime -= DeltaTime;
-                
-                // Se il tempo è scaduto, distruggi l'entità visiva
-                if (auraVisual.RemainingTime <= 0)
+                ECB.DestroyEntity(chunkIndexInQuery, entity);
+            }
+            else
+            {
+                // Aggiorna la posizione in base all'entità proprietaria
+                if (auraVisual.OwnerEntity != Entity.Null && 
+                    TransformLookup.HasComponent(auraVisual.OwnerEntity))
                 {
-                    ECB.DestroyEntity(entityInQueryIndex, entity);
-                }
-                else
-                {
-                    // Aggiorna la posizione in base all'entità proprietaria
-                    if (entityManager.Exists(auraVisual.OwnerEntity) &&
-                        entityManager.HasComponent<TransformComponent>(auraVisual.OwnerEntity))
-                    {
-                        transform.Position = entityManager.GetComponentData<TransformComponent>(auraVisual.OwnerEntity).Position;
-                        entityManager.SetComponentData(entity, transform);
-                    }
-                    
-                    entityManager.SetComponentData(entity, auraVisual);
+                    transform.Position = TransformLookup[auraVisual.OwnerEntity].Position;
                 }
             }
-            
-            entities.Dispose();
         }
     }
 }

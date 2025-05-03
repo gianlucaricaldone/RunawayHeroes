@@ -411,7 +411,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// <summary>
         /// Verifica se un'entità contiene una certa abilità e se è attiva
         /// </summary>
-        private static bool HasActiveAbility<T>(Entity entity, ComponentLookup<T> lookup) where T : struct, IComponentData
+        private static bool HasActiveAbility<T>(Entity entity, ComponentLookup<T> lookup) where T : unmanaged, IComponentData
         {
             if (lookup.HasComponent(entity))
             {

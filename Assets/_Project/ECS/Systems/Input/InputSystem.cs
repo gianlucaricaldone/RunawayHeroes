@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Collections;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Core;

@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using Unity.Collections;
 using System;
 using UnityEngine;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
@@ -16,7 +17,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(TutorialProgressionSystem))]
-    public partial class WorldProgressionSystem : SystemBase
+    [BurstCompile]
+    public partial struct WorldProgressionSystem : ISystem
     {
         // Query per varie entità
         private EntityQuery _playerProgressionQuery;
@@ -55,52 +57,62 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Inizializza il sistema
         /// </summary>
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
+            // Stato
+            _initializationComplete = false;
+            
             // Inizializza query per la progressione globale
-            _playerProgressionQuery = GetEntityQuery(ComponentType.ReadWrite<PlayerProgressionComponent>());
+            _playerProgressionQuery = state.GetEntityQuery(ComponentType.ReadWrite<PlayerProgressionComponent>());
             
             // Inizializza query per la progressione dei mondi
-            _worldProgressionQuery = GetEntityQuery(ComponentType.ReadWrite<WorldProgressionComponent>());
+            _worldProgressionQuery = state.GetEntityQuery(ComponentType.ReadWrite<WorldProgressionComponent>());
             
             // Inizializza query per il mondo attivo
-            _activeWorldQuery = GetEntityQuery(
+            _activeWorldQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<WorldTag>(),
                 ComponentType.ReadOnly<LevelTag>()
             );
             
             // Richiedi aggiornamento solo se esiste progressione o mondo attivo
-            RequireForUpdate(_playerProgressionQuery);
-            RequireForUpdate(_worldProgressionQuery);
+            state.RequireForUpdate(_playerProgressionQuery);
+            state.RequireForUpdate(_worldProgressionQuery);
+        }
+        
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            // Cleanup se necessario
         }
         
         /// <summary>
         /// Aggiorna il sistema di progressione dei mondi
         /// </summary>
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
         {
             // Inizializza se necessario
             if (!_initializationComplete)
             {
-                InitializeWorldProgressionData();
+                InitializeWorldProgressionData(ref state);
                 _initializationComplete = true;
             }
             
             // Ottieni il buffer per i comandi
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
             // Processa eventi di completamento tutorial per sbloccare il primo mondo
-            ProcessTutorialCompletionEvents(commandBuffer);
+            ProcessTutorialCompletionEvents(commandBuffer, ref state);
             
             // Processa eventi di completamento mondo
-            ProcessWorldCompletionEvents(commandBuffer);
+            ProcessWorldCompletionEvents(commandBuffer, ref state);
             
             // Processa eventi di raccolta frammenti
             ProcessFragmentCollectionEvents(commandBuffer);
             
             // Aggiorna stato generale progressione
-            UpdateGlobalProgressionState();
+            UpdateGlobalProgressionState(ref state);
         }
         
         /// <summary>

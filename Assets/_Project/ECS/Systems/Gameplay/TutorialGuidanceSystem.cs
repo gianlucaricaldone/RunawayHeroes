@@ -380,13 +380,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
     }
     
-    /// <summary>
-    /// Tag per identificare i livelli tutorial
-    /// </summary>
-    [System.Serializable]
-    public struct TutorialLevelTag : IComponentData
-    {
-        public int CurrentSequence;
-        public bool Completed;
-    }
+    // Nota: TutorialLevelTag è ora definito in RunawayHeroes.ECS.Components.Gameplay
+    // per evitare duplicazione di definizioni di componenti
 }

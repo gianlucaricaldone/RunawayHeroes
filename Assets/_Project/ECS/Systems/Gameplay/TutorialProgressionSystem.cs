@@ -4,6 +4,7 @@ using Unity.Transforms;
 using Unity.Collections;
 using System;
 using UnityEngine;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
@@ -17,7 +18,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Si occupa dell'apprendimento delle meccaniche di base e dello sblocco sequenziale dei tutorial.
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    public partial class TutorialProgressionSystem : SystemBase
+    [BurstCompile]
+    public partial struct TutorialProgressionSystem : ISystem
     {
         // Query per varie entità
         private EntityQuery _tutorialLevelQuery;
@@ -26,11 +28,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _playerProgressionQuery;
         
         // Stato
-        private bool _initializationComplete = false;
+        private bool _initializationComplete;
         
         // Riferimenti Tutorial
         private RunawayHeroes.Runtime.Levels.TutorialLevelInitializer _tutorialManager;
-        private int _totalAvailableTutorials = 0;
+        private int _totalAvailableTutorials;
         
         // Costanti
         private const float TUTORIAL_COMPLETION_THRESHOLD = 0.9f; // 90% del percorso per considerare completato
@@ -38,37 +40,42 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Inizializza il sistema
         /// </summary>
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
+            // Inizializza variabili
+            _initializationComplete = false;
+            _totalAvailableTutorials = 0;
+            
             // Inizializza query per tutorial
-            _tutorialLevelQuery = GetEntityQuery(ComponentType.ReadWrite<TutorialLevelTag>());
+            _tutorialLevelQuery = state.GetEntityQuery(ComponentType.ReadWrite<TutorialLevelTag>());
             
             // Inizializza query per progressione
-            _tutorialProgressQuery = GetEntityQuery(ComponentType.ReadWrite<TutorialProgressionComponent>());
+            _tutorialProgressQuery = state.GetEntityQuery(ComponentType.ReadWrite<TutorialProgressionComponent>());
             
             // Inizializza query per la progressione globale
-            _playerProgressionQuery = GetEntityQuery(ComponentType.ReadWrite<PlayerProgressionComponent>());
+            _playerProgressionQuery = state.GetEntityQuery(ComponentType.ReadWrite<PlayerProgressionComponent>());
             
             // Inizializza query per giocatore
-            _playerQuery = GetEntityQuery(
+            _playerQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<PlayerTag>(),
                 ComponentType.ReadOnly<TransformComponent>()
             );
             
             // Richiedi il singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo se esiste un livello tutorial o progressione
-            RequireAnyForUpdate(new EntityQuery[] { _tutorialLevelQuery, _tutorialProgressQuery });
+            state.RequireAnyForUpdate(new EntityQuery[] { _tutorialLevelQuery, _tutorialProgressQuery });
         }
         
-        /// <summary>
-        /// Cerca e crea riferimenti a runtime
-        /// </summary>
-        protected override void OnStartRunning()
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
         {
-            base.OnStartRunning();
-            
+            // Cleanup se necessario
+        }
+        
+        public void OnStartRunning(ref SystemState state)
+        {
             // Ottieni riferimento al gestore tutorial
             _tutorialManager = UnityEngine.Object.FindObjectOfType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
             if (_tutorialManager != null && _tutorialManager.tutorialSequence != null)
@@ -80,18 +87,19 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Aggiorna il sistema di progressione tutorial
         /// </summary>
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
         {
             // Inizializza se necessario
             if (!_initializationComplete)
             {
-                InitializeProgressionData();
+                InitializeProgressionData(ref state);
                 _initializationComplete = true;
             }
             
             // Ottieni il buffer per i comandi
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
             // Controlla il completamento del tutorial
             if (!_tutorialLevelQuery.IsEmpty)
@@ -107,7 +115,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         .WithAll<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>())
                 {
                     // Aggiorna lo stato di progressione tutorial
-                    var progressEntity = GetOrCreateTutorialProgressionEntity();
+                    var progressEntity = GetOrCreateTutorialProgressionEntity(ref state);
                     var tutorialProgress = SystemAPI.GetComponent<TutorialProgressionComponent>(progressEntity);
                     
                     // Incrementa contatore tutorial completati
@@ -176,16 +184,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 }
                     
                 // Verifica completamento tutorial basato su distanza percorsa
-                CheckTutorialCompletionByDistance();
+                CheckTutorialCompletionByDistance(ref state);
             }
-            
-            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
         
         /// <summary>
         /// Verifica se il giocatore ha completato un tutorial percorrendo la distanza necessaria
         /// </summary>
-        private void CheckTutorialCompletionByDistance()
+        private void CheckTutorialCompletionByDistance(ref SystemState state)
         {
             if (_playerQuery.IsEmpty || _tutorialLevelQuery.IsEmpty)
                 return;
@@ -214,14 +220,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     
                     // Crea un'entità con tag di completamento
                     var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-                    var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
+                    var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
                     Entity completedEntity = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent(completedEntity, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag 
                     { 
                         CompletedTutorialIndex = tutorialLevel.TutorialIndex 
                     });
-                    
-                    // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
                     
                     Debug.Log($"Tutorial {tutorialLevel.TutorialIndex} completato!");
                 }
@@ -231,13 +235,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Inizializza i dati di progressione se non esistono già
         /// </summary>
-        private void InitializeProgressionData()
+        private void InitializeProgressionData(ref SystemState state)
         {
             // Crea un'entità per la progressione tutorial se non esiste già
             if (_tutorialProgressQuery.IsEmpty)
             {
-                var entity = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(entity, new TutorialProgressionComponent
+                var entity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(entity, new TutorialProgressionComponent
                 {
                     CompletedTutorialCount = 0,
                     HighestUnlockedTutorial = 0,
@@ -253,8 +257,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Crea anche entità per progressione globale se non esiste
             if (_playerProgressionQuery.IsEmpty)
             {
-                var entity = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(entity, new PlayerProgressionComponent
+                var entity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(entity, new PlayerProgressionComponent
                 {
                     CompletedTutorialCount = 0,
                     HighestUnlockedTutorial = 0,
@@ -279,11 +283,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Ottiene o crea l'entità di progressione tutorial
         /// </summary>
-        private Entity GetOrCreateTutorialProgressionEntity()
+        private Entity GetOrCreateTutorialProgressionEntity(ref SystemState state)
         {
             if (_tutorialProgressQuery.IsEmpty)
             {
-                InitializeProgressionData();
+                InitializeProgressionData(ref state);
             }
             
             return _tutorialProgressQuery.GetSingletonEntity();

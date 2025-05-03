@@ -167,9 +167,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, eventRef) in SystemAPI.Query<RefRO<LevelCompletionEvent>>().WithEntityAccess())
+            // Approccio alternativo senza destrutturazione
+            var query = SystemAPI.QueryBuilder().WithAll<LevelCompletionEvent>().Build(ref state);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            foreach (var entity in entities)
             {
-                var completionEvent = eventRef.ValueRO;
+                var completionEvent = entityManager.GetComponentData<LevelCompletionEvent>(entity);
                 int worldIndex = completionEvent.WorldIndex;
                 int levelIndex = completionEvent.LevelIndex;
                 
@@ -245,6 +249,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Rimuovi l'evento dopo l'elaborazione
                 entityManager.DestroyEntity(entity);
             }
+            
+            // Rilascia la memoria
+            entities.Dispose();
         }
         
         /// <summary>
@@ -265,9 +272,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, eventRef) in SystemAPI.Query<RefRO<ObjectiveCompletedEvent>>().WithEntityAccess())
+            // Approccio alternativo senza destrutturazione
+            var query = SystemAPI.QueryBuilder().WithAll<ObjectiveCompletedEvent>().Build(ref state);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            foreach (var entity in entities)
             {
-                var completionEvent = eventRef.ValueRO;
+                var completionEvent = entityManager.GetComponentData<ObjectiveCompletedEvent>(entity);
                 // Se è un'obiettivo bonus, marcalo come completato
                 if (completionEvent.ObjectiveType == 2 || 
                     completionEvent.ObjectiveType == 3 || 
@@ -295,6 +306,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Rimuovi l'evento dopo l'elaborazione
                 entityManager.DestroyEntity(entity);
             }
+            
+            // Rilascia la memoria
+            entities.Dispose();
         }
         
         /// <summary>
@@ -325,9 +339,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             Entity worldProgressEntity = Entity.Null;
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, progressRef) in SystemAPI.Query<RefRW<WorldProgressionComponent>>().WithEntityAccess())
+            // Approccio alternativo senza destrutturazione e RefRW
+            var query = SystemAPI.QueryBuilder().WithAll<WorldProgressionComponent>().Build(ref state);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            foreach (var entity in entities)
             {
-                if (progressRef.ValueRO.WorldIndex == worldIndex)
+                var worldProgress = entityManager.GetComponentData<WorldProgressionComponent>(entity);
+                
+                if (worldProgress.WorldIndex == worldIndex)
                 {
                     worldProgressEntity = entity;
                     
@@ -335,21 +355,21 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     if (levelIndex < 8) // Massimo 8 bit in un byte
                     {
                         // Marca questo livello come completato
-                        progressRef.ValueRW.CompletedLevelsBitmap |= (byte)(1 << levelIndex);
+                        worldProgress.CompletedLevelsBitmap |= (byte)(1 << levelIndex);
                         
                         // Se è stato completato al 100% (3 stelle + bonus)
                         if (starsEarned == 3 && bonusObjectiveCompleted)
                         {
-                            progressRef.ValueRW.FullyCompletedLevelsBitmap |= (byte)(1 << levelIndex);
+                            worldProgress.FullyCompletedLevelsBitmap |= (byte)(1 << levelIndex);
                         }
                     }
                     
                     // Aggiorna conteggio stelle
-                    int previousStars = progressRef.ValueRO.StarsCollected;
+                    int previousStars = worldProgress.StarsCollected;
                     
                     // Calcola quante stelle sono già associate a questo livello
                     int levelBitPosition = levelIndex % 8;
-                    bool isLevelCompleted = (progressRef.ValueRO.CompletedLevelsBitmap & (1 << levelBitPosition)) != 0;
+                    bool isLevelCompleted = (worldProgress.CompletedLevelsBitmap & (1 << levelBitPosition)) != 0;
                     
                     // Ottieni stelle precedenti
                     int previousLevelStars = GetStarsForLevel(worldIndex, levelIndex, ref state);
@@ -358,10 +378,16 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     int starDifference = starsEarned - previousLevelStars;
                     if (starDifference > 0)
                     {
-                        progressRef.ValueRW.StarsCollected += starDifference;
+                        worldProgress.StarsCollected += starDifference;
                     }
+                    
+                    // Salva le modifiche nel componente
+                    entityManager.SetComponentData(entity, worldProgress);
                 }
             }
+            
+            // Rilascia la memoria
+            entities.Dispose();
                 
             // Se l'entità è stata trovata e modificata, aggiorna anche la progressione globale
             if (worldProgressEntity != Entity.Null && !_playerProgressionQuery.IsEmpty)
@@ -399,20 +425,29 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             int nextLevelIndex = levelIndex + 1;
             
             // Trova l'entità di progressione mondo
-            foreach (var progressRef in SystemAPI.Query<RefRW<WorldProgressionComponent>>())
+            // Approccio alternativo senza RefRW
+            var query = SystemAPI.QueryBuilder().WithAll<WorldProgressionComponent>().Build(ref state);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            foreach (var entity in entities)
             {
-                if (progressRef.ValueRO.WorldIndex == worldIndex)
+                var worldProgress = entityManager.GetComponentData<WorldProgressionComponent>(entity);
+                
+                if (worldProgress.WorldIndex == worldIndex)
                 {
                     // Se il prossimo livello è valido, sbloccalo
                     if (nextLevelIndex < 8) // Massimo 8 bit in un byte
                     {
                         // Verifica che non sia già sbloccato
-                        bool isAlreadyUnlocked = (progressRef.ValueRO.UnlockedLevelsBitmap & (1 << nextLevelIndex)) != 0;
+                        bool isAlreadyUnlocked = (worldProgress.UnlockedLevelsBitmap & (1 << nextLevelIndex)) != 0;
                         
                         if (!isAlreadyUnlocked)
                         {
                             // Sblocca il prossimo livello
-                            progressRef.ValueRW.UnlockedLevelsBitmap |= (byte)(1 << nextLevelIndex);
+                            worldProgress.UnlockedLevelsBitmap |= (byte)(1 << nextLevelIndex);
+                            
+                            // Salva le modifiche
+                            entityManager.SetComponentData(entity, worldProgress);
                             
                             // Crea evento di sblocco
                             Entity unlockEvent = commandBuffer.CreateEntity();
@@ -433,14 +468,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                     // Se abbiamo completato l'ultimo livello, considera il mondo completato
                     else if (nextLevelIndex >= GetMaxLevelsForWorld(worldIndex) &&
-                             !progressRef.ValueRO.IsBossDefeated)
+                             !worldProgress.IsBossDefeated)
                     {
                         // Crea evento di completamento mondo
                         Entity worldCompletionEvent = commandBuffer.CreateEntity();
                         commandBuffer.AddComponent(worldCompletionEvent, new WorldCompletionEvent
                         {
                             WorldIndex = worldIndex,
-                            IsFullyCompleted = IsWorldFullyCompleted(progressRef.ValueRO),
+                            IsFullyCompleted = IsWorldFullyCompleted(worldProgress),
                             NextWorldToUnlock = worldIndex + 1,
                             FragmentIndex = worldIndex,
                             CharacterUnlocked = worldIndex // Mappa indice mondo a indice personaggio
@@ -448,6 +483,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                 }
             }
+            
+            // Rilascia la memoria
+            entities.Dispose();
         }
         
         /// <summary>
@@ -561,14 +599,23 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             Entity levelEntity = Entity.Null;
             var entityManager = state.EntityManager;
             
-            foreach (var (entity, progressRef) in SystemAPI.Query<RefRO<LevelProgressionComponent>>().WithEntityAccess())
+            // Approccio alternativo senza destrutturazione
+            var query = SystemAPI.QueryBuilder().WithAll<LevelProgressionComponent>().Build(ref state);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            foreach (var entity in entities)
             {
-                if (progressRef.ValueRO.WorldIndex == worldIndex && progressRef.ValueRO.LevelIndex == levelIndex)
+                var levelProgress = entityManager.GetComponentData<LevelProgressionComponent>(entity);
+                
+                if (levelProgress.WorldIndex == worldIndex && levelProgress.LevelIndex == levelIndex)
                 {
                     levelEntity = entity;
                     break;
                 }
             }
+            
+            // Rilascia la memoria
+            entities.Dispose();
                 
             // Se non esiste, crea una nuova entità
             if (levelEntity == Entity.Null)
