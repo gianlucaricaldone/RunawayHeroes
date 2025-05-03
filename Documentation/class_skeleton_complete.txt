@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 03/05/2025 12:47:04
+# Generato il: 03/05/2025 21:18:30
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -5221,48 +5221,48 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// inclusi i messaggi di istruzione del tutorial, notifiche e avvisi.
     /// </summary>
 
-    public partial class UIMessageSystem : SystemBase
+    public partial class UIMessageSystem : ISystem
     {
         private GameObject _messagePanel;
         private TextMeshProUGUI _messageText;
         private Animator _messageAnimator;
         private Image _backgroundImage;
-        private Color[] _messageTypeColors;
+        private readonly Color[] _messageTypeColors;
         private bool _isMessageVisible;
         private float _messageTimer;
         private Entity _currentMessageEntity;
         private Queue<Entity> _messageQueue;
         private const float FADE_IN_TIME;
         private const float FADE_OUT_TIME;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnStartRunning();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnStartRunning(SystemState state);
          <summary>
         /// Crea dinamicamente un pannello per i messaggi se non esiste già
         /// </summary>
 
         private void CreateMessagePanelDynamically(Transform parentTransform);
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
          <summary>
         /// Processa nuovi messaggi aggiunti al sistema
         /// </summary>
 
-        private void ProcessNewMessages();
+        private void ProcessNewMessages(SystemState state);
          <summary>
         /// Aggiorna lo stato del messaggio correntemente visualizzato
         /// </summary>
 
-        private void UpdateCurrentMessage();
+        private void UpdateCurrentMessage(SystemState state);
          <summary>
         /// Mostra il prossimo messaggio nella coda
         /// </summary>
 
-        private void ShowNextMessage();
+        private void ShowNextMessage(SystemState state);
          <summary>
         /// Processa eventi relativi ai messaggi
         /// </summary>
 
-        private void ProcessMessageEvents();
+        private void ProcessMessageEvents(SystemState state);
          <summary>
         /// Mostra il pannello dei messaggi con animazione
         /// </summary>
@@ -5296,7 +5296,6 @@ namespace RunawayHeroes.ECS.Systems.UI
         private Dictionary<int, GameObject> _activeObjectiveItems;
         private GameObject _objectiveItemPrefab;
         private EntityQuery _activeObjectivesQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         protected override void OnCreate();
         protected override void OnStartRunning();
         protected override void OnUpdate();
@@ -5371,10 +5370,19 @@ namespace RunawayHeroes.ECS.Systems.UI
         private float _waveEffectTimer;
         private float _unlockEffectTimer;
         private EntityQuery _resonanceQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         protected override void OnCreate();
         protected override void OnStartRunning();
         protected override void OnUpdate();
+         <summary>
+        /// Aggiorna l'overlay del cooldown
+        /// </summary>
+
+        private void UpdateCooldownOverlay(FragmentResonanceComponent resonance);
+         <summary>
+        /// Aggiorna il testo del livello di risonanza
+        /// </summary>
+
+        private void UpdateResonanceLevel(FragmentResonanceComponent resonance);
          <summary>
         /// Aggiorna i timer per le animazioni
         /// </summary>
@@ -5629,19 +5637,43 @@ namespace RunawayHeroes.ECS.Systems.Input
     /// da tastiera, touch o controller e aggiornando l'InputComponent.
     /// </summary>
 
-    public partial class InputSystem : SystemBase
+    public partial struct InputSystem : ISystem
     {
         private EntityQuery _inputQuery;
          <summary>
         /// Inizializza il sistema e definisce le query per le entità
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna gli input ad ogni frame
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per aggiornare gli input del giocatore
+    /// </summary>
+
+    public partial struct UpdatePlayerInputJob : IJobEntity
+    {
+        public bool JumpPressed;
+        public bool SlidePressed;
+        public bool FocusTimePressed;
+        public bool AbilityPressed;
+        public bool CharacterSwitchPressed;
+        public bool IsMovementEnabled;
+        public float LateralMovement;
+        public float2 MoveDirection;
+        public bool TouchActive;
+        public float2 TouchPosition;
+        public float TouchDuration;
+         <summary>
+        /// Aggiorna il componente di input per ogni entità giocatore
+        /// </summary>
+
+        public void Execute(InputComponent input);
     }
 }
 
@@ -5703,17 +5735,26 @@ namespace RunawayHeroes.ECS.Systems.World
     /// in base ai parametri definiti in RandomLevelConfigComponent
     /// </summary>
 
-    public partial class RandomLevelGenerationSystem : SystemBase
+    public partial struct RandomLevelGenerationSystem : ISystem
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
-        private Unity.Mathematics.Random _random;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _configQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per processare le configurazioni di livelli casuali
+    /// </summary>
+
+    public partial struct ProcessRandomLevelConfigsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public void Execute(Entity entity, int entityInQueryIndex, RandomLevelConfigComponent config, LocalTransform transform);
          <summary>
         /// Genera un livello procedurale basato sulla configurazione specificata
         /// </summary>
 
-        private void GenerateLevel(Entity configEntity, int entityInQueryIndex, RandomLevelConfigComponent config, LocalTransform transform, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private void GenerateLevel(Entity configEntity, int entityInQueryIndex, RandomLevelConfigComponent config, LocalTransform transform, Unity.Mathematics.Random random, EntityCommandBuffer.ParallelWriter commandBuffer);
          <summary>
         /// Crea una nuova stanza nell'ambito del livello generato
         /// </summary>
@@ -5732,18 +5773,12 @@ namespace RunawayHeroes.ECS.Systems.World
     /// che quella procedurale per runner
     /// </summary>
 
-    public partial class LevelGenerationSystem : SystemBase
+    public partial struct LevelGenerationSystem : ISystem
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
-        private RunnerLevelGenerationSystem _runnerLevelSystem;
-        private SegmentContentGenerationSystem _contentGenerationSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
-         <summary>
-        /// Genera un livello predefinito in base ai dati di configurazione
-        /// </summary>
-
-        private void GeneratePredefinedLevel(Entity levelEntity, int entityInQueryIndex, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private EntityQuery _levelQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
          <summary>
         /// Crea un'entità con configurazione per la generazione di un livello runner casuale
         /// </summary>
@@ -5752,12 +5787,26 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <param name="seed">Seed per la generazione casuale</param>
         /// <param name="isTutorial">Indica se il livello è un tutorial (difficoltà ridotta)</param>
 
-        public Entity CreateRunnerLevelRequest(WorldTheme theme, int levelLength, int seed, bool isTutorial);
+        public Entity CreateRunnerLevelRequest(SystemState state, WorldTheme theme, int levelLength, int seed, bool isTutorial);
          <summary>
         /// Ottiene un tema complementare per creare varietà nei livelli
         /// </summary>
 
-        private WorldTheme GetComplementaryTheme(WorldTheme primaryTheme);
+        private static WorldTheme GetComplementaryTheme(WorldTheme primaryTheme);
+    }
+     <summary>
+    /// Job per processare le richieste di generazione livelli predefiniti
+    /// </summary>
+
+    public partial struct ProcessLevelGenerationRequestsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public void Execute(Entity entity, int entityInQueryIndex, LevelComponent level, LocalTransform transform);
+         <summary>
+        /// Genera un livello predefinito in base ai dati di configurazione
+        /// </summary>
+
+        private void GeneratePredefinedLevel(Entity levelEntity, int entityInQueryIndex);
     }
 }
 
@@ -5788,7 +5837,6 @@ namespace RunawayHeroes.ECS.Systems.World
 
     public partial class ThematicObstacleGenerationSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         private Unity.Mathematics.Random _random;
         private uint _seed;
         protected override void OnCreate();
@@ -5853,7 +5901,6 @@ namespace RunawayHeroes.ECS.Systems.World
 
     public partial class SegmentContentGenerationSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         private Unity.Mathematics.Random _random;
         private uint _seed;
         protected override void OnCreate();
@@ -5897,7 +5944,6 @@ namespace RunawayHeroes.ECS.Systems.World
 
     public partial class RoomConnectionSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         protected override void OnCreate();
         protected override void OnUpdate();
          <summary>
@@ -5940,33 +5986,64 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema responsabile del popolamento delle stanze con nemici, collezionabili e ostacoli
     /// </summary>
 
-    public partial class RoomPopulationSystem : SystemBase
+    public partial struct RoomPopulationSystem : ISystem
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
-        private Unity.Mathematics.Random _random;
         private uint _seed;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _roomQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per popolare le stanze con contenuto
+    /// </summary>
+
+    public partial struct PopulateRoomsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public uint Seed;
+        public void Execute(Entity roomEntity, int entityInQueryIndex, RoomComponent room);
          <summary>
         /// Popola una stanza con nemici, collezionabili e ostacoli in base alle probabilità specificate
         /// </summary>
 
-        private void PopulateRoom(int entityInQueryIndex, Entity roomEntity, RoomComponent room, float enemyProbability, float collectibleProbability, float obstacleProbability, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void PopulateRoom(int entityInQueryIndex, Entity roomEntity, RoomComponent room, float enemyProbability, float collectibleProbability, float obstacleProbability, Unity.Mathematics.Random random);
          <summary>
         /// Crea un nemico nella stanza specificata
         /// </summary>
 
-        private void CreateEnemy(int entityInQueryIndex, Entity roomEntity, RoomComponent room, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void CreateEnemy(int entityInQueryIndex, Entity roomEntity, RoomComponent room, Unity.Mathematics.Random random);
          <summary>
         /// Crea un oggetto collezionabile nella stanza specificata
         /// </summary>
 
-        private void CreateCollectible(int entityInQueryIndex, Entity roomEntity, RoomComponent room, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void CreateCollectible(int entityInQueryIndex, Entity roomEntity, RoomComponent room, Unity.Mathematics.Random random);
          <summary>
         /// Crea un ostacolo nella stanza specificata
         /// </summary>
 
-        private void CreateObstacle(int entityInQueryIndex, Entity roomEntity, RoomComponent room, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void CreateObstacle(int entityInQueryIndex, Entity roomEntity, RoomComponent room, Unity.Mathematics.Random random);
+    }
+     <summary>
+    /// Tag component per identificare le stanze già popolate
+    /// </summary>
+
+    public struct RoomPopulatedTag : IComponentData
+    {
+         ref RoomComponent room;
+         ref RoomComponent ;
+         float enemyProbability;
+         float ;
+         float collectibleProbability;
+         float ;
+         float obstacleProbability;
+         float ;
+         ref EntityCommandBuffer.ParallelWriter commandBuffer;
+         ref EntityCommandBuffer.ParallelWriter Unity;
+         Mathematics.Random random;
+         int roomArea;
+         int maxEntities;
+         int numEnemies;
     }
      <summary>
     /// Tag component per identificare le stanze già popolate
@@ -5987,13 +6064,26 @@ namespace RunawayHeroes.ECS.Systems.World
     /// man mano che il giocatore avanza nel livello
     /// </summary>
 
-    public partial class DynamicSegmentLoadingSystem : SystemBase
+    public partial struct DynamicSegmentLoadingSystem : ISystem
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         private const float ACTIVATION_DISTANCE;
         private const float DEACTIVATION_DISTANCE;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public float3 PlayerPosition;
+        public float ActivationDistance;
+        public float DeactivationDistance;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+         void Execute(Entity segmentEntity, int chunkIndexInQuery, PathSegmentComponent segment);
+    }
+    private partial struct ManageSegmentActivationJob : IJobEntity
+    {
+        public float3 PlayerPosition;
+        public float ActivationDistance;
+        public float DeactivationDistance;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+         void Execute(Entity segmentEntity, int chunkIndexInQuery, PathSegmentComponent segment);
     }
 }
 
@@ -6006,37 +6096,72 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema responsabile della generazione procedurale dei livelli per il gioco runner
     /// </summary>
 
-    public partial class RunnerLevelGenerationSystem : SystemBase
+    public partial struct RunnerLevelGenerationSystem : ISystem
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
-        private Unity.Mathematics.Random _random;
         private const float DEFAULT_SEGMENT_LENGTH;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _levelConfigQuery;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public EntityManager EntityManager;
+        private const float DEFAULT_SEGMENT_LENGTH;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int entityInQueryIndex, RunnerLevelConfigComponent config, LocalTransform transform);
          <summary>
         /// Genera l'entità principale del livello
         /// </summary>
 
-        private Entity GenerateLevel(int entityInQueryIndex, RunnerLevelConfigComponent config, int numSegments, LocalTransform transform, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private Entity GenerateLevel(int entityInQueryIndex, RunnerLevelConfigComponent config, int numSegments, LocalTransform transform, Unity.Mathematics.Random random);
          <summary>
         /// Genera i segmenti del percorso per il livello
         /// </summary>
 
-        private void GeneratePathSegments(int entityInQueryIndex, Entity levelEntity, int numSegments, RunnerLevelConfigComponent config, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private void GeneratePathSegments(int entityInQueryIndex, Entity levelEntity, int numSegments, RunnerLevelConfigComponent config, Unity.Mathematics.Random random);
          <summary>
         /// Determina il tipo di segmento in base alla posizione e alla varietà richiesta
         /// </summary>
 
-        private SegmentType DetermineSegmentType(int index, int totalSegments, float varietyFactor);
+        private SegmentType DetermineSegmentType(int index, int totalSegments, float varietyFactor, Unity.Mathematics.Random random);
          <summary>
         /// Crea un segmento di percorso
         /// </summary>
 
-        private Entity CreatePathSegment(int entityInQueryIndex, Entity levelEntity, int segmentIndex, int difficultyLevel, SegmentType type, WorldTheme theme, bool isActive, Entity prevSegment, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private Entity CreatePathSegment(int entityInQueryIndex, Entity levelEntity, int segmentIndex, int difficultyLevel, SegmentType type, WorldTheme theme, bool isActive, Entity prevSegment, Unity.Mathematics.Random random);
     }
      <summary>
-    /// Tag per indicare che un segmento richiede la generazione dei contenuti
+    /// Job per elaborare le richieste di generazione livello
     /// </summary>
+
+    public partial struct ProcessRunnerLevelRequestsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public EntityManager EntityManager;
+        private const float DEFAULT_SEGMENT_LENGTH;
+         void Execute(Entity entity, int entityInQueryIndex, RunnerLevelConfigComponent config, LocalTransform transform);
+         <summary>
+        /// Genera l'entità principale del livello
+        /// </summary>
+
+        private Entity GenerateLevel(int entityInQueryIndex, RunnerLevelConfigComponent config, int numSegments, LocalTransform transform, Unity.Mathematics.Random random);
+         <summary>
+        /// Genera i segmenti del percorso per il livello
+        /// </summary>
+
+        private void GeneratePathSegments(int entityInQueryIndex, Entity levelEntity, int numSegments, RunnerLevelConfigComponent config, Unity.Mathematics.Random random);
+         <summary>
+        /// Determina il tipo di segmento in base alla posizione e alla varietà richiesta
+        /// </summary>
+
+        private SegmentType DetermineSegmentType(int index, int totalSegments, float varietyFactor, Unity.Mathematics.Random random);
+         <summary>
+        /// Crea un segmento di percorso
+        /// </summary>
+
+        private Entity CreatePathSegment(int entityInQueryIndex, Entity levelEntity, int segmentIndex, int difficultyLevel, SegmentType type, WorldTheme theme, bool isActive, Entity prevSegment, Unity.Mathematics.Random random);
+    }
+     <summary>
+/// Tag per indicare che un segmento richiede la generazione dei contenuti
+/// </summary>
 
     public struct RequiresContentGenerationTag : IComponentData
     {
@@ -6054,14 +6179,14 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// inclusi velocità aumentata, invulnerabilità e capacità di sfondare ostacoli.
     /// </summary>
 
-    public partial class UrbanDashSystem : SystemBase
+    public partial struct UrbanDashSystem : ISystem
     {
         private EntityQuery _abilityQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
          void Execute(Entity entity, int entityIndexInQuery, UrbanDashAbilityComponent urbanDash, MovementComponent movement, HealthComponent health, PhysicsComponent physics, AbilityInputComponent abilityInput, TransformComponent transform, AlexComponent alexComponent);
     }
      <summary>
@@ -6087,13 +6212,13 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// di attraversare la lava e resistere al calore estremo.
     /// </summary>
 
-    public partial class FireproofBodySystem : SystemBase
+    public partial struct FireproofBodySystem : ISystem
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _lavaQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
      <summary>
     /// Componente per l'effetto visivo del corpo ignifugo
@@ -6121,6 +6246,31 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public Entity EntityID;
         public float3 Position;
     }
+     <summary>
+    /// Job per elaborare l'abilità Fireproof Body
+    /// </summary>
+
+    public partial struct FireproofBodyJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public NativeArray<Entity> LavaHazards;
+        public NativeArray<float3> LavaPositions;
+        public NativeArray<float> LavaRadii;
+        public NativeArray<bool> HasRadiusData;
+        public void Execute(Entity entity, int entityInQueryIndex, FireproofBodyAbilityComponent fireproofBody, HealthComponent health, AbilityInputComponent abilityInput, TransformComponent transform, EmberComponent emberComponent);
+    }
+     <summary>
+    /// Job per aggiornare le visualizzazioni del corpo ignifugo
+    /// </summary>
+
+    public partial struct FireBodyVisualUpdateJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public void Execute(int chunkIndexInQuery, Entity entity, FireBodyVisualComponent fireVisual, TransformComponent transform);
+    }
 }
 
 
@@ -6133,12 +6283,20 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// ai giocatori di cambiare personaggio istantaneamente durante il gameplay.
     /// </summary>
 
-    public partial class FragmentResonanceSystem : SystemBase
+    public partial struct FragmentResonanceSystem : ISystem
     {
         private EntityQuery _resonanceQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public void OnCreate(SystemState state);
+         void Execute(Entity entity, int chunkIndexInQuery, FragmentResonanceComponent resonance, FocusTimeComponent focusTime, HealthComponent health, ResonanceInputComponent input, TransformComponent transform);
+        public void OnUpdate(SystemState state);
+    }
+    public partial struct FragmentResonanceJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+         void Execute(Entity entity, int chunkIndexInQuery, FragmentResonanceComponent resonance, FocusTimeComponent focusTime, HealthComponent health, ResonanceInputComponent input, TransformComponent transform);
     }
 }
 
@@ -6153,14 +6311,14 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// distraggono i nemici.
     /// </summary>
 
-    public partial class NatureCallSystem : SystemBase
+    public partial struct NatureCallSystem : ISystem
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _enemyQuery;
         private EntityQuery _allyQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
      <summary>
     /// Componente che definisce un alleato naturale evocato da Maya
@@ -6180,6 +6338,41 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     public struct DisableEntityTag : IComponentData
     {
     }
+     <summary>
+    /// Job per processare l'abilità NatureCall
+    /// </summary>
+
+    public struct NatureCallAbilityJob
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityQuery EnemyQuery;
+        public IntPtr EntityManagerPtr;
+        public EntityTypeHandle EntityTypeHandle;
+        public void Run(EntityManager entityManager, EntityQuery query);
+    }
+     <summary>
+    /// Job per il comportamento base degli alleati naturali
+    /// </summary>
+
+    public partial struct NatureAllyBehaviorJob : IJobEntity
+    {
+        public float DeltaTime;
+        public float GameTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int entityInQueryIndex, NatureAllyComponent ally, TransformComponent transform);
+    }
+     <summary>
+    /// Job per l'interazione degli alleati con i target nemici
+    /// </summary>
+
+    public struct NatureAllyTargetInteractionJob
+    {
+        public float DeltaTime;
+        public float GameTime;
+        public IntPtr EntityManagerPtr;
+        public void Run(EntityManager entityManager, EntityQuery query);
+    }
 }
 
 
@@ -6193,13 +6386,13 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// di attraversare barriere digitali.
     /// </summary>
 
-    public partial class ControlledGlitchSystem : SystemBase
+    public partial struct ControlledGlitchSystem : ISystem
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _barrierQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
      <summary>
     /// Tag per identificare le barriere digitali
@@ -6228,6 +6421,18 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public Entity EntityID;
         public float3 FinalPosition;
     }
+     <summary>
+    /// Job per gestire l'abilità di Glitch Controllato
+    /// </summary>
+
+    public partial struct ControlledGlitchJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public NativeArray<Entity> Barriers;
+        public NativeArray<float3> BarrierPositions;
+        public void Execute(Entity entity, int entityInQueryIndex, ControlledGlitchAbilityComponent glitch, TransformComponent transform, PhysicsComponent physics, AbilityInputComponent abilityInput, NeoComponent neoComponent);
+    }
 }
 
 
@@ -6241,17 +6446,12 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// specifici di ciascuna abilità.
     /// </summary>
 
-    public partial class AbilitySystem : SystemBase
+    public partial struct AbilitySystem : ISystem
     {
         private EntityQuery _inputQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
-         <summary>
-        /// Determina il tipo di abilità in base al tipo di personaggio
-        /// </summary>
-
-        private static AbilityType GetAbilityTypeForCharacter(CharacterType characterType);
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
      <summary>
     /// Enumerazione dei tipi di abilità disponibili
@@ -6285,6 +6485,14 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public Entity EntityID;
         public AbilityType AbilityType;
     }
+     <summary>
+    /// Job per elaborare gli input di abilità
+    /// </summary>
+
+    public partial struct AbilityInputProcessorJob : IJobEntity
+    {
+         void Execute(Entity entity, AbilityInputComponent abilityInput, InputComponent input, PlayerDataComponent playerData);
+    }
 }
 
 
@@ -6292,11 +6500,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
 
 namespace RunawayHeroes.ECS.Systems.Abilities
 {
-    public partial class AirBubbleSystem : SystemBase
+    public partial struct AirBubbleSystem : ISystem
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _underwaterEnemyQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
         public NativeArray<Entity> UnderwaterEnemies;
@@ -6305,10 +6512,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityManager EntityManager;
-        protected override void OnCreate();
-        protected override void OnUpdate();
-         void Execute(Entity entity, int entityIndexInQuery, AirBubbleAbilityComponent airBubble, AbilityInputComponent abilityInput, TransformComponent transform, MarinaComponent marinaComponent);
-         void Execute(Entity entity, int entityIndexInQuery, AirBubbleVisualComponent bubbleVisual, TransformComponent transform);
+        public void OnCreate(SystemState state);
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int chunkIndexInQuery, AirBubbleAbilityComponent airBubble, AbilityInputComponent abilityInput, TransformComponent transform, MarinaComponent marinaComponent);
+         void Execute(Entity entity, int chunkIndexInQuery, AirBubbleVisualComponent bubbleVisual, TransformComponent transform);
     }
     private partial struct AirBubbleUpdateJob : IJobEntity
     {
@@ -6317,14 +6524,14 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public NativeArray<Entity> UnderwaterEnemies;
         public NativeArray<float3> EnemyPositions;
         public NativeArray<PhysicsComponent> EnemyPhysics;
-         void Execute(Entity entity, int entityIndexInQuery, AirBubbleAbilityComponent airBubble, AbilityInputComponent abilityInput, TransformComponent transform, MarinaComponent marinaComponent);
+         void Execute(Entity entity, int chunkIndexInQuery, AirBubbleAbilityComponent airBubble, AbilityInputComponent abilityInput, TransformComponent transform, MarinaComponent marinaComponent);
     }
     private partial struct AirBubbleVisualUpdateJob : IJobEntity
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityManager EntityManager;
-         void Execute(Entity entity, int entityIndexInQuery, AirBubbleVisualComponent bubbleVisual, TransformComponent transform);
+         void Execute(Entity entity, int chunkIndexInQuery, AirBubbleVisualComponent bubbleVisual, TransformComponent transform);
     }
     public struct AirBubbleVisualComponent : IComponentData
     {
@@ -6349,13 +6556,13 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// il ghiaccio e protegge dal freddo.
     /// </summary>
 
-    public partial class HeatAuraSystem : SystemBase
+    public partial struct HeatAuraSystem : ISystem
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _iceObstacleQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
      <summary>
     /// Componente per l'effetto visivo dell'aura di calore
@@ -6393,6 +6600,33 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public float3 Position;
         public float Size;
     }
+     <summary>
+    /// Job per elaborare l'abilità Heat Aura
+    /// </summary>
+
+    public partial struct HeatAuraProcessingJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public NativeArray<Entity> IceObstacles;
+        public NativeArray<float3> ObstaclePositions;
+        public NativeArray<float> ObstacleScales;
+        public NativeArray<IceIntegrityComponent> IceIntegrities;
+        public NativeArray<bool> HasIntegrity;
+        public void Execute(Entity entity, int entityInQueryIndex, HeatAuraAbilityComponent heatAura, AbilityInputComponent abilityInput, TransformComponent transform, KaiComponent kaiComponent);
+        public void OnDestroy();
+    }
+     <summary>
+    /// Job per aggiornare le visualizzazioni dell'aura di calore
+    /// </summary>
+
+    public struct HeatAuraVisualUpdateJob
+    {
+        public float DeltaTime;
+        public EntityManager EntityManager;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public void Run(EntityManager entityManager, EntityQuery query);
+    }
 }
 
 
@@ -6405,13 +6639,23 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// rallentare il tempo per prendere decisioni strategiche e utilizzare oggetti.
     /// </summary>
 
-    public partial class FocusTimeSystem : SystemBase
+    public partial struct FocusTimeSystem : ISystem
     {
         private EntityQuery _focusTimeQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private Entity _timeManagerEntity;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public NativeReference<bool> AnyFocusTimeActive;
+        public void OnCreate(SystemState state);
+         void Execute(Entity entity, int chunkIndexInQuery, FocusTimeComponent focusTime, FocusTimeInputComponent input);
+        public void OnUpdate(SystemState state);
+    }
+    public partial struct FocusTimeProcessorJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public NativeReference<bool> AnyFocusTimeActive;
+         void Execute(Entity entity, int chunkIndexInQuery, FocusTimeComponent focusTime, FocusTimeInputComponent input);
     }
      <summary>
     /// Componente che gestisce la scala del tempo globale
@@ -6492,52 +6736,110 @@ namespace RunawayHeroes.ECS.Systems.Movement
 namespace RunawayHeroes.ECS.Systems.Movement
 {
      <summary>
+    /// Tag per identificare superfici scivolose
+    /// </summary>
+
+    public struct SlipperyTag : IComponentData
+    {
+    }
+     <summary>
     /// Sistema che gestisce le interazioni speciali tra i personaggi e gli ostacoli in base alle loro abilità.
     /// Estende le funzionalità di base dell'ObstacleCollisionSystem per supportare l'interazione con tutti i tipi di ostacoli
     /// in base alle abilità dei vari personaggi.
     /// </summary>
 
-    public partial class ObstacleInteractionSystem : SystemBase
+    public partial struct ObstacleInteractionSystem : ISystem
     {
         private EntityQuery _playerQuery;
         private EntityQuery _obstacleQuery;
         private EntityQuery _specialObstaclesQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private const float INTERACTION_RADIUS;
         private const float MELT_RATE;
         private const float BARRIER_PENETRATION_DISTANCE;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UrbanDashAbilityComponent> UrbanDashLookup;
+        public ComponentLookup<FireproofBodyAbilityComponent> FireproofBodyLookup;
+        public ComponentLookup<ControlledGlitchAbilityComponent> ControlledGlitchLookup;
+        public ComponentLookup<HeatAuraAbilityComponent> HeatAuraLookup;
+        public ComponentLookup<AirBubbleAbilityComponent> AirBubbleLookup;
+        public ComponentLookup<AlexComponent> AlexLookup;
+        public ComponentLookup<EmberComponent> EmberLookup;
+        public ComponentLookup<KaiComponent> KaiLookup;
+        public ComponentLookup<MarinaComponent> MarinaLookup;
+        public ComponentLookup<NeoComponent> NeoLookup;
+        public ComponentLookup<LavaTag> LavaTagLookup;
+        public ComponentLookup<IceObstacleTag> IceObstacleTagLookup;
+        public ComponentLookup<DigitalBarrierTag> DigitalBarrierTagLookup;
+        public ComponentLookup<UnderwaterTag> UnderwaterTagLookup;
+        public ComponentLookup<SlipperyTag> SlipperyTagLookup;
+        public NativeArray<Entity> SpecialObstacles;
+        public NativeArray<TransformComponent> ObstacleTransforms;
+        public NativeArray<ObstacleComponent> ObstacleComponents;
+        public float InteractionRadius;
+        public float MeltRate;
+        public float BarrierPenetrationDistance;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+        public void Execute(Entity playerEntity, int chunkIndexInQuery, TransformComponent playerTransform, PhysicsComponent physics);
          <summary>
         /// Gestisce l'interazione con gli ostacoli di lava per Ember
         /// </summary>
 
-        private void HandleLavaInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private static void HandleLavaInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, EntityCommandBuffer.ParallelWriter commandBuffer);
          <summary>
         /// Gestisce l'interazione di scioglimento del ghiaccio per Kai
         /// </summary>
 
-        private void HandleIceMeltingInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, float auraRadius, EntityCommandBuffer.ParallelWriter commandBuffer, float deltaTime);
+        private static void HandleIceMeltingInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, float auraRadius, EntityCommandBuffer.ParallelWriter commandBuffer, float deltaTime);
          <summary>
         /// Gestisce l'interazione con le barriere digitali per Neo
         /// </summary>
 
-        private void HandleDigitalBarrierInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, float glitchDistance, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private static void HandleDigitalBarrierInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, float glitchDistance, EntityCommandBuffer.ParallelWriter commandBuffer);
          <summary>
         /// Gestisce l'interazione con l'ambiente sottomarino per Marina
         /// </summary>
 
-        private void HandleUnderwaterInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, float bubbleRadius, float repelForce, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private static void HandleUnderwaterInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, float bubbleRadius, float repelForce, EntityCommandBuffer.ParallelWriter commandBuffer);
          <summary>
         /// Gestisce l'interazione con superfici scivolose per tutti i personaggi
         /// </summary>
 
-        private void HandleSlipperyInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, bool hasHeatAura, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private static void HandleSlipperyInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, bool hasHeatAura, EntityCommandBuffer.ParallelWriter commandBuffer);
          <summary>
         /// Verifica se un'entità contiene una certa abilità e se è attiva
         /// </summary>
 
-        private bool HasActiveAbility(Entity entity);
+        private static bool HasActiveAbility(Entity entity, ComponentLookup<T> lookup);
+    }
+    private partial struct SpecialObstacleInteractionJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UrbanDashAbilityComponent> UrbanDashLookup;
+        public ComponentLookup<FireproofBodyAbilityComponent> FireproofBodyLookup;
+        public ComponentLookup<ControlledGlitchAbilityComponent> ControlledGlitchLookup;
+        public ComponentLookup<HeatAuraAbilityComponent> HeatAuraLookup;
+        public ComponentLookup<AirBubbleAbilityComponent> AirBubbleLookup;
+        public ComponentLookup<AlexComponent> AlexLookup;
+        public ComponentLookup<EmberComponent> EmberLookup;
+        public ComponentLookup<KaiComponent> KaiLookup;
+        public ComponentLookup<MarinaComponent> MarinaLookup;
+        public ComponentLookup<NeoComponent> NeoLookup;
+        public ComponentLookup<LavaTag> LavaTagLookup;
+        public ComponentLookup<IceObstacleTag> IceObstacleTagLookup;
+        public ComponentLookup<DigitalBarrierTag> DigitalBarrierTagLookup;
+        public ComponentLookup<UnderwaterTag> UnderwaterTagLookup;
+        public ComponentLookup<SlipperyTag> SlipperyTagLookup;
+        public NativeArray<Entity> SpecialObstacles;
+        public NativeArray<TransformComponent> ObstacleTransforms;
+        public NativeArray<ObstacleComponent> ObstacleComponents;
+        public float InteractionRadius;
+        public float MeltRate;
+        public float BarrierPenetrationDistance;
+        public void Execute(Entity playerEntity, int chunkIndexInQuery, TransformComponent playerTransform, PhysicsComponent physics);
     }
 }
 
@@ -6711,17 +7013,36 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// come salto e scivolata.
     /// </summary>
 
-    public partial class PlayerMovementSystem : SystemBase
+    public partial struct PlayerMovementSystem : ISystem
     {
-        private EntityQuery _playerQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private const float LANE_WIDTH;
         private const float MAX_LANE_OFFSET;
         private const float GROUND_LEVEL;
         private const float GRAVITY_MULTIPLIER;
         private const float GROUND_CHECK_DISTANCE;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _playerQuery;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float LaneWidth;
+        public float MaxLaneOffset;
+        public float GroundLevel;
+        public float GravityMultiplier;
+        public float GroundCheckDistance;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+        public void Execute(Entity entity, int entityInQueryIndex, TransformComponent transform, PhysicsComponent physics, MovementComponent movement, InputComponent input);
+    }
+    private partial struct PlayerMovementJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float LaneWidth;
+        public float MaxLaneOffset;
+        public float GroundLevel;
+        public float GravityMultiplier;
+        public float GroundCheckDistance;
+        public void Execute(Entity entity, int entityInQueryIndex, TransformComponent transform, PhysicsComponent physics, MovementComponent movement, InputComponent input);
     }
 }
 
@@ -6821,7 +7142,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _tutorialProgressQuery;
         private EntityQuery _playerQuery;
         private EntityQuery _playerProgressionQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private bool _initializationComplete;
         private RunawayHeroes.Runtime.Levels.TutorialLevelInitializer _tutorialManager;
         private int _totalAvailableTutorials;
@@ -6879,14 +7199,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// e li segnala come disponibili per l'aggiunta agli slot.
     /// </summary>
 
-    public partial class FocusTimeItemDetectionSystem : SystemBase
+    public partial struct FocusTimeItemDetectionSystem : ISystem
     {
         private EntityQuery _playerQuery;
         private EntityQuery _collectibleQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private const float FOCUS_TIME_DETECTION_RADIUS;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnUpdate(SystemState state);
     }
 }
 
@@ -6905,7 +7224,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _playerProgressionQuery;
         private EntityQuery _worldProgressionQuery;
         private EntityQuery _activeWorldQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private bool _initializationComplete;
         private readonly int[] _worldCharacterMapping;
         private readonly string[] _worldNames;
@@ -6993,13 +7311,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Si occupa del tracking delle stelle, collezionabili e obiettivi bonus.
     /// </summary>
 
-    public partial class LevelProgressionSystem : SystemBase
+    public partial struct LevelProgressionSystem : ISystem
     {
         private EntityQuery _playerProgressionQuery;
         private EntityQuery _worldProgressionQuery;
         private EntityQuery _levelProgressionQuery;
         private EntityQuery _activeLevelQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private bool _initializationComplete;
         private int _currentSessionScore;
         private int _currentSessionCollectibles;
@@ -7017,17 +7334,17 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Inizializza il sistema
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
          <summary>
         /// Inizializza la sessione corrente
         /// </summary>
 
-        protected override void OnStartRunning();
+        public void OnStartRunning(SystemState state);
          <summary>
         /// Aggiorna il sistema di progressione dei livelli
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
          <summary>
         /// Reimposta i contatori per una nuova sessione di gioco
         /// </summary>
@@ -7037,57 +7354,57 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Identifica il livello attualmente attivo
         /// </summary>
 
-        private void IdentifyActiveLevel();
+        private void IdentifyActiveLevel(SystemState state);
          <summary>
         /// Processa eventi di completamento livello
         /// </summary>
 
-        private void ProcessLevelCompletionEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessLevelCompletionEvents(EntityCommandBuffer commandBuffer, SystemState state);
          <summary>
         /// Processa eventi di raccolta oggetti
         /// </summary>
 
-        private void ProcessCollectionEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessCollectionEvents(EntityCommandBuffer commandBuffer, SystemState state);
          <summary>
         /// Processa eventi di completamento obiettivi
         /// </summary>
 
-        private void ProcessObjectiveCompletionEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessObjectiveCompletionEvents(EntityCommandBuffer commandBuffer, SystemState state);
          <summary>
         /// Calcola il numero di stelle guadagnate in base al tempo di completamento
         /// </summary>
 
-        private byte calculateStars(float completionTime, byte existingStars);
+        private byte CalculateStars(float completionTime, byte existingStars);
          <summary>
         /// Aggiorna la progressione del mondo per un livello completato
         /// </summary>
 
-        private void UpdateWorldProgressionForLevel(int worldIndex, int levelIndex, byte starsEarned, bool bonusObjectiveCompleted);
+        private void UpdateWorldProgressionForLevel(int worldIndex, int levelIndex, byte starsEarned, bool bonusObjectiveCompleted, SystemState state);
          <summary>
         /// Aggiorna la progressione del mondo per un obiettivo bonus completato
         /// </summary>
 
-        private void UpdateWorldProgressionForBonusObjective(int worldIndex);
+        private void UpdateWorldProgressionForBonusObjective(int worldIndex, SystemState state);
          <summary>
         /// Sblocca il livello successivo se esiste
         /// </summary>
 
-        private void UnlockNextLevel(EntityCommandBuffer commandBuffer, int worldIndex, int levelIndex);
+        private void UnlockNextLevel(EntityCommandBuffer commandBuffer, int worldIndex, int levelIndex, SystemState state);
          <summary>
         /// Aggiorna il progresso globale basato sui livelli e mondi
         /// </summary>
 
-        private void UpdateGlobalProgress();
+        private void UpdateGlobalProgress(SystemState state);
          <summary>
         /// Inizializza i dati di progressione
         /// </summary>
 
-        private void InitializeLevelProgressionData();
+        private void InitializeLevelProgressionData(SystemState state);
          <summary>
         /// Ottiene o crea un'entità di progressione livello
         /// </summary>
 
-        private Entity GetOrCreateLevelProgressionEntity(int worldIndex, int levelIndex);
+        private Entity GetOrCreateLevelProgressionEntity(int worldIndex, int levelIndex, SystemState state);
          <summary>
         /// Crea un messaggio UI per il completamento di un livello
         /// </summary>
@@ -7117,7 +7434,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Ottiene le stelle già assegnate a un livello
         /// </summary>
 
-        private int GetStarsForLevel(int worldIndex, int levelIndex);
+        private int GetStarsForLevel(int worldIndex, int levelIndex, SystemState state);
     }
 }
 
@@ -7152,7 +7469,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _playerProgressionQuery;
         private EntityQuery _progressionEventsQuery;
         private EntityQuery _unlockEventsQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private AudioManager _audioManager;
          <summary>
         /// Inizializza il sistema
@@ -7257,7 +7573,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _tutorialLevelQuery;
         private EntityQuery _tutorialProgressQuery;
         private EntityQuery _playerQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         private bool _initializationComplete;
          <summary>
         /// Inizializza il sistema
@@ -7301,7 +7616,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 
     public partial class ObjectiveSystem : SystemBase
     {
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         protected override void OnCreate();
         protected override void OnUpdate();
          <summary>
@@ -7389,35 +7703,48 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Sistema che gestisce l'avanzamento del tutorial e la generazione degli scenari didattici
     /// </summary>
 
-    public partial class TutorialGuidanceSystem : SystemBase
+    public partial struct TutorialGuidanceSystem : ISystem
     {
         private EntityQuery _activePlayerQuery;
         private EntityQuery _scenarioQuery;
-        private EntityCommandBufferSystem _endSimulationECBSystem;
-        private Random _random;
-        private uint _seed;
         private const float LANE_WIDTH;
         private const float LEFT_POSITION;
         private const float CENTER_POSITION;
         private const float RIGHT_POSITION;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private uint _seed;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per controllare e attivare scenari tutorial
+    /// </summary>
+
+    public partial struct CheckScenarioTriggerJob : IJobEntity
+    {
+        public float3 PlayerPosition;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public uint Seed;
+        public float LaneWidth;
+        public float LeftPosition;
+        public float CenterPosition;
+        public float RightPosition;
+        public void Execute(Entity entity, int entityInQueryIndex, TutorialScenarioComponent scenario, DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer);
          <summary>
         /// Genera gli ostacoli per uno scenario di tutorial
         /// </summary>
 
-        private void SpawnObstaclesForScenario(EntityCommandBuffer.ParallelWriter commandBuffer, int entityInQueryIndex, TutorialScenarioComponent scenario, DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer);
+        private void SpawnObstaclesForScenario(int entityInQueryIndex, TutorialScenarioComponent scenario, DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer);
          <summary>
         /// Genera ostacoli per un tutorial con impostazioni avanzate
         /// </summary>
 
-        private void SpawnTutorialObstaclesAdvanced(EntityCommandBuffer.ParallelWriter commandBuffer, int entityInQueryIndex, float startZ, float spacing, bool randomPlacement, TutorialObstacleBuffer obstacleSetup);
+        private void SpawnTutorialObstaclesAdvanced(int entityInQueryIndex, float startZ, float spacing, bool randomPlacement, TutorialObstacleBuffer obstacleSetup);
          <summary>
         /// Crea un'entità ostacolo utilizzando il factory
         /// </summary>
 
-        private Entity SpawnObstacle(EntityCommandBuffer.ParallelWriter commandBuffer, int entityInQueryIndex, string obstacleCode, float3 position, float height, float scale);
-        protected override void OnDestroy();
+        private Entity SpawnObstacle(int entityInQueryIndex, string obstacleCode, float3 position, float height, float scale);
     }
      <summary>
     /// Componente che identifica uno scenario tutorial

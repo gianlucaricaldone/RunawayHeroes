@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Components.Enemies;
 using RunawayHeroes.ECS.Components.Gameplay;
@@ -12,77 +13,101 @@ namespace RunawayHeroes.ECS.Systems.World
     /// <summary>
     /// Sistema responsabile del popolamento delle stanze con nemici, collezionabili e ostacoli
     /// </summary>
-    public partial class RoomPopulationSystem : SystemBase
+    public partial struct RoomPopulationSystem : ISystem
     {
-        private Unity.Mathematics.Random _random;
         private uint _seed;
+        private EntityQuery _roomQuery;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
             // Richiedi il singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Inizializza il generatore di numeri casuali
             _seed = (uint)DateTime.Now.Ticks;
-            _random = Unity.Mathematics.Random.CreateFromIndex(_seed);
+            
+            // Configura query per le stanze non ancora popolate
+            _roomQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RoomComponent>()
+                .WithNone<RoomPopulatedTag>()
+                .Build(ref state);
             
             // Richiedi che il sistema venga eseguito solo durante la generazione del livello
-            RequireForUpdate<RoomComponent>();
+            state.RequireForUpdate<RoomComponent>();
+        }
+        
+        public void OnDestroy(ref SystemState state)
+        {
+            // Risorse da ripulire, se necessario
         }
 
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
-            var random = _random;
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
-            // Popola le stanze appena create
-            Entities
-                .WithName("PopulateRooms")
-                .WithNone<RoomPopulatedTag>()
-                .ForEach((Entity roomEntity, int entityInQueryIndex,
-                         ref RoomComponent room) =>
-                {
-                    // Popola la stanza in base al tipo
-                    switch (room.State)
-                    {
-                        case RoomState.Active:
-                            // La stanza iniziale ha meno nemici
-                            PopulateRoom(entityInQueryIndex, roomEntity, ref room, 0.2f, 
-                                       0.5f, 0.3f, ref commandBuffer, random);
-                            break;
-                            
-                        case RoomState.Inactive:
-                            // Stanze standard con più nemici
-                            PopulateRoom(entityInQueryIndex, roomEntity, ref room, 0.6f, 
-                                       0.4f, 0.5f, ref commandBuffer, random);
-                            break;
-                            
-                        case RoomState.Secret:
-                            // Stanze segrete con più collezionabili
-                            PopulateRoom(entityInQueryIndex, roomEntity, ref room, 0.2f, 
-                                       0.8f, 0.3f, ref commandBuffer, random);
-                            break;
-                    }
-                    
-                    // Aggiungi tag per evitare di ripopolare
-                    commandBuffer.AddComponent(entityInQueryIndex, roomEntity, 
-                                             new RoomPopulatedTag { });
-                    
-                }).ScheduleParallel();
+            // Popola le stanze appena create usando IJobEntity
+            state.Dependency = new PopulateRoomsJob
+            {
+                ECB = commandBuffer,
+                Seed = _seed
+            }.ScheduleParallel(_roomQuery, state.Dependency);
+        }
+    }
+    
+    /// <summary>
+    /// Job per popolare le stanze con contenuto
+    /// </summary>
+    [BurstCompile]
+    public partial struct PopulateRoomsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public uint Seed;
+        
+        [BurstDiscard]
+        public void Execute(Entity roomEntity, 
+                         [EntityIndexInQuery] int entityInQueryIndex,
+                         ref RoomComponent room)
+        {
+            // Crea un generatore di numeri casuali unico per questa stanza
+            uint roomSeed = Seed + (uint)(room.GridPosition.x * 1000 + room.GridPosition.y);
+            var random = Unity.Mathematics.Random.CreateFromIndex(roomSeed);
             
-            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
+            // Popola la stanza in base al tipo
+            switch (room.State)
+            {
+                case RoomState.Active:
+                    // La stanza iniziale ha meno nemici
+                    PopulateRoom(entityInQueryIndex, roomEntity, ref room, 0.2f, 
+                               0.5f, 0.3f, random);
+                    break;
+                    
+                case RoomState.Inactive:
+                    // Stanze standard con più nemici
+                    PopulateRoom(entityInQueryIndex, roomEntity, ref room, 0.6f, 
+                               0.4f, 0.5f, random);
+                    break;
+                    
+                case RoomState.Secret:
+                    // Stanze segrete con più collezionabili
+                    PopulateRoom(entityInQueryIndex, roomEntity, ref room, 0.2f, 
+                               0.8f, 0.3f, random);
+                    break;
+            }
+            
+            // Aggiungi tag per evitare di ripopolare
+            ECB.AddComponent(entityInQueryIndex, roomEntity, new RoomPopulatedTag { });
         }
         
         /// <summary>
         /// Popola una stanza con nemici, collezionabili e ostacoli in base alle probabilità specificate
         /// </summary>
+        [BurstDiscard]
         private void PopulateRoom(int entityInQueryIndex, Entity roomEntity, 
                                 ref RoomComponent room,
                                 float enemyProbability, 
                                 float collectibleProbability,
                                 float obstacleProbability,
-                                ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                 Unity.Mathematics.Random random)
         {
             // Calcola il numero di entità da generare in base alla dimensione della stanza
@@ -97,7 +122,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 
                 for (int i = 0; i < numEnemies; i++)
                 {
-                    CreateEnemy(entityInQueryIndex, roomEntity, ref room, ref commandBuffer, random);
+                    CreateEnemy(entityInQueryIndex, roomEntity, ref room, random);
                 }
             }
             
@@ -109,7 +134,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 
                 for (int i = 0; i < numCollectibles; i++)
                 {
-                    CreateCollectible(entityInQueryIndex, roomEntity, ref room, ref commandBuffer, random);
+                    CreateCollectible(entityInQueryIndex, roomEntity, ref room, random);
                 }
             }
             
@@ -117,23 +142,23 @@ namespace RunawayHeroes.ECS.Systems.World
             int numObstacles = random.NextInt(0, (int)(maxEntities * obstacleProbability) + 1);
             for (int i = 0; i < numObstacles; i++)
             {
-                CreateObstacle(entityInQueryIndex, roomEntity, ref room, ref commandBuffer, random);
+                CreateObstacle(entityInQueryIndex, roomEntity, ref room, random);
             }
         }
         
         /// <summary>
         /// Crea un nemico nella stanza specificata
         /// </summary>
+        [BurstDiscard]
         private void CreateEnemy(int entityInQueryIndex, Entity roomEntity, 
                                ref RoomComponent room,
-                               ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                Unity.Mathematics.Random random)
         {
             // Crea l'entità nemico
-            Entity enemyEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            Entity enemyEntity = ECB.CreateEntity(entityInQueryIndex);
             
             // Aggiungi i componenti base per un nemico
-            commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new EnemyComponent
+            ECB.AddComponent(entityInQueryIndex, enemyEntity, new EnemyComponent
             {
                 // Proprietà specifiche del nemico
             });
@@ -146,7 +171,7 @@ namespace RunawayHeroes.ECS.Systems.World
             );
             
             // Aggiungi il componente transform
-            commandBuffer.AddComponent(entityInQueryIndex, enemyEntity, new LocalTransform
+            ECB.AddComponent(entityInQueryIndex, enemyEntity, new LocalTransform
             {
                 Position = randomPosition,
                 Rotation = quaternion.identity,
@@ -157,16 +182,16 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Crea un oggetto collezionabile nella stanza specificata
         /// </summary>
+        [BurstDiscard]
         private void CreateCollectible(int entityInQueryIndex, Entity roomEntity, 
                                      ref RoomComponent room,
-                                     ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                      Unity.Mathematics.Random random)
         {
             // Crea l'entità collezionabile
-            Entity collectibleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            Entity collectibleEntity = ECB.CreateEntity(entityInQueryIndex);
             
             // Aggiungi i componenti base per un collezionabile
-            commandBuffer.AddComponent(entityInQueryIndex, collectibleEntity, new CollectibleComponent
+            ECB.AddComponent(entityInQueryIndex, collectibleEntity, new CollectibleComponent
             {
                 // Proprietà specifiche dell'oggetto collezionabile
             });
@@ -179,7 +204,7 @@ namespace RunawayHeroes.ECS.Systems.World
             );
             
             // Aggiungi il componente transform
-            commandBuffer.AddComponent(entityInQueryIndex, collectibleEntity, new LocalTransform
+            ECB.AddComponent(entityInQueryIndex, collectibleEntity, new LocalTransform
             {
                 Position = randomPosition,
                 Rotation = quaternion.identity,
@@ -190,16 +215,16 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Crea un ostacolo nella stanza specificata
         /// </summary>
+        [BurstDiscard]
         private void CreateObstacle(int entityInQueryIndex, Entity roomEntity, 
                                   ref RoomComponent room,
-                                  ref EntityCommandBuffer.ParallelWriter commandBuffer,
                                   Unity.Mathematics.Random random)
         {
             // Crea l'entità ostacolo
-            Entity obstacleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            Entity obstacleEntity = ECB.CreateEntity(entityInQueryIndex);
             
             // Aggiungi i componenti base per un ostacolo
-            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleComponent
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleComponent
             {
                 // Proprietà specifiche dell'ostacolo
             });
@@ -212,7 +237,7 @@ namespace RunawayHeroes.ECS.Systems.World
             );
             
             // Aggiungi il componente transform
-            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new LocalTransform
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new LocalTransform
             {
                 Position = randomPosition,
                 Rotation = quaternion.EulerZXY(0, random.NextFloat(0, math.PI * 2), 0),

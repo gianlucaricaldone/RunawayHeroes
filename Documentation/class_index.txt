@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Sat May  3 12:46:58 CEST 2025
+# Generato il: Sat May  3 21:18:23 CEST 2025
 
 private class CyclicDependency
 private class ProfilerScope : System.IDisposable
@@ -185,6 +185,7 @@ public struct HazardComponent : IComponentData
 public struct HealthComponent : IComponentData
 public struct HeatAuraAbilityComponent : IComponentData
 public struct HeatAuraVisualComponent : IComponentData
+public struct HeatAuraVisualUpdateJob
 public struct IceIntegrityComponent : IComponentData
 public struct IceMeltEffectComponent : IComponentData
 public struct IceMeltedEvent : IComponentData
@@ -217,7 +218,9 @@ public struct MovementComponent : IComponentData
 public struct MovementStartedEvent : IComponentData
 public struct MovementStoppedEvent : IComponentData
 public struct NatureAllyComponent : IComponentData
+public struct NatureAllyTargetInteractionJob
 public struct NatureCallAbilityComponent : IComponentData
+public struct NatureCallAbilityJob
 public struct NeoComponent : IComponentData
 public struct ObjectiveCompletedEvent : IComponentData
 public struct ObjectiveComponent : IComponentData
@@ -246,7 +249,6 @@ public struct QueuedMessageTag : IComponentData
 public struct RandomLevelConfigComponent : IComponentData
 public struct RenderComponent : IComponentData
 public struct RequiresConnectionTag : IComponentData { }
-public struct RequiresContentGenerationTag : IComponentData { }
 public struct ResonanceInputComponent : IComponentData
 public struct ResonanceReadyEvent : IComponentData
 public struct ResonanceUnlockedEvent : IComponentData
@@ -264,6 +266,7 @@ public struct SlideInputComponent : IComponentData
 public struct SlideStartedEvent : IComponentData
 public struct SlipInteractionEvent : IComponentData
 public struct SlipperyTag : IComponentData
+public struct SlipperyTag : IComponentData { }
 public struct SpawnPointComponent : IComponentData
 public struct T01_IceWall : IComponentData
 public struct T02_IceBlock : IComponentData
@@ -327,3 +330,4 @@ public struct WorldTag : IComponentData
 public struct WorldUnlockedTag : IComponentData
 public class DOTSVersionChecker : EditorWindow
 public class SystemDebugger : MonoBehaviour
+public struct RequiresContentGenerationTag : IComponentData { }

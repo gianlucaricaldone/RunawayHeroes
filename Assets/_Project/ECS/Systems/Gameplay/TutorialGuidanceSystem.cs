@@ -19,12 +19,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Sistema che gestisce l'avanzamento del tutorial e la generazione degli scenari didattici
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    public partial class TutorialGuidanceSystem : SystemBase
+    public partial struct TutorialGuidanceSystem : ISystem
     {
         private EntityQuery _activePlayerQuery;
         private EntityQuery _scenarioQuery;
-        private Random _random;
-        private uint _seed;
         
         // Costanti per il posizionamento degli ostacoli
         private const float LANE_WIDTH = 9f; // Larghezza totale della corsia
@@ -32,39 +30,43 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private const float CENTER_POSITION = 0f; // Posizione centrale
         private const float RIGHT_POSITION = 3f; // Posizione laterale destra
         
-        protected override void OnCreate()
+        // Seed per generazione casuale
+        private uint _seed;
+        
+        public void OnCreate(ref SystemState state)
         {
             // Inizializza il generatore di numeri casuali
             _seed = (uint)UnityEngine.Random.Range(1, 1000000);
-            _random = new Random(_seed);
             
             // Configura query per il giocatore attivo
-            _activePlayerQuery = GetEntityQuery(
-                ComponentType.ReadOnly<PlayerTag>(),
-                ComponentType.ReadOnly<ActiveTag>(),
-                ComponentType.ReadOnly<TransformComponent>()
-            );
+            _activePlayerQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<PlayerTag, ActiveTag, TransformComponent>()
+                .Build(ref state);
             
             // Configura query per gli scenari di tutorial
-            _scenarioQuery = GetEntityQuery(
-                ComponentType.ReadOnly<TutorialScenarioComponent>(),
-                ComponentType.ReadOnly<TutorialObstacleBuffer>()
-            );
+            _scenarioQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TutorialScenarioComponent, TutorialObstacleBuffer>()
+                .Build(ref state);
             
             // Richiedi singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo quando esiste un giocatore attivo
-            RequireForUpdate(_activePlayerQuery);
+            state.RequireForUpdate(_activePlayerQuery);
         }
         
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state)
+        {
+            // Risorse da ripulire, se necessario
+        }
+        
+        public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.HasSingleton<TutorialLevelTag>())
                 return;
                 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
             var playerEntities = _activePlayerQuery.ToEntityArray(Allocator.TempJob);
             
@@ -78,62 +80,92 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var playerPosition = SystemAPI.GetComponent<TransformComponent>(playerEntity).Position;
             playerEntities.Dispose();
             
-            float3 playerPos = playerPosition;
-            
-            // Controlla se il giocatore ha raggiunto nuovi scenari
-            Entities
-                .WithAll<TutorialScenarioComponent>()
+            // Costruiamo la query per gli scenari non ancora attivati
+            var scenarioQuery = SystemAPI.QueryBuilder()
+                .WithAll<TutorialScenarioComponent, DynamicBuffer<TutorialObstacleBuffer>>()
                 .WithNone<TriggeredTag>()
-                .ForEach((Entity entity, int entityInQueryIndex, 
+                .Build(ref state);
+                
+            // Eseguiamo il job per controllare i nuovi scenari
+            state.Dependency = new CheckScenarioTriggerJob 
+            {
+                PlayerPosition = playerPosition,
+                ECB = commandBuffer,
+                Seed = _seed,
+                LaneWidth = LANE_WIDTH,
+                LeftPosition = LEFT_POSITION,
+                CenterPosition = CENTER_POSITION,
+                RightPosition = RIGHT_POSITION
+            }.ScheduleParallel(scenarioQuery, state.Dependency);
+        }
+    }
+    
+    /// <summary>
+    /// Job per controllare e attivare scenari tutorial
+    /// </summary>
+    [BurstCompile]
+    public partial struct CheckScenarioTriggerJob : IJobEntity
+    {
+        [ReadOnly] public float3 PlayerPosition;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        [ReadOnly] public uint Seed;
+        
+        // Costanti per il posizionamento degli ostacoli
+        [ReadOnly] public float LaneWidth;
+        [ReadOnly] public float LeftPosition;
+        [ReadOnly] public float CenterPosition;
+        [ReadOnly] public float RightPosition;
+        
+        [BurstDiscard]
+        public void Execute(Entity entity, 
+                          [ChunkIndexInQuery] int entityInQueryIndex,
                           ref TutorialScenarioComponent scenario,
-                          in DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer) => 
+                          in DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer)
+        {
+            // Se il giocatore ha raggiunto la distanza di inizio scenario
+            if (PlayerPosition.z >= scenario.DistanceFromStart)
+            {
+                // Marca questo scenario come attivato
+                ECB.AddComponent<TriggeredTag>(entityInQueryIndex, entity);
+                
+                // Mostra messaggio di istruzione
+                if (!string.IsNullOrEmpty(scenario.InstructionMessage))
                 {
-                    // Se il giocatore ha raggiunto la distanza di inizio scenario
-                    if (playerPos.z >= scenario.DistanceFromStart)
-                    {
-                        // Marca questo scenario come attivato
-                        commandBuffer.AddComponent<TriggeredTag>(entityInQueryIndex, entity);
+                    // Crea un'entità per il messaggio UI
+                    Entity messageEntity = ECB.CreateEntity(entityInQueryIndex);
+                    
+                    // Aggiungi il componente di messaggio UI
+                    ECB.AddComponent(entityInQueryIndex, messageEntity, 
+                        new RunawayHeroes.ECS.Components.UI.UIMessageComponent 
+                        { 
+                            Message = scenario.InstructionMessage,
+                            Duration = scenario.MessageDuration,
+                            RemainingTime = scenario.MessageDuration,
+                            MessageType = 0, // Tipo tutorial
+                            IsPersistent = false,
+                            MessageId = entity.Index // Usa l'indice dell'entità scenario come ID
+                        });
                         
-                        // Mostra messaggio di istruzione
-                        if (!string.IsNullOrEmpty(scenario.InstructionMessage))
+                    // Aggiungi il tag per accodare il messaggio
+                    ECB.AddComponent(entityInQueryIndex, messageEntity,
+                        new RunawayHeroes.ECS.Components.UI.QueuedMessageTag
                         {
-                            // Crea un'entità per il messaggio UI
-                            Entity messageEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                            
-                            // Aggiungi il componente di messaggio UI
-                            commandBuffer.AddComponent(entityInQueryIndex, messageEntity, 
-                                new RunawayHeroes.ECS.Components.UI.UIMessageComponent 
-                                { 
-                                    Message = scenario.InstructionMessage,
-                                    Duration = scenario.MessageDuration,
-                                    RemainingTime = scenario.MessageDuration,
-                                    MessageType = 0, // Tipo tutorial
-                                    IsPersistent = false,
-                                    MessageId = entity.Index // Usa l'indice dell'entità scenario come ID
-                                });
-                                
-                            // Aggiungi il tag per accodare il messaggio
-                            commandBuffer.AddComponent(entityInQueryIndex, messageEntity,
-                                new RunawayHeroes.ECS.Components.UI.QueuedMessageTag
-                                {
-                                    QueuePosition = 0
-                                });
-                            
-                            UnityEngine.Debug.Log($"[Tutorial] Messaggio creato: {scenario.InstructionMessage}");
-                        }
-                        
-                        // Genera gli ostacoli per questo scenario
-                        SpawnObstaclesForScenario(commandBuffer, entityInQueryIndex, scenario, obstacleBuffer);
-                    }
-                })
-                .ScheduleParallel();
+                            QueuePosition = 0
+                        });
+                    
+                    UnityEngine.Debug.Log($"[Tutorial] Messaggio creato: {scenario.InstructionMessage}");
+                }
+                
+                // Genera gli ostacoli per questo scenario
+                SpawnObstaclesForScenario(entityInQueryIndex, scenario, obstacleBuffer);
+            }
         }
         
         /// <summary>
         /// Genera gli ostacoli per uno scenario di tutorial
         /// </summary>
+        [BurstDiscard]
         private void SpawnObstaclesForScenario(
-            EntityCommandBuffer.ParallelWriter commandBuffer,
             int entityInQueryIndex,
             TutorialScenarioComponent scenario,
             DynamicBuffer<TutorialObstacleBuffer> obstacleBuffer)
@@ -143,7 +175,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             {
                 var obstacleSetup = obstacleBuffer[i];
                 SpawnTutorialObstaclesAdvanced(
-                    commandBuffer,
                     entityInQueryIndex,
                     scenario.DistanceFromStart + obstacleSetup.StartOffset,
                     scenario.ObstacleSpacing,
@@ -156,8 +187,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Genera ostacoli per un tutorial con impostazioni avanzate
         /// </summary>
+        [BurstDiscard]
         private void SpawnTutorialObstaclesAdvanced(
-            EntityCommandBuffer.ParallelWriter commandBuffer,
             int entityInQueryIndex,
             float startZ,
             float spacing,
@@ -165,7 +196,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             TutorialObstacleBuffer obstacleSetup)
         {
             // Crea un nuovo seed per ogni chiamata per evitare pattern ripetuti
-            uint localSeed = _seed + (uint)(obstacleSetup.ObstacleCode.GetHashCode() + entityInQueryIndex);
+            uint localSeed = Seed + (uint)(obstacleSetup.ObstacleCode.GetHashCode() + entityInQueryIndex);
             var random = new Random(localSeed);
             
             for (int i = 0; i < obstacleSetup.Count; i++)
@@ -189,21 +220,21 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 switch (obstacleSetup.Placement)
                 {
                     case 0: // Center
-                        xPos = CENTER_POSITION;
+                        xPos = CenterPosition;
                         break;
                     case 1: // Left
-                        xPos = LEFT_POSITION;
+                        xPos = LeftPosition;
                         break;
                     case 2: // Right
-                        xPos = RIGHT_POSITION;
+                        xPos = RightPosition;
                         break;
                     case 3: // Random
-                        xPos = random.NextFloat(-LANE_WIDTH/2f, LANE_WIDTH/2f);
+                        xPos = random.NextFloat(-LaneWidth/2f, LaneWidth/2f);
                         break;
                     case 4: // Pattern
                         // Distribuzione uniforme degli ostacoli in un pattern attraverso la corsia
                         float pattern = (float)i / (float)(obstacleSetup.Count - 1);
-                        xPos = math.lerp(-LANE_WIDTH/2f, LANE_WIDTH/2f, pattern);
+                        xPos = math.lerp(-LaneWidth/2f, LaneWidth/2f, pattern);
                         break;
                 }
                 
@@ -228,7 +259,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 
                 // Crea l'entità ostacolo tramite il factory
                 Entity obstacleEntity = SpawnObstacle(
-                    commandBuffer,
                     entityInQueryIndex,
                     obstacleSetup.ObstacleCode.ToString(),
                     new float3(xPos, 0, zPos),
@@ -241,8 +271,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Crea un'entità ostacolo utilizzando il factory
         /// </summary>
+        [BurstDiscard]
         private Entity SpawnObstacle(
-            EntityCommandBuffer.ParallelWriter commandBuffer,
             int entityInQueryIndex,
             string obstacleCode,
             float3 position,
@@ -252,10 +282,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Questo metodo dovrebbe richiamare l'ObstacleFactory per creare l'ostacolo appropriato
             // In questa implementazione di esempio, creiamo un'entità base con i componenti necessari
             
-            var obstacleEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            var obstacleEntity = ECB.CreateEntity(entityInQueryIndex);
             
             // Aggiungi i componenti di base dell'ostacolo
-            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleComponent
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleComponent
             {
                 Height = height,
                 Width = 1.0f * scale,
@@ -266,10 +296,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             });
             
             // Aggiungi il tag dell'ostacolo
-            commandBuffer.AddComponent<ObstacleTag>(entityInQueryIndex, obstacleEntity);
+            ECB.AddComponent<ObstacleTag>(entityInQueryIndex, obstacleEntity);
             
             // Aggiungi la posizione
-            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new TransformComponent
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new TransformComponent
             {
                 Position = position,
                 Rotation = quaternion.identity,
@@ -277,7 +307,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             });
             
             // Aggiungi un componente per tenere traccia del codice dell'ostacolo
-            commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleTypeComponent
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleTypeComponent
             {
                 TypeCode = new Unity.Collections.FixedString32Bytes(obstacleCode)
             });
@@ -286,8 +316,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Ad esempio, se il codice inizia con "L" potrebbe essere un ostacolo di lava
             if (obstacleCode.StartsWith("L", StringComparison.OrdinalIgnoreCase))
             {
-                commandBuffer.AddComponent<LavaTag>(entityInQueryIndex, obstacleEntity);
-                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
+                ECB.AddComponent<LavaTag>(entityInQueryIndex, obstacleEntity);
+                ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
                 {
                     ToxicType = 1, // Tipo fuoco/lava
                     DamagePerSecond = 20.0f
@@ -296,8 +326,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Ghiaccio
             else if (obstacleCode.StartsWith("I", StringComparison.OrdinalIgnoreCase))
             {
-                commandBuffer.AddComponent<IceObstacleTag>(entityInQueryIndex, obstacleEntity);
-                commandBuffer.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
+                ECB.AddComponent<IceObstacleTag>(entityInQueryIndex, obstacleEntity);
+                ECB.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
                 {
                     MaxIntegrity = 100.0f,
                     CurrentIntegrity = 100.0f
@@ -306,15 +336,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Barriere digitali
             else if (obstacleCode.StartsWith("D", StringComparison.OrdinalIgnoreCase))
             {
-                commandBuffer.AddComponent<DigitalBarrierTag>(entityInQueryIndex, obstacleEntity);
+                ECB.AddComponent<DigitalBarrierTag>(entityInQueryIndex, obstacleEntity);
             }
             
             return obstacleEntity;
-        }
-        
-        protected override void OnDestroy()
-        {
-            base.OnDestroy();
         }
     }
 

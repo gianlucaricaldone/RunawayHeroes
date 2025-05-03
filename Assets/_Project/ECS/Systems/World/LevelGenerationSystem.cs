@@ -1,6 +1,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.World;
 
 namespace RunawayHeroes.ECS.Systems.World
@@ -9,53 +10,41 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema base per la generazione di livelli che coordina sia la generazione predefinita
     /// che quella procedurale per runner
     /// </summary>
-    public partial class LevelGenerationSystem : SystemBase
+    public partial struct LevelGenerationSystem : ISystem
     {
-        private RunnerLevelGenerationSystem _runnerLevelSystem;
-        private SegmentContentGenerationSystem _contentGenerationSystem;
+        private EntityQuery _levelQuery;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            // Inizializza i sistemi correlati
-            _runnerLevelSystem = World.GetOrCreateSystemManaged<RunnerLevelGenerationSystem>();
-            _contentGenerationSystem = World.GetOrCreateSystemManaged<SegmentContentGenerationSystem>();
+            // Configura query per i livelli non-runner
+            _levelQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<LevelComponent, LocalTransform>()
+                .WithNone<RunnerLevelConfigComponent>()
+                .Build(ref state);
             
             // Richiedi singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi che il sistema venga eseguito solo se esiste almeno un'entità 
             // con LevelComponent
-            RequireForUpdate<LevelComponent>();
-        }
-
-        protected override void OnUpdate()
-        {
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
-            
-            // Crea livelli predefiniti (non casuali)
-            Entities
-                .WithName("ProcessLevelGenerationRequests")
-                .WithNone<RunnerLevelConfigComponent>() // Escludi quelli randomizzati
-                .ForEach((Entity entity, int entityInQueryIndex, 
-                         in LevelComponent level,
-                         in LocalTransform transform) =>
-                {
-                    // Gestisci la creazione di livelli predefiniti (non randomizzati)
-                    GeneratePredefinedLevel(entity, entityInQueryIndex, ref commandBuffer);
-                    
-                }).ScheduleParallel();
+            state.RequireForUpdate<LevelComponent>();
         }
         
-        /// <summary>
-        /// Genera un livello predefinito in base ai dati di configurazione
-        /// </summary>
-        private void GeneratePredefinedLevel(Entity levelEntity, int entityInQueryIndex,
-                                           ref EntityCommandBuffer.ParallelWriter commandBuffer)
+        public void OnDestroy(ref SystemState state)
         {
-            // Implementazione della generazione di livelli predefiniti (non randomizzati)
-            // Questa sarebbe basata su dati di configurazione o asset predefiniti
-            // ...
+            // Risorse da ripulire, se necessario
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            
+            // Crea livelli predefiniti (non casuali) usando IJobEntity
+            state.Dependency = new ProcessLevelGenerationRequestsJob
+            {
+                ECB = commandBuffer
+            }.ScheduleParallel(_levelQuery, state.Dependency);
         }
         
         /// <summary>
@@ -65,16 +54,16 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <param name="levelLength">Lunghezza del livello in metri</param>
         /// <param name="seed">Seed per la generazione casuale</param>
         /// <param name="isTutorial">Indica se il livello è un tutorial (difficoltà ridotta)</param>
-        public Entity CreateRunnerLevelRequest(WorldTheme theme, int levelLength, int seed, bool isTutorial = false)
+        public Entity CreateRunnerLevelRequest(ref SystemState state, WorldTheme theme, int levelLength, int seed, bool isTutorial = false)
         {
             // Crea una nuova entità
-            var entity = EntityManager.CreateEntity();
+            var entity = state.EntityManager.CreateEntity();
             
             // Ottieni la configurazione di difficoltà se disponibile
             WorldDifficultyConfigComponent difficultyConfig = default;
             bool hasDifficultyConfig = false;
             
-            var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            var difficultyQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
             if (difficultyQuery.HasAnyEntities())
             {
                 difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
@@ -122,7 +111,7 @@ namespace RunawayHeroes.ECS.Systems.World
             }
             
             // Aggiungi la configurazione di livello casuale con i valori scalati
-            EntityManager.AddComponentData(entity, new RunnerLevelConfigComponent
+            state.EntityManager.AddComponentData(entity, new RunnerLevelConfigComponent
             {
                 LevelLength = levelLength,
                 MinSegments = levelLength / 50,  // Un segmento ogni 50 metri circa
@@ -143,7 +132,7 @@ namespace RunawayHeroes.ECS.Systems.World
             });
             
             // Aggiungi il componente transform
-            EntityManager.AddComponentData(entity, new LocalTransform
+            state.EntityManager.AddComponentData(entity, new LocalTransform
             {
                 Position = float3.zero,
                 Rotation = quaternion.identity,
@@ -156,7 +145,7 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Ottiene un tema complementare per creare varietà nei livelli
         /// </summary>
-        private WorldTheme GetComplementaryTheme(WorldTheme primaryTheme)
+        private static WorldTheme GetComplementaryTheme(WorldTheme primaryTheme)
         {
             switch (primaryTheme)
             {
@@ -175,6 +164,36 @@ namespace RunawayHeroes.ECS.Systems.World
                 default:
                     return WorldTheme.City;
             }
+        }
+    }
+    
+    /// <summary>
+    /// Job per processare le richieste di generazione livelli predefiniti
+    /// </summary>
+    [BurstCompile]
+    public partial struct ProcessLevelGenerationRequestsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        
+        [BurstDiscard]
+        public void Execute(Entity entity, 
+                        [ChunkIndexInQuery] int entityInQueryIndex,
+                        in LevelComponent level,
+                        in LocalTransform transform)
+        {
+            // Gestisci la creazione di livelli predefiniti (non randomizzati)
+            GeneratePredefinedLevel(entity, entityInQueryIndex);
+        }
+        
+        /// <summary>
+        /// Genera un livello predefinito in base ai dati di configurazione
+        /// </summary>
+        [BurstDiscard]
+        private void GeneratePredefinedLevel(Entity levelEntity, int entityInQueryIndex)
+        {
+            // Implementazione della generazione di livelli predefiniti (non randomizzati)
+            // Questa sarebbe basata su dati di configurazione o asset predefiniti
+            // ...
         }
     }
 }

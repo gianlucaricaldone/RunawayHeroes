@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
+using Unity.Burst;
 using RunawayHeroes.ECS.Components.World;
 using System;
 
@@ -10,85 +11,112 @@ namespace RunawayHeroes.ECS.Systems.World
     /// <summary>
     /// Sistema responsabile della generazione procedurale dei livelli per il gioco runner
     /// </summary>
-    public partial class RunnerLevelGenerationSystem : SystemBase
+    public partial struct RunnerLevelGenerationSystem : ISystem
     {
-        private Unity.Mathematics.Random _random;
         private const float DEFAULT_SEGMENT_LENGTH = 30f; // Lunghezza predefinita di un segmento in metri
+        private EntityQuery _levelConfigQuery;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
             // Richiedi il singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi che il sistema venga eseguito solo se esiste almeno un'entità 
             // con RunnerLevelConfigComponent
-            RequireForUpdate<RunnerLevelConfigComponent>();
+            state.RequireForUpdate<RunnerLevelConfigComponent>();
+            
+            // Crea la query per le entità con RunnerLevelConfigComponent
+            _levelConfigQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RunnerLevelConfigComponent, LocalTransform>()
+                .Build(ref state);
         }
 
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state)
+        {
+        }
+
+        public void OnUpdate(ref SystemState state)
         {
             // Command buffer per operazioni di creazione/modifica entità
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
-            // Elabora le richieste di generazione livello
-            Entities
-                .WithName("ProcessRunnerLevelRequests")
-                .ForEach((Entity entity, int entityInQueryIndex, 
-                         in RunnerLevelConfigComponent config,
-                         in LocalTransform transform) =>
-                {
-                    // Inizializza il generatore casuale con il seed fornito
-                    _random = Unity.Mathematics.Random.CreateFromIndex((uint)config.Seed);
-                    
-                    // Calcola il numero di segmenti in base alla lunghezza desiderata
-                    int numSegments = math.min(
-                        math.max(config.MinSegments, config.LevelLength / (int)DEFAULT_SEGMENT_LENGTH),
-                        config.MaxSegments
-                    );
-                    
-                    // Genera l'entità del livello
-                    Entity levelEntity = GenerateLevel(entityInQueryIndex, config, numSegments, transform, ref commandBuffer);
-                    
-                    // Genera i segmenti del percorso
-                    GeneratePathSegments(entityInQueryIndex, levelEntity, numSegments, config, ref commandBuffer);
-                    
-                    // Rimuovi il componente di configurazione per evitare di rigenerare
-                    commandBuffer.RemoveComponent<RunnerLevelConfigComponent>(entityInQueryIndex, entity);
-                    
-                }).ScheduleParallel();
+            // Elabora le richieste di generazione livello utilizzando IJobEntity
+            state.Dependency = new ProcessRunnerLevelRequestsJob
+            {
+                CommandBuffer = commandBuffer,
+                EntityManager = state.EntityManager
+            }.ScheduleParallel(_levelConfigQuery, state.Dependency);
+        }
+        
+    /// <summary>
+    /// Job per elaborare le richieste di generazione livello
+    /// </summary>
+    [BurstCompile]
+    public partial struct ProcessRunnerLevelRequestsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        [ReadOnly] public EntityManager EntityManager;
+        private const float DEFAULT_SEGMENT_LENGTH = 30f; // Lunghezza predefinita di un segmento in metri
+        
+        void Execute(Entity entity, [EntityIndexInQuery] int entityInQueryIndex, 
+                    in RunnerLevelConfigComponent config, in LocalTransform transform)
+        {
+            // Inizializza il generatore casuale con il seed fornito
+            Unity.Mathematics.Random random = Unity.Mathematics.Random.CreateFromIndex((uint)config.Seed);
             
-            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
+            // Calcola il numero di segmenti in base alla lunghezza desiderata
+            int numSegments = math.min(
+                math.max(config.MinSegments, config.LevelLength / (int)DEFAULT_SEGMENT_LENGTH),
+                config.MaxSegments
+            );
+            
+            // Genera l'entità del livello
+            Entity levelEntity = GenerateLevel(entityInQueryIndex, config, numSegments, transform, random);
+            
+            // Genera i segmenti del percorso
+            GeneratePathSegments(entityInQueryIndex, levelEntity, numSegments, config, random);
+            
+            // Rimuovi il componente di configurazione per evitare di rigenerare
+            CommandBuffer.RemoveComponent<RunnerLevelConfigComponent>(entityInQueryIndex, entity);
         }
         
         /// <summary>
         /// Genera l'entità principale del livello
         /// </summary>
         private Entity GenerateLevel(int entityInQueryIndex, RunnerLevelConfigComponent config, 
-                                  int numSegments, LocalTransform transform,
-                                  ref EntityCommandBuffer.ParallelWriter commandBuffer)
+                                  int numSegments, LocalTransform transform, Unity.Mathematics.Random random)
         {
             // Crea l'entità del livello
-            Entity levelEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            Entity levelEntity = CommandBuffer.CreateEntity(entityInQueryIndex);
             
             // Aggiungi i componenti base
-            commandBuffer.AddComponent(entityInQueryIndex, levelEntity, new LevelComponent());
-            commandBuffer.AddComponent(entityInQueryIndex, levelEntity, transform);
+            CommandBuffer.AddComponent(entityInQueryIndex, levelEntity, new LevelComponent());
+            CommandBuffer.AddComponent(entityInQueryIndex, levelEntity, transform);
             
             // Aggiungi il componente di tema del mondo
-            commandBuffer.AddComponent(entityInQueryIndex, levelEntity, new WorldIdentifierComponent());
+            CommandBuffer.AddComponent(entityInQueryIndex, levelEntity, new WorldIdentifierComponent());
             
             // Aggiungi il buffer per i segmenti di percorso
-            commandBuffer.AddBuffer<PathSegmentBuffer>(entityInQueryIndex, levelEntity);
+            CommandBuffer.AddBuffer<PathSegmentBuffer>(entityInQueryIndex, levelEntity);
             
             // Cerca la configurazione di difficoltà nel mondo
             WorldDifficultyConfigComponent difficultyConfig = default;
             bool hasDifficultyConfig = false;
+            
+            // Nota: Non possiamo usare direttamente SystemAPI in un IJobEntity, 
+            // quindi dobbiamo verificare la presenza del componente prima dell'esecuzione del job
+            // Per semplicità, controlliamo se esiste almeno un'entità con questo componente
             var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
             if (difficultyQuery.HasAnyEntities())
             {
-                difficultyConfig = SystemAPI.GetSingleton<WorldDifficultyConfigComponent>();
-                hasDifficultyConfig = true;
+                // Otteniamo il primo componente che troviamo (dovrebbe essere un singleton)
+                var entity = difficultyQuery.GetSingletonEntity();
+                if (EntityManager.HasComponent<WorldDifficultyConfigComponent>(entity))
+                {
+                    difficultyConfig = EntityManager.GetComponentData<WorldDifficultyConfigComponent>(entity);
+                    hasDifficultyConfig = true;
+                }
             }
             
             // Determina se è un tutorial (approssimazione)
@@ -102,7 +130,7 @@ namespace RunawayHeroes.ECS.Systems.World
             }
             
             // Aggiungi il componente per le configurazioni di spawn con difficoltà scalata
-            commandBuffer.AddComponent(entityInQueryIndex, levelEntity, new ObstacleSpawnConfigComponent
+            CommandBuffer.AddComponent(entityInQueryIndex, levelEntity, new ObstacleSpawnConfigComponent
             {
                 DensityFactor = obstacleDensity,
                 MinObstacles = isTutorial ? 1 : 2, // Meno ostacoli nel tutorial
@@ -135,7 +163,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 enemyDensity *= difficultyConfig.GetEnemyDensityScaleForTheme(config.PrimaryTheme, isTutorial);
             }
             
-            commandBuffer.AddComponent(entityInQueryIndex, levelEntity, new EnemySpawnConfigComponent
+            CommandBuffer.AddComponent(entityInQueryIndex, levelEntity, new EnemySpawnConfigComponent
             {
                 DensityFactor = enemyDensity,
                 MinEnemies = isTutorial ? 0 : 1, // Possibilità di nessun nemico nel tutorial
@@ -167,7 +195,7 @@ namespace RunawayHeroes.ECS.Systems.World
         /// </summary>
         private void GeneratePathSegments(int entityInQueryIndex, Entity levelEntity, 
                                        int numSegments, RunnerLevelConfigComponent config,
-                                       ref EntityCommandBuffer.ParallelWriter commandBuffer)
+                                       Unity.Mathematics.Random random)
         {
             // Ottieni la configurazione di difficoltà del mondo se disponibile
             WorldDifficultyConfigComponent difficultyConfig = default;
@@ -177,8 +205,13 @@ namespace RunawayHeroes.ECS.Systems.World
             var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
             if (difficultyQuery.HasAnyEntities())
             {
-                difficultyConfig = SystemAPI.GetSingleton<WorldDifficultyConfigComponent>();
-                hasDifficultyConfig = true;
+                // Otteniamo il primo componente che troviamo (dovrebbe essere un singleton)
+                var entity = difficultyQuery.GetSingletonEntity();
+                if (EntityManager.HasComponent<WorldDifficultyConfigComponent>(entity))
+                {
+                    difficultyConfig = EntityManager.GetComponentData<WorldDifficultyConfigComponent>(entity);
+                    hasDifficultyConfig = true;
+                }
             }
             
             // Calcola la difficoltà iniziale e l'incremento per segmento
@@ -204,7 +237,7 @@ namespace RunawayHeroes.ECS.Systems.World
             float difficultyStep = (endDifficulty - startDifficulty) / (float)numSegments;
             
             // Ottieni il buffer dei segmenti
-            var pathBuffer = commandBuffer.SetBuffer<PathSegmentBuffer>(entityInQueryIndex, levelEntity);
+            var pathBuffer = CommandBuffer.SetBuffer<PathSegmentBuffer>(entityInQueryIndex, levelEntity);
             
             // Crea il primo segmento (sempre attivo al caricamento del livello)
             Entity prevSegment = Entity.Null;
@@ -215,7 +248,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 int currentDifficulty = startDifficulty + (int)(difficultyStep * i);
                 
                 // Determina il tipo di segmento in base alla posizione e al fattore di varietà
-                SegmentType segmentType = DetermineSegmentType(i, numSegments, config.SegmentVarietyFactor);
+                SegmentType segmentType = DetermineSegmentType(i, numSegments, config.SegmentVarietyFactor, ref random);
                 
                 // Crea il segmento
                 Entity segmentEntity = CreatePathSegment(
@@ -227,7 +260,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     config.PrimaryTheme,
                     i == 0, // Il primo segmento è sempre attivo
                     prevSegment,
-                    ref commandBuffer
+                    ref random
                 );
                 
                 // Memorizza il riferimento al segmento appena creato
@@ -236,7 +269,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 // Se non è il primo segmento, collega il precedente a questo
                 if (i > 0 && prevSegment != Entity.Null)
                 {
-                    commandBuffer.SetComponent(entityInQueryIndex, prevSegment, 
+                    CommandBuffer.SetComponent(entityInQueryIndex, prevSegment, 
                                              new PathSegmentComponent { 
                                                  /* copia tutti i valori precedenti */ 
                                                  NextSegment = segmentEntity 
@@ -251,7 +284,7 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Determina il tipo di segmento in base alla posizione e alla varietà richiesta
         /// </summary>
-        private SegmentType DetermineSegmentType(int index, int totalSegments, float varietyFactor)
+        private SegmentType DetermineSegmentType(int index, int totalSegments, float varietyFactor, ref Unity.Mathematics.Random random)
         {
             // Calcola la probabilità di segmenti speciali in base alla varietà
             float specialSegmentChance = math.lerp(0.1f, 0.5f, varietyFactor);
@@ -269,11 +302,11 @@ namespace RunawayHeroes.ECS.Systems.World
                 return SegmentType.Checkpoint;
                 
             // Per il resto, usiamo la probabilità per determinare segmenti speciali
-            if (_random.NextFloat() > specialSegmentChance)
+            if (random.NextFloat() > specialSegmentChance)
                 return SegmentType.Straight; // Segmento standard
                 
             // Altrimenti scegliamo un tipo casuale di segmento speciale
-            float typeRoll = _random.NextFloat();
+            float typeRoll = random.NextFloat();
             
             if (typeRoll < 0.15f)
                 return SegmentType.Uphill;
@@ -302,10 +335,10 @@ namespace RunawayHeroes.ECS.Systems.World
                                       WorldTheme theme,
                                       bool isActive,
                                       Entity prevSegment,
-                                      ref EntityCommandBuffer.ParallelWriter commandBuffer)
+                                      ref Unity.Mathematics.Random random)
         {
             // Crea l'entità segmento
-            Entity segmentEntity = commandBuffer.CreateEntity(entityInQueryIndex);
+            Entity segmentEntity = CommandBuffer.CreateEntity(entityInQueryIndex);
             
             // Calcola la posizione in base all'indice (per ora semplice, lineare)
             float3 startPos = new float3(0, 0, segmentIndex * DEFAULT_SEGMENT_LENGTH);
@@ -316,7 +349,7 @@ namespace RunawayHeroes.ECS.Systems.World
             {
                 // Implementazione di curve per esempio
                 float curveAmount = 10f; // Quantità di curvatura in unità
-                float curveDir = _random.NextFloat() > 0.5f ? 1f : -1f; // Direzione casuale
+                float curveDir = random.NextFloat() > 0.5f ? 1f : -1f; // Direzione casuale
                 
                 endPos.x += curveDir * curveAmount;
             }
@@ -330,7 +363,7 @@ namespace RunawayHeroes.ECS.Systems.World
             }
             
             // Aggiungi il componente segmento
-            commandBuffer.AddComponent(entityInQueryIndex, segmentEntity, new PathSegmentComponent
+            CommandBuffer.AddComponent(entityInQueryIndex, segmentEntity, new PathSegmentComponent
             {
                 StartPosition = startPos,
                 EndPosition = endPos,
@@ -347,7 +380,7 @@ namespace RunawayHeroes.ECS.Systems.World
             });
             
             // Aggiungi il componente transform
-            commandBuffer.AddComponent(entityInQueryIndex, segmentEntity, new LocalTransform
+            CommandBuffer.AddComponent(entityInQueryIndex, segmentEntity, new LocalTransform
             {
                 Position = startPos,
                 Rotation = quaternion.identity,
@@ -355,20 +388,21 @@ namespace RunawayHeroes.ECS.Systems.World
             });
             
             // Aggiungi il buffer per i contenuti del segmento
-            commandBuffer.AddBuffer<SegmentContentBuffer>(entityInQueryIndex, segmentEntity);
+            CommandBuffer.AddBuffer<SegmentContentBuffer>(entityInQueryIndex, segmentEntity);
             
             // Se il segmento è attivo, aggiungere un tag per generare i contenuti immediatamente
             if (isActive)
             {
-                commandBuffer.AddComponent(entityInQueryIndex, segmentEntity, new RequiresContentGenerationTag());
+                CommandBuffer.AddComponent(entityInQueryIndex, segmentEntity, new RequiresContentGenerationTag());
             }
             
             return segmentEntity;
         }
     }
-    
-    /// <summary>
-    /// Tag per indicare che un segmento richiede la generazione dei contenuti
-    /// </summary>
-    public struct RequiresContentGenerationTag : IComponentData { }
+}
+
+/// <summary>
+/// Tag per indicare che un segmento richiede la generazione dei contenuti
+/// </summary>
+public struct RequiresContentGenerationTag : IComponentData { }
 }

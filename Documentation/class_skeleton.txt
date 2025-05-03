@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: Sat May  3 12:46:54 CEST 2025
+# Generato il: Sat May  3 21:18:19 CEST 2025
 # Questo file contiene le definizioni di classi, interfacce, metodi pubblici/protetti, proprietà ed eventi.
 # Include anche variabili [SerializeField] e variabili protected/private esposte.
 
@@ -484,9 +484,12 @@ namespace RunawayHeroes.ECS.Systems.Abilities
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/HeatAuraSystem.cs
     public struct HeatAuraVisualComponent : IComponentData
     public struct IceObstacleTag : IComponentData { }
+    public struct HeatAuraVisualUpdateJob
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/NatureCallSystem.cs
     public struct NatureAllyComponent : IComponentData
     public struct DisableEntityTag : IComponentData { }
+    public struct NatureCallAbilityJob
+    public struct NatureAllyTargetInteractionJob
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/UrbanDashSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Combat/DamageSystem.cs
 namespace RunawayHeroes.ECS.Systems.Combat
@@ -506,15 +509,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/Group/GameplaySystemGroup.cs
 namespace RunawayHeroes.ECS.Systems.Gameplay.Group
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/LevelProgressionSystem.cs
-    protected override void OnStartRunning()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/PowerupSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/ProgressionEventSystem.cs
+    protected override void OnStartRunning()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/ProgressionSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/ScoreSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/TutorialGuidanceSystem.cs
     public struct TutorialScenarioComponent : IComponentData
     public struct TriggeredTag : IComponentData
-    protected override void OnDestroy()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/TutorialProgressionSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/WorldProgressionSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Input/GestureRecognitionSystem.cs
@@ -531,6 +533,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     public struct ObstacleBreakThroughEvent : IComponentData
     public enum DamageType : byte
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/ObstacleInteractionSystem.cs
+    public struct SlipperyTag : IComponentData { }
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/PlayerMovementSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/SlideSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/FocusTimeUISystem.cs
@@ -553,7 +556,7 @@ namespace RunawayHeroes.ECS.Systems.World
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/RoomPopulationSystem.cs
     public struct RoomPopulatedTag : IComponentData { }
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/RunnerLevelGenerationSystem.cs
-    public struct RequiresContentGenerationTag : IComponentData { }
+public struct RequiresContentGenerationTag : IComponentData { }
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/SegmentContentGenerationSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/ThematicObstacleGenerationSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Utilities/ComponentExtensions.cs
