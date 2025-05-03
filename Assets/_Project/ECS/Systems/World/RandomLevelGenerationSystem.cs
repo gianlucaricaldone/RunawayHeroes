@@ -11,59 +11,80 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema che gestisce la generazione procedurale di livelli randomizzati
     /// in base ai parametri definiti in RandomLevelConfigComponent
     /// </summary>
-    public partial class RandomLevelGenerationSystem : SystemBase
+    public partial struct RandomLevelGenerationSystem : ISystem
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
-        private Unity.Mathematics.Random _random;
+        private EntityQuery _configQuery;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            // Ottieni il sistema di command buffer per la creazione/distruzione di entità
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi il singleton per il command buffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
+            // Prepara la query per le configurazioni di livello
+            _configQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RandomLevelConfigComponent, LocalTransform>()
+                .Build(ref state);
+                
             // Richiedi che il sistema venga eseguito solo se esiste almeno un'entità 
             // con RandomLevelConfigComponent
-            RequireForUpdate<RandomLevelConfigComponent>();
+            state.RequireForUpdate(_configQuery);
+        }
+        
+        public void OnDestroy(ref SystemState state)
+        {
+            // Pulizia risorse se necessario
         }
 
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
             // Command buffer per operazioni di creazione/modifica entità
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
-            // Ottieni tutte le configurazioni di livelli casuali che non sono ancora state elaborate
-            Entities
-                .WithName("ProcessRandomLevelConfigs")
-                .ForEach((Entity entity, int entityInQueryIndex, 
-                         in RandomLevelConfigComponent config,
-                         in LocalTransform transform) =>
-                {
-                    // Inizializza il generatore casuale con il seed fornito
-                    _random = Unity.Mathematics.Random.CreateFromIndex((uint)config.Seed);
-                    
-                    // Genera la struttura del livello con Binary Space Partitioning
-                    // o un altro algoritmo di generazione procedurale
-                    GenerateLevel(entity, entityInQueryIndex, config, transform, ref commandBuffer);
-                    
-                    // Rimuovi il componente di configurazione per evitare di rigenerare
-                    commandBuffer.RemoveComponent<RandomLevelConfigComponent>(entityInQueryIndex, entity);
-                    
-                }).ScheduleParallel();
+            // Esegui il job per processare tutte le configurazioni di livelli
+            state.Dependency = new ProcessRandomLevelConfigsJob
+            {
+                ECB = commandBuffer
+            }.ScheduleParallel(_configQuery, state.Dependency);
+        }
+    }
+    
+    /// <summary>
+    /// Job per processare le configurazioni di livelli casuali
+    /// </summary>
+    [Unity.Burst.BurstCompile]
+    public partial struct ProcessRandomLevelConfigsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        
+        [Unity.Burst.BurstDiscard]
+        public void Execute(Entity entity, 
+                        [ChunkIndexInQuery] int entityInQueryIndex,
+                        in RandomLevelConfigComponent config, 
+                        in LocalTransform transform)
+        {
+            // Inizializza il generatore casuale con il seed fornito
+            var random = Unity.Mathematics.Random.CreateFromIndex((uint)config.Seed);
             
-            // Assicurati che i comandi vengano eseguiti
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Genera la struttura del livello
+            GenerateLevel(entity, entityInQueryIndex, config, transform, random, ref ECB);
+            
+            // Rimuovi il componente di configurazione per evitare di rigenerare
+            ECB.RemoveComponent<RandomLevelConfigComponent>(entityInQueryIndex, entity);
         }
         
         /// <summary>
         /// Genera un livello procedurale basato sulla configurazione specificata
         /// </summary>
+        [Unity.Burst.BurstDiscard]
         private void GenerateLevel(Entity configEntity, int entityInQueryIndex, 
-                                 RandomLevelConfigComponent config, 
-                                 LocalTransform transform,
-                                 ref EntityCommandBuffer.ParallelWriter commandBuffer)
+                                RandomLevelConfigComponent config, 
+                                LocalTransform transform,
+                                Unity.Mathematics.Random random,
+                                ref EntityCommandBuffer.ParallelWriter commandBuffer)
         {
             // Determina il numero di stanze da generare
-            int numRooms = _random.NextInt(config.MinRooms, config.MaxRooms + 1);
+            int numRooms = random.NextInt(config.MinRooms, config.MaxRooms + 1);
             
             // Crea l'entità principale del livello
             Entity levelEntity = commandBuffer.CreateEntity(entityInQueryIndex);
@@ -79,8 +100,8 @@ namespace RunawayHeroes.ECS.Systems.World
             
             // Posiziona la stanza iniziale
             Entity startRoom = CreateRoom(entityInQueryIndex, RoomType.Standard, numRooms > 0 ? true : false, false, 
-                                         levelEntity, ref commandBuffer);
-                                         
+                                       levelEntity, ref commandBuffer);
+                                       
             // Collega le stanze con corridoi e doorway
             // ...
             
@@ -97,8 +118,9 @@ namespace RunawayHeroes.ECS.Systems.World
         /// <summary>
         /// Crea una nuova stanza nell'ambito del livello generato
         /// </summary>
+        [Unity.Burst.BurstDiscard]
         private Entity CreateRoom(int entityInQueryIndex, RoomType type, bool isStartRoom, bool isEndRoom, 
-                                Entity levelEntity, ref EntityCommandBuffer.ParallelWriter commandBuffer)
+                              Entity levelEntity, ref EntityCommandBuffer.ParallelWriter commandBuffer)
         {
             // Crea l'entità stanza
             Entity roomEntity = commandBuffer.CreateEntity(entityInQueryIndex);

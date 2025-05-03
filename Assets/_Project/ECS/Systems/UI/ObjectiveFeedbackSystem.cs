@@ -27,7 +27,6 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         // Riferimenti sistema
         private EntityQuery _activeObjectivesQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
         protected override void OnCreate()
         {
@@ -36,7 +35,8 @@ namespace RunawayHeroes.ECS.Systems.UI
                 ComponentType.ReadOnly<ActiveObjectiveTag>()
             );
             
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo se ci sono obiettivi attivi
             RequireForUpdate(_activeObjectivesQuery);
@@ -397,7 +397,8 @@ namespace RunawayHeroes.ECS.Systems.UI
         private void ProcessObjectiveCompletionEvents()
         {
             // Crea un buffer per i comandi
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
             Entities
                 .WithoutBurst()
@@ -445,8 +446,6 @@ namespace RunawayHeroes.ECS.Systems.UI
                     // Rimuovi l'evento dopo l'elaborazione
                     EntityManager.DestroyEntity(entity);
                 }).Run();
-                
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
         
         /// <summary>

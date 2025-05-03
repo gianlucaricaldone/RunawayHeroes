@@ -40,12 +40,11 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         // Query
         private EntityQuery _resonanceQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
         protected override void OnCreate()
         {
-            // Ottieni riferimento al command buffer system
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi il singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Definisci la query per le entità con Risonanza
             _resonanceQuery = GetEntityQuery(
@@ -122,36 +121,50 @@ namespace RunawayHeroes.ECS.Systems.UI
             float deltaTime = SystemAPI.Time.DeltaTime;
             UpdateTimers(deltaTime);
             
-            // Gestisci lo stato del cooldown e aggiorna l'UI
-            Entities
-                .WithoutBurst() // Necessario per accedere a oggetti Unity
-                .WithAll<FragmentResonanceComponent>()
-                .ForEach((in FragmentResonanceComponent resonance, in ResonanceInputComponent input) =>
-                {
-                    if (_cooldownOverlay != null)
-                    {
-                        // Aggiorna l'overlay del cooldown
-                        float cooldownRatio = resonance.CooldownRemaining / resonance.Cooldown;
-                        _cooldownOverlay.fillAmount = cooldownRatio;
-                        
-                        // Cambia il colore in base alla disponibilità
-                        _cooldownOverlay.color = resonance.IsAvailable ? 
-                            new Color(0, 0.8f, 1f, 0.3f) : // Blu chiaro semi-trasparente quando pronto
-                            new Color(0.5f, 0.5f, 0.5f, 0.7f); // Grigio scuro quando in cooldown
-                    }
-                    
-                    // Aggiorna l'icona del personaggio attivo nel pulsante principale
-                    UpdateActiveCharacterIcon(resonance);
-                    
-                    // Aggiorna le icone dei personaggi nel menu
-                    UpdateCharacterMenu(resonance);
-                    
-                    // Aggiorna il testo del livello di risonanza
-                    if (_resonanceLevelText != null)
-                    {
-                        _resonanceLevelText.text = "Risonanza Lvl " + resonance.ResonanceLevel;
-                    }
-                }).Run();
+            // Usa SystemAPI.Query invece di Entities.ForEach per accedere agli oggetti Unity
+            foreach (var (resonance, input) in SystemAPI.Query<RefRO<FragmentResonanceComponent>, RefRO<ResonanceInputComponent>>())
+            {
+                // Aggiorna l'overlay del cooldown
+                UpdateCooldownOverlay(resonance.ValueRO);
+                
+                // Aggiorna l'icona del personaggio attivo nel pulsante principale
+                UpdateActiveCharacterIcon(resonance.ValueRO);
+                
+                // Aggiorna le icone dei personaggi nel menu
+                UpdateCharacterMenu(resonance.ValueRO);
+                
+                // Aggiorna il testo del livello di risonanza
+                UpdateResonanceLevel(resonance.ValueRO);
+            }
+        }
+        
+        /// <summary>
+        /// Aggiorna l'overlay del cooldown
+        /// </summary>
+        private void UpdateCooldownOverlay(FragmentResonanceComponent resonance)
+        {
+            if (_cooldownOverlay != null)
+            {
+                // Aggiorna l'overlay del cooldown
+                float cooldownRatio = resonance.CooldownRemaining / resonance.Cooldown;
+                _cooldownOverlay.fillAmount = cooldownRatio;
+                
+                // Cambia il colore in base alla disponibilità
+                _cooldownOverlay.color = resonance.IsAvailable ? 
+                    new Color(0, 0.8f, 1f, 0.3f) : // Blu chiaro semi-trasparente quando pronto
+                    new Color(0.5f, 0.5f, 0.5f, 0.7f); // Grigio scuro quando in cooldown
+            }
+        }
+        
+        /// <summary>
+        /// Aggiorna il testo del livello di risonanza
+        /// </summary>
+        private void UpdateResonanceLevel(FragmentResonanceComponent resonance)
+        {
+            if (_resonanceLevelText != null)
+            {
+                _resonanceLevelText.text = "Risonanza Lvl " + resonance.ResonanceLevel;
+            }
         }
         
         /// <summary>
@@ -328,7 +341,8 @@ namespace RunawayHeroes.ECS.Systems.UI
             
             // Ottieni l'entità del giocatore
             Entity playerEntity = _resonanceQuery.GetSingletonEntity();
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
             // Aggiorna il componente di input della Risonanza
             commandBuffer.SetComponent(playerEntity, new ResonanceInputComponent

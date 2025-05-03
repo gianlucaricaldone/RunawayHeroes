@@ -25,9 +25,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _playerQuery;
         private EntityQuery _playerProgressionQuery;
         
-        // Buffer per i comandi
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         // Stato
         private bool _initializationComplete = false;
         
@@ -58,8 +55,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 ComponentType.ReadOnly<TransformComponent>()
             );
             
-            // Ottieni riferimento al command buffer
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi il singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo se esiste un livello tutorial o progressione
             RequireAnyForUpdate(new EntityQuery[] { _tutorialLevelQuery, _tutorialProgressQuery });
@@ -93,96 +90,96 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             }
             
             // Ottieni il buffer per i comandi
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
             // Controlla il completamento del tutorial
             if (!_tutorialLevelQuery.IsEmpty)
             {
                 // Ottieni l'entità livello tutorial
                 var tutorialEntity = _tutorialLevelQuery.GetSingletonEntity();
-                var tutorialLevel = GetComponent<TutorialLevelTag>(tutorialEntity);
+                var tutorialLevel = SystemAPI.GetComponent<TutorialLevelTag>(tutorialEntity);
                 
                 // Controlla se il tutorial è completato
-                Entities
-                    .WithoutBurst()
-                    .WithStructuralChanges()
-                    .WithAll<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>()
-                    .ForEach((Entity entity, in RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag completedTag) =>
+                foreach (var (entity, completedTag) in 
+                    SystemAPI.Query<RefRO<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>>()
+                        .WithEntityAccess()
+                        .WithAll<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>())
+                {
+                    // Aggiorna lo stato di progressione tutorial
+                    var progressEntity = GetOrCreateTutorialProgressionEntity();
+                    var tutorialProgress = SystemAPI.GetComponent<TutorialProgressionComponent>(progressEntity);
+                    
+                    // Incrementa contatore tutorial completati
+                    tutorialProgress.CompletedTutorialCount++;
+                    
+                    // Aggiorna l'indice massimo sbloccato
+                    if (tutorialLevel.TutorialIndex > tutorialProgress.HighestUnlockedTutorial)
                     {
-                        // Aggiorna lo stato di progressione tutorial
-                        var progressEntity = GetOrCreateTutorialProgressionEntity();
-                        var tutorialProgress = GetComponent<TutorialProgressionComponent>(progressEntity);
+                        tutorialProgress.HighestUnlockedTutorial = tutorialLevel.TutorialIndex;
+                    }
+                    
+                    // Calcola tempo medio di completamento (per semplicità, usiamo un valore costante)
+                    float completionTime = 120.0f; // 2 minuti per tutorial
+                    tutorialProgress.AverageTutorialCompletionTime = 
+                        (tutorialProgress.AverageTutorialCompletionTime * (tutorialProgress.CompletedTutorialCount - 1) + completionTime) 
+                        / tutorialProgress.CompletedTutorialCount;
+                    
+                    // Aggiorna meccaniche apprese (ogni tutorial insegna almeno una meccanica)
+                    tutorialProgress.MechanicsLearned++;
+                    
+                    // Controlla se tutti i tutorial sono stati completati
+                    if (_tutorialManager != null && tutorialLevel.TutorialIndex >= _totalAvailableTutorials - 1)
+                    {
+                        tutorialProgress.AllTutorialsCompleted = true;
+                        Debug.Log("Tutti i tutorial sono stati completati!");
                         
-                        // Incrementa contatore tutorial completati
-                        tutorialProgress.CompletedTutorialCount++;
+                        // Genera un messaggio di congratulazioni
+                        CreateTutorialCompletionMessage(commandBuffer, true);
+                    }
+                    
+                    // Aggiorna il componente di progressione tutorial
+                    SystemAPI.SetComponent(progressEntity, tutorialProgress);
+                    
+                    // Aggiorna anche la progressione globale
+                    if (!_playerProgressionQuery.IsEmpty)
+                    {
+                        var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
+                        var playerProgress = SystemAPI.GetComponent<PlayerProgressionComponent>(playerProgressEntity);
                         
-                        // Aggiorna l'indice massimo sbloccato
-                        if (tutorialLevel.TutorialIndex > tutorialProgress.HighestUnlockedTutorial)
-                        {
-                            tutorialProgress.HighestUnlockedTutorial = tutorialLevel.TutorialIndex;
-                        }
+                        playerProgress.CompletedTutorialCount = tutorialProgress.CompletedTutorialCount;
+                        playerProgress.HighestUnlockedTutorial = tutorialProgress.HighestUnlockedTutorial;
+                        playerProgress.TutorialsCompleted = tutorialProgress.AllTutorialsCompleted;
+                        playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
                         
-                        // Calcola tempo medio di completamento (per semplicità, usiamo un valore costante)
-                        float completionTime = 120.0f; // 2 minuti per tutorial
-                        tutorialProgress.AverageTutorialCompletionTime = 
-                            (tutorialProgress.AverageTutorialCompletionTime * (tutorialProgress.CompletedTutorialCount - 1) + completionTime) 
-                            / tutorialProgress.CompletedTutorialCount;
-                        
-                        // Aggiorna meccaniche apprese (ogni tutorial insegna almeno una meccanica)
-                        tutorialProgress.MechanicsLearned++;
-                        
-                        // Controlla se tutti i tutorial sono stati completati
-                        if (_tutorialManager != null && tutorialLevel.TutorialIndex >= _totalAvailableTutorials - 1)
-                        {
-                            tutorialProgress.AllTutorialsCompleted = true;
-                            Debug.Log("Tutti i tutorial sono stati completati!");
-                            
-                            // Genera un messaggio di congratulazioni
-                            CreateTutorialCompletionMessage(commandBuffer, true);
-                        }
-                        
-                        // Aggiorna il componente di progressione tutorial
-                        SetComponent(progressEntity, tutorialProgress);
-                        
-                        // Aggiorna anche la progressione globale
-                        if (!_playerProgressionQuery.IsEmpty)
-                        {
-                            var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                            var playerProgress = GetComponent<PlayerProgressionComponent>(playerProgressEntity);
-                            
-                            playerProgress.CompletedTutorialCount = tutorialProgress.CompletedTutorialCount;
-                            playerProgress.HighestUnlockedTutorial = tutorialProgress.HighestUnlockedTutorial;
-                            playerProgress.TutorialsCompleted = tutorialProgress.AllTutorialsCompleted;
-                            playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
-                            
-                            SetComponent(playerProgressEntity, playerProgress);
-                        }
-                        
-                        // Genera evento di completamento tutorial
-                        Entity completionEvent = commandBuffer.CreateEntity();
-                        commandBuffer.AddComponent(completionEvent, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent
-                        {
-                            CompletedTutorialIndex = tutorialLevel.TutorialIndex,
-                            AllTutorialsCompleted = tutorialProgress.AllTutorialsCompleted,
-                            NextTutorialToUnlock = tutorialProgress.HighestUnlockedTutorial + 1,
-                            CompletionTime = completionTime
-                        });
-                        
-                        // Genera evento di avanzamento progressione
-                        GenerateProgressionAdvancementEvent(commandBuffer, 0, tutorialLevel.TutorialIndex, 0);
-                        
-                        // Genera messaggio UI per il completamento
-                        CreateTutorialCompletionMessage(commandBuffer, false);
-                        
-                        // Rimuovi il tag di completamento
-                        commandBuffer.DestroyEntity(entity);
-                    }).Run();
+                        SystemAPI.SetComponent(playerProgressEntity, playerProgress);
+                    }
+                    
+                    // Genera evento di completamento tutorial
+                    Entity completionEvent = commandBuffer.CreateEntity();
+                    commandBuffer.AddComponent(completionEvent, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent
+                    {
+                        CompletedTutorialIndex = tutorialLevel.TutorialIndex,
+                        AllTutorialsCompleted = tutorialProgress.AllTutorialsCompleted,
+                        NextTutorialToUnlock = tutorialProgress.HighestUnlockedTutorial + 1,
+                        CompletionTime = completionTime
+                    });
+                    
+                    // Genera evento di avanzamento progressione
+                    GenerateProgressionAdvancementEvent(commandBuffer, 0, tutorialLevel.TutorialIndex, 0);
+                    
+                    // Genera messaggio UI per il completamento
+                    CreateTutorialCompletionMessage(commandBuffer, false);
+                    
+                    // Rimuovi il tag di completamento
+                    commandBuffer.DestroyEntity(entity);
+                }
                     
                 // Verifica completamento tutorial basato su distanza percorsa
                 CheckTutorialCompletionByDistance();
             }
             
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
         
         /// <summary>
@@ -194,10 +191,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 return;
                 
             var playerEntity = _playerQuery.GetSingletonEntity();
-            var playerPosition = GetComponent<TransformComponent>(playerEntity).Position;
+            var playerPosition = SystemAPI.GetComponent<TransformComponent>(playerEntity).Position;
             
             var tutorialEntity = _tutorialLevelQuery.GetSingletonEntity();
-            var tutorialLevel = GetComponent<TutorialLevelTag>(tutorialEntity);
+            var tutorialLevel = SystemAPI.GetComponent<TutorialLevelTag>(tutorialEntity);
             
             // Se il tutorial è già stato completato, salta
             if (tutorialLevel.Completed)
@@ -213,17 +210,18 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 {
                     // Marca il tutorial come completato
                     tutorialLevel.Completed = true;
-                    EntityManager.SetComponentData(tutorialEntity, tutorialLevel);
+                    SystemAPI.SetComponent(tutorialEntity, tutorialLevel);
                     
                     // Crea un'entità con tag di completamento
-                    var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+                    var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+                    var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
                     Entity completedEntity = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent(completedEntity, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag 
                     { 
                         CompletedTutorialIndex = tutorialLevel.TutorialIndex 
                     });
                     
-                    _commandBufferSystem.AddJobHandleForProducer(Dependency);
+                    // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
                     
                     Debug.Log($"Tutorial {tutorialLevel.TutorialIndex} completato!");
                 }

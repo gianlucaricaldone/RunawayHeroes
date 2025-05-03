@@ -12,14 +12,13 @@ namespace RunawayHeroes.ECS.Systems.World
     /// </summary>
     public partial class RunnerLevelGenerationSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         private Unity.Mathematics.Random _random;
         private const float DEFAULT_SEGMENT_LENGTH = 30f; // Lunghezza predefinita di un segmento in metri
         
         protected override void OnCreate()
         {
-            // Ottieni il sistema di command buffer per la creazione/distruzione di entità
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi il singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi che il sistema venga eseguito solo se esiste almeno un'entità 
             // con RunnerLevelConfigComponent
@@ -29,7 +28,8 @@ namespace RunawayHeroes.ECS.Systems.World
         protected override void OnUpdate()
         {
             // Command buffer per operazioni di creazione/modifica entità
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
             
             // Elabora le richieste di generazione livello
             Entities
@@ -58,8 +58,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     
                 }).ScheduleParallel();
             
-            // Assicurati che i comandi vengano eseguiti
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
         
         /// <summary>
@@ -88,7 +87,7 @@ namespace RunawayHeroes.ECS.Systems.World
             var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
             if (difficultyQuery.HasAnyEntities())
             {
-                difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
+                difficultyConfig = SystemAPI.GetSingleton<WorldDifficultyConfigComponent>();
                 hasDifficultyConfig = true;
             }
             
@@ -178,7 +177,7 @@ namespace RunawayHeroes.ECS.Systems.World
             var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
             if (difficultyQuery.HasAnyEntities())
             {
-                difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
+                difficultyConfig = SystemAPI.GetSingleton<WorldDifficultyConfigComponent>();
                 hasDifficultyConfig = true;
             }
             

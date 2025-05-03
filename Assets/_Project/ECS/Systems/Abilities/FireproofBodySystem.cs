@@ -93,15 +93,18 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             }.ScheduleParallel(_abilityQuery, state.Dependency).Complete();
             
             
-            // Aggiorna i visualizzatori dell'effetto igneo con un job personalizzato
-            new FireBodyVisualUpdateJob
+            // Ottieni la query per le visualizzazioni del corpo ignifugo
+            var fireBodyVisualQuery = SystemAPI.QueryBuilder()
+                .WithAll<FireBodyVisualComponent, TransformComponent>()
+                .Build(ref state);
+                
+            // Aggiorna i visualizzatori dell'effetto igneo con un IJobEntity
+            state.Dependency = new FireBodyVisualUpdateJob
             {
                 DeltaTime = deltaTime,
-                EntityManager = state.EntityManager,
-                ECB = commandBuffer
-            }.Run(state.EntityManager, SystemAPI.QueryBuilder()
-                .WithAll<FireBodyVisualComponent, TransformComponent>()
-                .Build(ref state));
+                ECB = commandBuffer,
+                TransformLookup = state.GetComponentLookup<TransformComponent>(true)
+            }.ScheduleParallel(fireBodyVisualQuery, state.Dependency);
             
             // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
@@ -281,45 +284,38 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// <summary>
     /// Job per aggiornare le visualizzazioni del corpo ignifugo
     /// </summary>
-    public struct FireBodyVisualUpdateJob
+    [BurstCompile]
+    public partial struct FireBodyVisualUpdateJob : IJobEntity
     {
         public float DeltaTime;
-        public EntityManager EntityManager;
         public EntityCommandBuffer.ParallelWriter ECB;
         
-        public void Run(EntityManager entityManager, EntityQuery query)
+        // Lookup per il componente TransformComponent delle entità proprietarie
+        [ReadOnly] public ComponentLookup<TransformComponent> TransformLookup;
+        
+        // Metodo Execute chiamato per ogni entità nel query
+        public void Execute([ChunkIndexInQuery] int chunkIndexInQuery, 
+                           Entity entity,
+                           ref FireBodyVisualComponent fireVisual,
+                           ref TransformComponent transform)
         {
-            var entities = query.ToEntityArray(Allocator.Temp);
+            // Aggiorna il tempo rimanente
+            fireVisual.RemainingTime -= DeltaTime;
             
-            foreach (var entity in entities)
+            // Se il tempo è scaduto, distruggi l'entità visiva
+            if (fireVisual.RemainingTime <= 0)
             {
-                var fireVisual = entityManager.GetComponentData<FireBodyVisualComponent>(entity);
-                var transform = entityManager.GetComponentData<TransformComponent>(entity);
-                int entityInQueryIndex = entity.Index;
-                
-                // Aggiorna il tempo rimanente
-                fireVisual.RemainingTime -= DeltaTime;
-                
-                // Se il tempo è scaduto, distruggi l'entità visiva
-                if (fireVisual.RemainingTime <= 0)
+                ECB.DestroyEntity(chunkIndexInQuery, entity);
+            }
+            else
+            {
+                // Aggiorna la posizione in base all'entità proprietaria
+                if (fireVisual.OwnerEntity != Entity.Null && 
+                    TransformLookup.HasComponent(fireVisual.OwnerEntity))
                 {
-                    ECB.DestroyEntity(entityInQueryIndex, entity);
-                }
-                else
-                {
-                    // Aggiorna la posizione in base all'entità proprietaria
-                    if (entityManager.Exists(fireVisual.OwnerEntity) &&
-                        entityManager.HasComponent<TransformComponent>(fireVisual.OwnerEntity))
-                    {
-                        transform.Position = entityManager.GetComponentData<TransformComponent>(fireVisual.OwnerEntity).Position;
-                        entityManager.SetComponentData(entity, transform);
-                    }
-                    
-                    entityManager.SetComponentData(entity, fireVisual);
+                    transform.Position = TransformLookup[fireVisual.OwnerEntity].Position;
                 }
             }
-            
-            entities.Dispose();
         }
     }
 }

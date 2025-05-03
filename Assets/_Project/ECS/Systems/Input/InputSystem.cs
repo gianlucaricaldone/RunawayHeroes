@@ -11,29 +11,33 @@ namespace RunawayHeroes.ECS.Systems.Input
     /// da tastiera, touch o controller e aggiornando l'InputComponent.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    public partial class InputSystem : SystemBase
+    public partial struct InputSystem : ISystem
     {
         private EntityQuery _inputQuery;
         
         /// <summary>
         /// Inizializza il sistema e definisce le query per le entità
         /// </summary>
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
             // Definisce quali entità processare (giocatori con un componente di input)
-            _inputQuery = GetEntityQuery(
-                ComponentType.ReadWrite<InputComponent>(),
-                ComponentType.ReadOnly<TagComponent>()
-            );
+            _inputQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<InputComponent, TagComponent>()
+                .Build(ref state);
             
             // Richiede che ci siano entità con input per aggiornare questo sistema
-            RequireForUpdate(_inputQuery);
+            state.RequireForUpdate(_inputQuery);
+        }
+        
+        public void OnDestroy(ref SystemState state)
+        {
+            // Pulizia delle risorse se necessario
         }
         
         /// <summary>
         /// Aggiorna gli input ad ogni frame
         /// </summary>
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
             // Ottiene il deltaTime per questo frame
             float deltaTime = SystemAPI.Time.DeltaTime;
@@ -127,30 +131,67 @@ namespace RunawayHeroes.ECS.Systems.Input
                 }
             }
             
-            // Aggiorna i componenti di input per tutte le entità giocatore
-            Entities
-                .WithName("UpdatePlayerInput")
-                .WithAll<TagComponent>()
-                .ForEach((ref InputComponent input) =>
-                {
-                    // Aggiorna i vari input
-                    input.JumpPressed = jumpKey;
-                    input.SlidePressed = slideKey;
-                    input.FocusTimePressed = focusTimeKey;
-                    input.AbilityPressed = abilityKey;
-                    input.CharacterSwitchPressed = switchCharacterKey;
-                    input.IsMovementEnabled = isMovementEnabled;
-                    
-                    // Aggiorna il movimento laterale
-                    input.LateralMovement = lateralInput;
-                    input.MoveDirection = moveDirection;
-                    
-                    // Aggiorna lo stato del touch
-                    input.TouchActive = touchActive;
-                    input.TouchPosition = touchPosition;
-                    input.TouchDuration = touchDuration;
-                    
-                }).ScheduleParallel();
+            // Usa un job IJobEntity per aggiornare tutti i componenti di input
+            state.Dependency = new UpdatePlayerInputJob 
+            {
+                JumpPressed = jumpKey,
+                SlidePressed = slideKey,
+                FocusTimePressed = focusTimeKey,
+                AbilityPressed = abilityKey,
+                CharacterSwitchPressed = switchCharacterKey,
+                IsMovementEnabled = isMovementEnabled,
+                LateralMovement = lateralInput,
+                MoveDirection = moveDirection,
+                TouchActive = touchActive,
+                TouchPosition = touchPosition,
+                TouchDuration = touchDuration
+            }.ScheduleParallel(_inputQuery, state.Dependency);
+        }
+    }
+    
+    /// <summary>
+    /// Job per aggiornare gli input del giocatore
+    /// </summary>
+    public partial struct UpdatePlayerInputJob : IJobEntity
+    {
+        // Input da tastiera/controller
+        public bool JumpPressed;
+        public bool SlidePressed;
+        public bool FocusTimePressed;
+        public bool AbilityPressed;
+        public bool CharacterSwitchPressed;
+        public bool IsMovementEnabled;
+        
+        // Input di movimento
+        public float LateralMovement;
+        public float2 MoveDirection;
+        
+        // Input da touch
+        public bool TouchActive;
+        public float2 TouchPosition;
+        public float TouchDuration;
+        
+        /// <summary>
+        /// Aggiorna il componente di input per ogni entità giocatore
+        /// </summary>
+        public void Execute(ref InputComponent input)
+        {
+            // Aggiorna i vari input
+            input.JumpPressed = JumpPressed;
+            input.SlidePressed = SlidePressed;
+            input.FocusTimePressed = FocusTimePressed;
+            input.AbilityPressed = AbilityPressed;
+            input.CharacterSwitchPressed = CharacterSwitchPressed;
+            input.IsMovementEnabled = IsMovementEnabled;
+            
+            // Aggiorna il movimento laterale
+            input.LateralMovement = LateralMovement;
+            input.MoveDirection = MoveDirection;
+            
+            // Aggiorna lo stato del touch
+            input.TouchActive = TouchActive;
+            input.TouchPosition = TouchPosition;
+            input.TouchDuration = TouchDuration;
         }
     }
 }

@@ -11,16 +11,17 @@ namespace RunawayHeroes.ECS.Systems.World
     /// </summary>
     public partial class LevelGenerationSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         private RunnerLevelGenerationSystem _runnerLevelSystem;
         private SegmentContentGenerationSystem _contentGenerationSystem;
         
         protected override void OnCreate()
         {
             // Inizializza i sistemi correlati
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             _runnerLevelSystem = World.GetOrCreateSystemManaged<RunnerLevelGenerationSystem>();
             _contentGenerationSystem = World.GetOrCreateSystemManaged<SegmentContentGenerationSystem>();
+            
+            // Richiedi singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi che il sistema venga eseguito solo se esiste almeno un'entità 
             // con LevelComponent
@@ -29,7 +30,8 @@ namespace RunawayHeroes.ECS.Systems.World
 
         protected override void OnUpdate()
         {
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
             
             // Crea livelli predefiniti (non casuali)
             Entities
@@ -43,9 +45,6 @@ namespace RunawayHeroes.ECS.Systems.World
                     GeneratePredefinedLevel(entity, entityInQueryIndex, ref commandBuffer);
                     
                 }).ScheduleParallel();
-            
-            // Assicurati che i comandi vengano eseguiti
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
         
         /// <summary>

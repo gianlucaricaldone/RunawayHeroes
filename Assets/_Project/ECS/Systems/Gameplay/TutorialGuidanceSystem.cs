@@ -5,7 +5,6 @@ using Unity.Transforms;
 using Unity.Collections;
 using Unity.Burst;
 using Unity.Jobs;
-using Unity.Mathematics;
 using System;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;
@@ -24,7 +23,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         private EntityQuery _activePlayerQuery;
         private EntityQuery _scenarioQuery;
-        private EntityCommandBufferSystem _endSimulationECBSystem;
         private Random _random;
         private uint _seed;
         
@@ -36,8 +34,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         
         protected override void OnCreate()
         {
-            base.OnCreate();
-            
             // Inizializza il generatore di numeri casuali
             _seed = (uint)UnityEngine.Random.Range(1, 1000000);
             _random = new Random(_seed);
@@ -55,8 +51,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 ComponentType.ReadOnly<TutorialObstacleBuffer>()
             );
             
-            // Buffer per le operazioni di entità
-            _endSimulationECBSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo quando esiste un giocatore attivo
             RequireForUpdate(_activePlayerQuery);
@@ -67,7 +63,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             if (!SystemAPI.HasSingleton<TutorialLevelTag>())
                 return;
                 
-            var commandBuffer = _endSimulationECBSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
+            
             var playerEntities = _activePlayerQuery.ToEntityArray(Allocator.TempJob);
             
             if (playerEntities.Length == 0)
@@ -129,8 +127,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                 })
                 .ScheduleParallel();
-            
-            _endSimulationECBSystem.AddJobHandleForProducer(Dependency);
         }
         
         /// <summary>

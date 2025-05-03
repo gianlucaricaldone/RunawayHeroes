@@ -14,14 +14,13 @@ namespace RunawayHeroes.ECS.Systems.World
     /// </summary>
     public partial class RoomPopulationSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
         private Unity.Mathematics.Random _random;
         private uint _seed;
         
         protected override void OnCreate()
         {
-            // Ottieni il sistema di command buffer
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi il singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Inizializza il generatore di numeri casuali
             _seed = (uint)DateTime.Now.Ticks;
@@ -33,7 +32,8 @@ namespace RunawayHeroes.ECS.Systems.World
 
         protected override void OnUpdate()
         {
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
             var random = _random;
             
             // Popola le stanze appena create
@@ -71,8 +71,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     
                 }).ScheduleParallel();
             
-            // Assicurati che i comandi vengano eseguiti
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
         
         /// <summary>

@@ -12,12 +12,10 @@ namespace RunawayHeroes.ECS.Systems.World
     /// </summary>
     public partial class RoomConnectionSystem : SystemBase
     {
-        private EntityCommandBufferSystem _commandBufferSystem;
-        
         protected override void OnCreate()
         {
-            // Ottieni il sistema di command buffer
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi il singleton per il command buffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi che il sistema venga eseguito solo durante la generazione del livello
             RequireForUpdate<RoomComponent>();
@@ -25,7 +23,8 @@ namespace RunawayHeroes.ECS.Systems.World
 
         protected override void OnUpdate()
         {
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
             
             // Primo passaggio: identifica le stanze non collegate
             Entities
@@ -64,8 +63,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     commandBuffer.RemoveComponent<RequiresConnectionTag>(entityInQueryIndex, roomEntity);
                 });
             
-            // Assicurati che i comandi vengano eseguiti
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
         
         /// <summary>
