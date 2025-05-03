@@ -16,6 +16,8 @@ namespace RunawayHeroes.ECS.Components.Enemies
         public BossType Type;                 // Tipo di boss
         public int CurrentPhase;              // Fase corrente (0-based)
         public int TotalPhases;               // Numero totale di fasi
+        public int BaseDamage;                // Danno base degli attacchi
+        public int AttackPatternComplexity;   // Complessità dei pattern di attacco
         
         // Soglie di fase
         // Soglie di salute per le transizioni di fase (es. 0.7f, 0.4f, 0.1f)

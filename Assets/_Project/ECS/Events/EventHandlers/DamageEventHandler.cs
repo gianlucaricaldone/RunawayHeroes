@@ -74,7 +74,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // - Aggiornare statistiche di combattimento
                 // - Verificare condizioni di morte
                 
-                if (SystemAPI.HasComponent<HealthComponent>(damageEvent.TargetEntity))
+                // Se l'evento ha un target specifico e questo ha un componente di salute
+                if (damageEvent.TargetEntity != Entity.Null && 
+                    SystemAPI.HasComponent<HealthComponent>(damageEvent.TargetEntity))
                 {
                     var health = SystemAPI.GetComponent<HealthComponent>(damageEvent.TargetEntity);
                     

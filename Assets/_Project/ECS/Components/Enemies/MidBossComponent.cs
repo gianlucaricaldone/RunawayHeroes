@@ -15,6 +15,7 @@ namespace RunawayHeroes.ECS.Components.Enemies
         // Proprietà di base
         public MidBossType Type;           // Tipo di mid-boss
         public int Tier;                   // Livello di potenza (1-3)
+        public int AttackDamage;           // Danno base degli attacchi
         
         // Comportamento
         public bool HasEnragedState;       // Se ha uno stato infuriato
@@ -26,6 +27,8 @@ namespace RunawayHeroes.ECS.Components.Enemies
         public SpecialAbilityType SpecialAbility; // Abilità speciale
         public float SpecialAbilityCooldown;      // Cooldown dell'abilità speciale
         public float CurrentSpecialCooldown;      // Cooldown attuale
+        public bool HasSpecialAttacks;            // Se può eseguire attacchi speciali
+        public float SpecialAttackCooldown;       // Cooldown per gli attacchi speciali
         
         // Stato corrente
         public bool IsEnraged;            // Se è attualmente infuriato

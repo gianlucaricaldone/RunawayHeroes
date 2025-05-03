@@ -22,7 +22,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         private EntityQuery _worldConfigQuery;
         private EntityQuery _segmentsQuery;
-        private EntityQuery _enemiesQuery;
         private EntityQuery _obstaclesQuery;
         
         private const float DEFAULT_DIFFICULTY_UPDATE_INTERVAL = 3.0f; // Secondi
@@ -44,11 +43,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 .WithAll<PathSegmentComponent, LocalTransform>()
                 .Build(ref state);
                 
-            // Crea le query per nemici e ostacoli
-            _enemiesQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAny<EnemyComponent, MidBossComponent, BossComponent>()
-                .WithAll<SegmentReferenceComponent>()
-                .Build(ref state);
+            // Crea le query per ostacoli (le query per nemici sono create nell'OnUpdate)
                 
             _obstaclesQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<ObstacleComponent, SegmentReferenceComponent>()
@@ -102,14 +97,48 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 DifficultyConfig = difficultyConfig
             }.ScheduleParallel(_segmentsQuery, state.Dependency);
             
-            // 2. Applica modificatori di difficoltà ai nemici in base alla difficoltà del segmento
-            if (!_enemiesQuery.IsEmpty)
+            // 2. Applica modificatori di difficoltà ai diversi tipi di nemici
+            
+            // 2.1 Nemici normali
+            var enemiesQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<EnemyComponent, SegmentReferenceComponent>()
+                .Build(ref state);
+                
+            if (!enemiesQuery.IsEmpty)
             {
                 state.Dependency = new ApplyDifficultyToEnemiesJob
                 {
                     DifficultyConfig = difficultyConfig,
                     ECB = ecb.AsParallelWriter()
-                }.ScheduleParallel(_enemiesQuery, state.Dependency);
+                }.ScheduleParallel(enemiesQuery, state.Dependency);
+            }
+            
+            // 2.2 Mid-Boss
+            var midBossQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<MidBossComponent, SegmentReferenceComponent>()
+                .Build(ref state);
+                
+            if (!midBossQuery.IsEmpty)
+            {
+                state.Dependency = new ApplyDifficultyToMidBossesJob
+                {
+                    DifficultyConfig = difficultyConfig,
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(midBossQuery, state.Dependency);
+            }
+            
+            // 2.3 Boss
+            var bossQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<BossComponent, SegmentReferenceComponent>()
+                .Build(ref state);
+                
+            if (!bossQuery.IsEmpty)
+            {
+                state.Dependency = new ApplyDifficultyToBossesJob
+                {
+                    DifficultyConfig = difficultyConfig,
+                    ECB = ecb.AsParallelWriter()
+                }.ScheduleParallel(bossQuery, state.Dependency);
             }
             
             // 3. Applica modificatori di difficoltà agli ostacoli in base alla difficoltà del segmento
@@ -193,7 +222,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         }
         
         /// <summary>
-        /// Job che applica la difficoltà ai nemici
+        /// Job che applica la difficoltà ai nemici normali
         /// </summary>
         [BurstCompile]
         private partial struct ApplyDifficultyToEnemiesJob : IJobEntity
@@ -281,6 +310,16 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                 }
             }
+        }
+        
+        /// <summary>
+        /// Job che applica la difficoltà ai mid-boss
+        /// </summary>
+        [BurstCompile]
+        private partial struct ApplyDifficultyToMidBossesJob : IJobEntity
+        {
+            [ReadOnly] public WorldDifficultyConfigComponent DifficultyConfig;
+            public EntityCommandBuffer.ParallelWriter ECB;
             
             [BurstCompile]
             private void Execute(
@@ -335,6 +374,16 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     midBoss.SpecialAttackCooldown *= 0.8f; // Riduci il cooldown del 20%
                 }
             }
+        }
+        
+        /// <summary>
+        /// Job che applica la difficoltà ai boss
+        /// </summary>
+        [BurstCompile]
+        private partial struct ApplyDifficultyToBossesJob : IJobEntity
+        {
+            [ReadOnly] public WorldDifficultyConfigComponent DifficultyConfig;
+            public EntityCommandBuffer.ParallelWriter ECB;
             
             [BurstCompile]
             private void Execute(

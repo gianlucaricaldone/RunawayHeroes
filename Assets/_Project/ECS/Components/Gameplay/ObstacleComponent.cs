@@ -37,6 +37,21 @@ namespace RunawayHeroes.ECS.Components.Gameplay
         public float DamageValue;
         
         /// <summary>
+        /// Quantità di danno inflitta alle entità quando collidono con l'ostacolo
+        /// </summary>
+        public float DamageAmount;
+        
+        /// <summary>
+        /// Indica se l'ostacolo può infliggere danno
+        /// </summary>
+        public bool DealsDamage;
+        
+        /// <summary>
+        /// Indica se l'ostacolo è in movimento
+        /// </summary>
+        public bool IsMoving;
+        
+        /// <summary>
         /// Se true, l'ostacolo può essere completamente distrutto
         /// </summary>
         public bool IsDestructible;
@@ -53,6 +68,9 @@ namespace RunawayHeroes.ECS.Components.Gameplay
                 CollisionRadius = 0.4f,
                 Strength = 50.0f,
                 DamageValue = 10.0f,
+                DamageAmount = 10.0f,
+                DealsDamage = true,
+                IsMoving = false,
                 IsDestructible = true
             };
         }
@@ -69,6 +87,9 @@ namespace RunawayHeroes.ECS.Components.Gameplay
                 CollisionRadius = 0.6f,
                 Strength = 100.0f,
                 DamageValue = 25.0f,
+                DamageAmount = 25.0f,
+                DealsDamage = true,
+                IsMoving = false,
                 IsDestructible = true
             };
         }
@@ -85,6 +106,9 @@ namespace RunawayHeroes.ECS.Components.Gameplay
                 CollisionRadius = 1.0f,
                 Strength = 200.0f,
                 DamageValue = 50.0f,
+                DamageAmount = 50.0f,
+                DealsDamage = true,
+                IsMoving = false,
                 IsDestructible = false
             };
         }

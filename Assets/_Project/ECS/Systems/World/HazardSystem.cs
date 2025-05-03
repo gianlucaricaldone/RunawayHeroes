@@ -6,6 +6,7 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Events;
 
 namespace RunawayHeroes.ECS.Systems.World
 {
@@ -186,10 +187,14 @@ namespace RunawayHeroes.ECS.Systems.World
                                 Entity damageEvent = ECB.CreateEntity(sortKey);
                                 ECB.AddComponent(sortKey, damageEvent, new DamageEvent
                                 {
-                                    Target = vulnerableEntity,
-                                    Amount = damageAmount,
-                                    Source = entity,
-                                    DamageType = (byte)hazard.Type
+                                    TargetEntity = vulnerableEntity,
+                                    DamageAmount = damageAmount,
+                                    SourceEntity = entity,
+                                    DamageType = (byte)hazard.Type,
+                                    IsCritical = false,
+                                    HitPoint = entityPosition,
+                                    StatusEffectType = (byte)hazard.StatusEffect,
+                                    StatusEffectDuration = hazard.StatusEffectDuration
                                 });
                             }
                         }
@@ -309,16 +314,7 @@ namespace RunawayHeroes.ECS.Systems.World
     
     #region Eventi
     
-    /// <summary>
-    /// Evento generato quando un'entità subisce danno
-    /// </summary>
-    public struct DamageEvent : IComponentData
-    {
-        public Entity Target;         // Entità bersaglio del danno
-        public float Amount;          // Quantità di danno
-        public Entity Source;         // Fonte del danno
-        public byte DamageType;       // Tipo di danno
-    }
+    // Utilizziamo l'evento di danno definito in RunawayHeroes.ECS.Events.DamageEvent
     
     /// <summary>
     /// Evento generato per gli effetti visivi delle zone pericolose

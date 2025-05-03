@@ -6,6 +6,7 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Enemies;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Events;
 
 namespace RunawayHeroes.ECS.Systems.AI
 {
@@ -328,10 +329,11 @@ namespace RunawayHeroes.ECS.Systems.AI
                                 ECB.AddComponent(sortKey, damageEvent, new DamageEvent
                                 {
                                     SourceEntity = entity,
-                                    TargetPosition = targetPosition,
-                                    Damage = attackComponent.BaseDamage,
-                                    DamageRadius = attackComponent.IsAreaEffect ? attackComponent.AreaRadius : 0.5f,
-                                    ElementType = (byte)attackComponent.ElementType,
+                                    TargetEntity = Entity.Null, // In questo caso è un area attack, quindi non c'è un target specifico
+                                    DamageAmount = attackComponent.BaseDamage,
+                                    DamageType = (byte)attackComponent.ElementType,
+                                    HitPoint = targetPosition,
+                                    IsCritical = false,
                                     StatusEffectType = (byte)attackComponent.StatusEffect,
                                     StatusEffectDuration = attackComponent.StatusEffectDuration
                                 });
@@ -383,13 +385,15 @@ namespace RunawayHeroes.ECS.Systems.AI
                             if (math.fmod(attackState.Progress * 10, 1.0f) < 0.1f)
                             {
                                 Entity damageEvent = ECB.CreateEntity(sortKey);
+                                float3 hitPoint = transform.Position + math.normalize(physics.Velocity) * attackComponent.AttackRange;
                                 ECB.AddComponent(sortKey, damageEvent, new DamageEvent
                                 {
                                     SourceEntity = entity,
-                                    TargetPosition = transform.Position + math.normalize(physics.Velocity) * attackComponent.AttackRange,
-                                    Damage = attackComponent.BaseDamage * 0.5f,
-                                    DamageRadius = 1.0f,
-                                    ElementType = (byte)attackComponent.ElementType,
+                                    TargetEntity = Entity.Null, // Area sweep attack
+                                    DamageAmount = attackComponent.BaseDamage * 0.5f,
+                                    DamageType = (byte)attackComponent.ElementType,
+                                    HitPoint = hitPoint,
+                                    IsCritical = false,
                                     StatusEffectType = (byte)attackComponent.StatusEffect,
                                     StatusEffectDuration = attackComponent.StatusEffectDuration * 0.5f
                                 });
@@ -438,17 +442,5 @@ namespace RunawayHeroes.ECS.Systems.AI
         Recovery = 2    // Fase di recupero
     }
     
-    /// <summary>
-    /// Evento di danno generato dagli attacchi
-    /// </summary>
-    public struct DamageEvent : IComponentData
-    {
-        public Entity SourceEntity;      // Entità che ha generato il danno
-        public float3 TargetPosition;    // Posizione target dell'attacco
-        public float Damage;             // Quantità di danno
-        public float DamageRadius;       // Raggio del danno
-        public byte ElementType;         // Tipo di elemento
-        public byte StatusEffectType;    // Tipo di effetto di stato
-        public float StatusEffectDuration; // Durata dell'effetto di stato
-    }
+    // Utilizziamo l'evento di danno definito in RunawayHeroes.ECS.Events.DamageEvent
 }

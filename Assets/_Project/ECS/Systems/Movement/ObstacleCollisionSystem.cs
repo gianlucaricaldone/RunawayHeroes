@@ -8,6 +8,7 @@ using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
+using RunawayHeroes.ECS.Events;
 using RunawayHeroes.ECS.Systems.Movement.Group;
 
 namespace RunawayHeroes.ECS.Systems.Movement
@@ -380,8 +381,11 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                 TargetEntity = playerEntity,
                                 SourceEntity = obstacleEntity,
                                 DamageAmount = actualDamage,
-                                DamageType = DamageType.Obstacle,
-                                ImpactPosition = impactPosition
+                                DamageType = (byte)DamageType.Obstacle,
+                                IsCritical = false,
+                                HitPoint = impactPosition,
+                                StatusEffectType = 0,
+                                StatusEffectDuration = 0
                             });
                         }
                         else
