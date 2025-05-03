@@ -260,7 +260,7 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
             commandBuffer.AddComponent(entity, new Unity.Transforms.LocalTransform
             {
                 Position = position,
-                Rotation = rotation == default ? quaternion.identity : rotation,
+                Rotation = quaternion.Equals(rotation, default(quaternion)) ? quaternion.identity : rotation,
                 Scale = scale
             });
             

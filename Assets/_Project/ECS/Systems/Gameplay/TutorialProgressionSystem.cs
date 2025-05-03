@@ -7,6 +7,7 @@ using UnityEngine;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
+using RunawayHeroes.ECS.Systems.Gameplay.Group;
 using RunawayHeroes.Runtime.Managers;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
@@ -105,8 +106,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 Entities
                     .WithoutBurst()
                     .WithStructuralChanges()
-                    .WithAll<TutorialCompletedTag>()
-                    .ForEach((Entity entity, in TutorialCompletedTag completedTag) =>
+                    .WithAll<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>()
+                    .ForEach((Entity entity, in RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag completedTag) =>
                     {
                         // Aggiorna lo stato di progressione tutorial
                         var progressEntity = GetOrCreateTutorialProgressionEntity();
@@ -159,7 +160,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         
                         // Genera evento di completamento tutorial
                         Entity completionEvent = commandBuffer.CreateEntity();
-                        commandBuffer.AddComponent(completionEvent, new TutorialCompletionEvent
+                        commandBuffer.AddComponent(completionEvent, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent
                         {
                             CompletedTutorialIndex = tutorialLevel.TutorialIndex,
                             AllTutorialsCompleted = tutorialProgress.AllTutorialsCompleted,
@@ -217,7 +218,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     // Crea un'entità con tag di completamento
                     var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
                     Entity completedEntity = commandBuffer.CreateEntity();
-                    commandBuffer.AddComponent(completedEntity, new TutorialCompletedTag 
+                    commandBuffer.AddComponent(completedEntity, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag 
                     { 
                         CompletedTutorialIndex = tutorialLevel.TutorialIndex 
                     });

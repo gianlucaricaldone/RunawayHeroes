@@ -6,6 +6,7 @@ using UnityEngine;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
+using RunawayHeroes.ECS.Systems.Gameplay.Group;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
@@ -116,7 +117,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             Entities
                 .WithoutBurst()
                 .WithStructuralChanges()
-                .ForEach((Entity entity, in TutorialCompletionEvent completionEvent) =>
+                .ForEach((Entity entity, in RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent completionEvent) =>
                 {
                     // Se tutti i tutorial sono completati, sblocca il primo mondo
                     if (completionEvent.AllTutorialsCompleted)

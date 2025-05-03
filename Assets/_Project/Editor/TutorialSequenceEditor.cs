@@ -55,7 +55,7 @@ namespace RunawayHeroes.Editor
                     // Initialize new elements
                     for (int i = oldSize; i < newSize; i++)
                     {
-                        initializer.tutorialSequence[i] = new TutorialLevelSequence
+                        initializer.tutorialSequence[i] = new TutorialLevelData
                         {
                             description = $"Tutorial {i + 1}",
                             theme = WorldTheme.City,
@@ -73,7 +73,7 @@ namespace RunawayHeroes.Editor
                 // Display each tutorial in the sequence
                 for (int i = 0; i < initializer.tutorialSequence.Length; i++)
                 {
-                    TutorialLevelSequence tutorial = initializer.tutorialSequence[i];
+                    TutorialLevelData tutorial = initializer.tutorialSequence[i];
                     
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     
@@ -86,7 +86,7 @@ namespace RunawayHeroes.Editor
                     if (GUILayout.Button("↑", GUILayout.Width(25)))
                     {
                         // Move up
-                        TutorialLevelSequence temp = initializer.tutorialSequence[i - 1];
+                        TutorialLevelData temp = initializer.tutorialSequence[i - 1];
                         initializer.tutorialSequence[i - 1] = initializer.tutorialSequence[i];
                         initializer.tutorialSequence[i] = temp;
                         
@@ -104,7 +104,7 @@ namespace RunawayHeroes.Editor
                     if (GUILayout.Button("↓", GUILayout.Width(25)))
                     {
                         // Move down
-                        TutorialLevelSequence temp = initializer.tutorialSequence[i + 1];
+                        TutorialLevelData temp = initializer.tutorialSequence[i + 1];
                         initializer.tutorialSequence[i + 1] = initializer.tutorialSequence[i];
                         initializer.tutorialSequence[i] = temp;
                         
@@ -124,7 +124,7 @@ namespace RunawayHeroes.Editor
                         if (EditorUtility.DisplayDialog("Remove Tutorial?", $"Are you sure you want to remove Tutorial {i + 1}?", "Remove", "Cancel"))
                         {
                             // Remove tutorial
-                            var newSequence = new TutorialLevelSequence[initializer.tutorialSequence.Length - 1];
+                            var newSequence = new TutorialLevelData[initializer.tutorialSequence.Length - 1];
                             var newShowDetails = new bool[initializer.tutorialSequence.Length - 1];
                             
                             for (int j = 0; j < newSequence.Length; j++)

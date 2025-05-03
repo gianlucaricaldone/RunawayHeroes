@@ -78,7 +78,7 @@ namespace RunawayHeroes.Runtime.Levels
             // Aggiungi un bottone per ogni tutorial
             for (int i = 0; i < tutorialInitializer.tutorialSequence.Length; i++)
             {
-                TutorialLevelSequence tutorial = tutorialInitializer.tutorialSequence[i];
+                TutorialLevelData tutorial = tutorialInitializer.tutorialSequence[i];
                 
                 // Crea il bottone
                 GameObject buttonObj = Instantiate(tutorialButtonPrefab, tutorialButtonsContainer);

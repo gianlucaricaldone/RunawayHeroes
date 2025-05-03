@@ -77,7 +77,11 @@ namespace RunawayHeroes.Runtime.Levels
             _validationIssues.Clear();
             
             // Verifica sequenze
-            ValidateTutorialSequences(tutorialInitializer.tutorialSequence);
+            if (tutorialInitializer.tutorialSequence != null)
+            {
+                TutorialLevelData[] dataSequences = tutorialInitializer.tutorialSequence;
+                ValidateTutorialSequences(dataSequences);
+            }
             
             // Determina il risultato
             bool isValid = !HasCriticalIssues();
@@ -168,7 +172,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// <summary>
         /// Valida tutte le sequenze tutorial
         /// </summary>
-        private void ValidateTutorialSequences(TutorialLevelSequence[] sequences)
+        private void ValidateTutorialSequences(TutorialLevelData[] sequences)
         {
             if (sequences == null || sequences.Length == 0)
             {
@@ -192,7 +196,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// <summary>
         /// Valida una sequenza tutorial specifica
         /// </summary>
-        private void ValidateTutorialSequence(TutorialLevelSequence sequence, int sequenceIndex)
+        private void ValidateTutorialSequence(TutorialLevelData sequence, int sequenceIndex)
         {
             if (sequence.scenarios == null || sequence.scenarios.Length == 0)
             {
@@ -223,7 +227,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// <summary>
         /// Verifica che non ci siano sovrapposizioni tra scenari
         /// </summary>
-        private void CheckScenarioOverlaps(TutorialLevelSequence sequence)
+        private void CheckScenarioOverlaps(TutorialLevelData sequence)
         {
             if (sequence.scenarios.Length <= 1)
                 return;
@@ -295,7 +299,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// <summary>
         /// Valida uno scenario specifico
         /// </summary>
-        private void ValidateScenario(TutorialScenario scenario, TutorialLevelSequence sequence, int scenarioIndex)
+        private void ValidateScenario(TutorialScenario scenario, TutorialLevelData sequence, int scenarioIndex)
         {
             if (scenario.obstacles == null || scenario.obstacles.Length == 0)
             {
@@ -346,7 +350,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// <summary>
         /// Verifica che la lunghezza della sequenza sia ragionevole
         /// </summary>
-        private void ValidateSequenceLength(TutorialLevelSequence sequence)
+        private void ValidateSequenceLength(TutorialLevelData sequence)
         {
             if (sequence.length <= 0)
             {

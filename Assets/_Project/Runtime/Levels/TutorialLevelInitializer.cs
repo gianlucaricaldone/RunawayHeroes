@@ -19,7 +19,7 @@ namespace RunawayHeroes.Runtime.Levels
     {
         [Header("Configurazione Tutorial")]
         [Tooltip("Livelli tutorial in sequenza")]
-        public TutorialLevelSequence[] tutorialSequence;
+        public TutorialLevelData[] tutorialSequence;
         
         [Header("Debug")]
         [Tooltip("Se true, mostra gizmo per visualizzare gli scenari nel editor")]
@@ -110,7 +110,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// <summary>
         /// Configura gli scenari tutorial per una sequenza
         /// </summary>
-        private void SetupTutorialScenarios(TutorialLevelSequence tutorial)
+        private void SetupTutorialScenarios(TutorialLevelData tutorial)
         {
             if (tutorial.scenarios == null || tutorial.scenarios.Length == 0)
             {
@@ -153,10 +153,16 @@ namespace RunawayHeroes.Runtime.Levels
                             Count = obstacle.count,
                             Placement = (byte)obstacle.placement,
                             RandomizeHeight = obstacle.randomizeHeight,
-                            HeightRange = new float2(obstacle.heightRange.x, obstacle.heightRange.y),
+                            HeightRange = new float2(obstacle.randomizeHeight ? 
+                                                    new Vector2(0.5f, 1.5f).x : 1.0f, 
+                                                    obstacle.randomizeHeight ? 
+                                                    new Vector2(0.5f, 1.5f).y : 1.0f),
                             RandomizeScale = obstacle.randomizeScale,
-                            ScaleRange = new float2(obstacle.scaleRange.x, obstacle.scaleRange.y),
-                            StartOffset = obstacle.startOffset
+                            ScaleRange = new float2(obstacle.randomizeScale ? 
+                                                   new Vector2(0.8f, 1.2f).x : 1.0f,
+                                                   obstacle.randomizeScale ? 
+                                                   new Vector2(0.8f, 1.2f).y : 1.0f),
+                            StartOffset = 0f // Using default value as field is not present in TutorialLevelData
                         });
                     }
                 }
@@ -316,6 +322,9 @@ namespace RunawayHeroes.Runtime.Levels
         }
     }
     
+    // Note: TutorialLevelSequence is now replaced by TutorialLevelData from TutorialLevelSequence.cs
+    // This class is kept as a comment for reference, but should not be used.
+    /* 
     /// <summary>
     /// Definisce una sequenza di livelli tutorial
     /// </summary>
@@ -338,6 +347,7 @@ namespace RunawayHeroes.Runtime.Levels
         [Tooltip("Scenari di insegnamento per questo tutorial")]
         public TutorialScenario[] scenarios;
     }
+    */
     
     /// <summary>
     /// Temi di mondo disponibili

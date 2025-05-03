@@ -11,6 +11,7 @@ using Random = Unity.Mathematics.Random;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
+using RunawayHeroes.ECS.Systems.Gameplay.Group;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
@@ -275,7 +276,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             {
                 Position = position,
                 Rotation = quaternion.identity,
-                Scale = scale
+                Scale = new float3(scale, scale, scale)
             });
             
             // Aggiungi un componente per tenere traccia del codice dell'ostacolo
@@ -343,9 +344,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public int Count;
         public byte Placement; // 0=Center, 1=Left, 2=Right, 3=Random, 4=Pattern
         public bool RandomizeHeight;
-        public float2 HeightRange;
+        public float2 HeightRange; // min, max
         public bool RandomizeScale;
-        public float2 ScaleRange;
+        public float2 ScaleRange;  // min, max
         public float StartOffset;
     }
     

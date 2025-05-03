@@ -8,7 +8,7 @@ namespace RunawayHeroes.Runtime.Levels
     /// Definisce una sequenza di livelli tutorial con progressione di difficoltà
     /// </summary>
     [Serializable]
-    public struct TutorialLevelSequence
+    public struct TutorialLevelData
     {
         [Tooltip("Descrizione del livello tutorial")]
         public string description;
@@ -82,8 +82,17 @@ namespace RunawayHeroes.Runtime.Levels
         [Tooltip("Permetti variazione dell'altezza")]
         public bool randomizeHeight;
         
+        [Tooltip("Range per la randomizzazione dell'altezza")]
+        public Vector2 heightRange;
+        
         [Tooltip("Permetti variazione della scala")]
         public bool randomizeScale;
+        
+        [Tooltip("Range per la randomizzazione della scala")]
+        public Vector2 scaleRange;
+        
+        [Tooltip("Offset iniziale lungo l'asse Z rispetto all'inizio dello scenario")]
+        public float startOffset;
     }
     
     /// <summary>

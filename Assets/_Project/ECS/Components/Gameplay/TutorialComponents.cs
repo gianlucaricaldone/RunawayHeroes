@@ -1,18 +1,10 @@
 using System;
+using System.Diagnostics;
 using Unity.Entities;
 using Unity.Collections;
 
 namespace RunawayHeroes.ECS.Components.Gameplay
 {
-    /// <summary>
-    /// Tag che identifica un livello tutorial
-    /// </summary>
-    [Serializable]
-    public struct TutorialLevelTag : IComponentData
-    {
-        public int TutorialIndex;  // Indice del tutorial nella sequenza
-    }
-    
     /// <summary>
     /// Informazioni aggiuntive sul livello tutorial
     /// </summary>
@@ -49,7 +41,9 @@ namespace RunawayHeroes.ECS.Components.Gameplay
         public int Count;                             // Numero di istanze
         public byte Placement;                        // Posizionamento (0=centro, 1=sinistra, 2=destra, 3=casuale, 4=pattern)
         public bool RandomizeHeight;                  // Se variare l'altezza
+        public float2 HeightRange;                    // Range per la randomizzazione dell'altezza (min, max)
         public bool RandomizeScale;                   // Se variare la scala
+        public float2 ScaleRange;                     // Range per la randomizzazione della scala (min, max)
         public float StartOffset;                     // Offset dall'inizio dello scenario
     }
     
@@ -75,10 +69,10 @@ namespace RunawayHeroes.ECS.Components.Gameplay
     }
     
     /// <summary>
-    /// Tag per identificare il completamento di un livello tutorial
+    /// Tag interno per identificare il completamento di un livello tutorial
     /// </summary>
     [Serializable]
-    public struct TutorialCompletedTag : IComponentData
+    public struct TutorialCompletionTag : IComponentData
     {
         public int CompletedTutorialIndex;  // Indice del tutorial completato
     }
@@ -87,7 +81,7 @@ namespace RunawayHeroes.ECS.Components.Gameplay
     /// Evento generato quando viene completato un tutorial
     /// </summary>
     [Serializable]
-    public struct TutorialCompletionEvent : IComponentData
+    public struct TutorialFinishedEvent : IComponentData
     {
         public int CompletedTutorialIndex;   // Indice del tutorial completato
         public bool AllTutorialsCompleted;   // Flag che indica se tutti i tutorial sono stati completati

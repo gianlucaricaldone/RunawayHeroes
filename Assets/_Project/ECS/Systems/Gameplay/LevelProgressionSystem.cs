@@ -4,6 +4,7 @@ using Unity.Collections;
 using System;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Systems.Gameplay.Group;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
 
@@ -125,7 +126,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             _currentSessionScore = 0;
             _currentSessionCollectibles = 0;
             _currentSessionTreasures = 0;
-            _currentSessionStartTime = Time.time;
+            _currentSessionStartTime = SystemAPI.Time.time;
             _bonusObjectiveCompleted = false;
             _activeWorldIndex = -1;
             _activeLevelIndex = -1;
@@ -169,7 +170,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     float completionTime = completionEvent.CompletionTime;
                     if (completionTime <= 0)
                     {
-                        completionTime = Time.time - _currentSessionStartTime;
+                        completionTime = SystemAPI.Time.time - _currentSessionStartTime;
                     }
                     
                     // Determina quante stelle guadagnate
