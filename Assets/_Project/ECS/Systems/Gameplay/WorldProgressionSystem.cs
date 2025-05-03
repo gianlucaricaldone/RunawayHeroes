@@ -23,9 +23,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _worldProgressionQuery;
         private EntityQuery _activeWorldQuery;
         
-        // Buffer per i comandi
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         // Stato
         private bool _initializationComplete = false;
         
@@ -72,11 +69,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 ComponentType.ReadOnly<LevelTag>()
             );
             
-            // Ottieni riferimento al command buffer
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
-            
             // Richiedi aggiornamento solo se esiste progressione o mondo attivo
-            RequireAnyForUpdate(new EntityQuery[] { _playerProgressionQuery, _worldProgressionQuery });
+            RequireForUpdate(_playerProgressionQuery);
+            RequireForUpdate(_worldProgressionQuery);
         }
         
         /// <summary>
@@ -92,7 +87,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             }
             
             // Ottieni il buffer per i comandi
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
             // Processa eventi di completamento tutorial per sbloccare il primo mondo
             ProcessTutorialCompletionEvents(commandBuffer);
@@ -105,8 +101,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             
             // Aggiorna stato generale progressione
             UpdateGlobalProgressionState();
-            
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
         
         /// <summary>
@@ -114,51 +108,52 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void ProcessTutorialCompletionEvents(EntityCommandBuffer commandBuffer)
         {
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent completionEvent) =>
+            // Poiché questo sistema ha bisogno di accedere a EntityManager e altre variabili di sistema,
+            // e stiamo usando WithStructuralChanges, manteniamo questa logica nel main thread
+            // invece di convertirla in IJobEntity
+            foreach (var (entity, completionEvent) in 
+                SystemAPI.Query<Entity, RefRO<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent>>())
+            {
+                // Se tutti i tutorial sono completati, sblocca il primo mondo
+                if (completionEvent.ValueRO.AllTutorialsCompleted)
                 {
-                    // Se tutti i tutorial sono completati, sblocca il primo mondo
-                    if (completionEvent.AllTutorialsCompleted)
+                    Debug.Log("Tutti i tutorial completati! Sblocco del Mondo 1: Città in Caos");
+                    
+                    // Sblocca il primo mondo nella progressione globale
+                    if (!_playerProgressionQuery.IsEmpty)
                     {
-                        Debug.Log("Tutti i tutorial completati! Sblocco del Mondo 1: Città in Caos");
+                        var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
+                        var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
                         
-                        // Sblocca il primo mondo nella progressione globale
-                        if (!_playerProgressionQuery.IsEmpty)
+                        // Aggiorna solo se necessario
+                        if (playerProgress.HighestUnlockedWorld < 1)
                         {
-                            var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                            var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
+                            playerProgress.HighestUnlockedWorld = 1;
+                            playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
                             
-                            // Aggiorna solo se necessario
-                            if (playerProgress.HighestUnlockedWorld < 1)
+                            EntityManager.SetComponentData(playerProgressEntity, playerProgress);
+                            
+                            // Crea evento di sblocco mondo
+                            Entity unlockEvent = commandBuffer.CreateEntity();
+                            commandBuffer.AddComponent(unlockEvent, new UnlockEvent
                             {
-                                playerProgress.HighestUnlockedWorld = 1;
-                                playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
-                                
-                                EntityManager.SetComponentData(playerProgressEntity, playerProgress);
-                                
-                                // Crea evento di sblocco mondo
-                                Entity unlockEvent = commandBuffer.CreateEntity();
-                                commandBuffer.AddComponent(unlockEvent, new UnlockEvent
-                                {
-                                    UnlockType = 1, // Mondo
-                                    UnlockedItemIndex = 1, // Città in Caos
-                                    UnlockedItemName = new FixedString64Bytes(_worldNames[1])
-                                });
-                                
-                                // Crea un messaggio UI per lo sblocco
-                                CreateWorldUnlockMessage(commandBuffer, 1);
-                                
-                                // Salva nelle PlayerPrefs
-                                PlayerPrefs.SetInt("World1_Unlocked", 1);
-                                PlayerPrefs.Save();
-                            }
+                                UnlockType = 1, // Mondo
+                                UnlockedItemIndex = 1, // Città in Caos
+                                UnlockedItemName = new FixedString64Bytes(_worldNames[1])
+                            });
+                            
+                            // Crea un messaggio UI per lo sblocco
+                            CreateWorldUnlockMessage(commandBuffer, 1);
+                            
+                            // Salva nelle PlayerPrefs
+                            PlayerPrefs.SetInt("World1_Unlocked", 1);
+                            PlayerPrefs.Save();
                         }
                     }
-                    
-                    // Non rimuoviamo l'evento qui, lasciamo che TutorialProgressionSystem lo gestisca
-                }).Run();
+                }
+                
+                // Non rimuoviamo l'evento qui, lasciamo che TutorialProgressionSystem lo gestisca
+            }
         }
         
         /// <summary>
@@ -166,109 +161,107 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void ProcessWorldCompletionEvents(EntityCommandBuffer commandBuffer)
         {
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in WorldCompletionEvent completionEvent) =>
+            // Anche qui manteniamo l'implementazione nel main thread per l'accesso a EntityManager e altre variabili
+            foreach (var (entity, completionEvent) in SystemAPI.Query<Entity, RefRO<WorldCompletionEvent>>())
+            {
+                int worldIndex = completionEvent.ValueRO.WorldIndex;
+                int nextWorldIndex = worldIndex + 1;
+                
+                Debug.Log($"Mondo {worldIndex} ({_worldNames[worldIndex]}) completato!");
+                
+                // Aggiorna la progressione specifica del mondo
+                Entity worldProgressEntity = GetOrCreateWorldProgressionEntity(worldIndex);
+                var worldProgress = EntityManager.GetComponentData<WorldProgressionComponent>(worldProgressEntity);
+                
+                // Marca il mondo come completato
+                worldProgress.IsBossDefeated = true;
+                
+                // Aggiorna la progressione globale
+                if (!_playerProgressionQuery.IsEmpty)
                 {
-                    int worldIndex = completionEvent.WorldIndex;
-                    int nextWorldIndex = worldIndex + 1;
+                    var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
+                    var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
                     
-                    Debug.Log($"Mondo {worldIndex} ({_worldNames[worldIndex]}) completato!");
+                    // Aggiorna il bitmap dei mondi completati
+                    playerProgress.WorldsCompleted |= (byte)(1 << worldIndex);
                     
-                    // Aggiorna la progressione specifica del mondo
-                    Entity worldProgressEntity = GetOrCreateWorldProgressionEntity(worldIndex);
-                    var worldProgress = EntityManager.GetComponentData<WorldProgressionComponent>(worldProgressEntity);
-                    
-                    // Marca il mondo come completato
-                    worldProgress.IsBossDefeated = true;
-                    
-                    // Aggiorna la progressione globale
-                    if (!_playerProgressionQuery.IsEmpty)
+                    // Aggiorna i frammenti raccolti se necessario
+                    if (completionEvent.ValueRO.FragmentIndex >= 0 && !worldProgress.IsFragmentCollected)
                     {
-                        var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                        var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
+                        worldProgress.IsFragmentCollected = true;
+                        playerProgress.TotalFragmentsCollected++;
+                        playerProgress.FragmentsCollectedMask |= (byte)(1 << completionEvent.ValueRO.FragmentIndex);
                         
-                        // Aggiorna il bitmap dei mondi completati
-                        playerProgress.WorldsCompleted |= (byte)(1 << worldIndex);
-                        
-                        // Aggiorna i frammenti raccolti se necessario
-                        if (completionEvent.FragmentIndex >= 0 && !worldProgress.IsFragmentCollected)
-                        {
-                            worldProgress.IsFragmentCollected = true;
-                            playerProgress.TotalFragmentsCollected++;
-                            playerProgress.FragmentsCollectedMask |= (byte)(1 << completionEvent.FragmentIndex);
-                            
-                            // Crea messaggio per la raccolta del frammento
-                            CreateFragmentCollectionMessage(commandBuffer, completionEvent.FragmentIndex);
-                        }
-                        
-                        // Sblocca il prossimo mondo se esiste e non è già sbloccato
-                        if (nextWorldIndex < TOTAL_WORLDS && playerProgress.HighestUnlockedWorld < nextWorldIndex)
-                        {
-                            playerProgress.HighestUnlockedWorld = nextWorldIndex;
-                            
-                            // Crea evento di sblocco mondo
-                            Entity unlockEvent = commandBuffer.CreateEntity();
-                            commandBuffer.AddComponent(unlockEvent, new UnlockEvent
-                            {
-                                UnlockType = 1, // Mondo
-                                UnlockedItemIndex = nextWorldIndex,
-                                UnlockedItemName = new FixedString64Bytes(_worldNames[nextWorldIndex])
-                            });
-                            
-                            // Crea un messaggio UI per lo sblocco
-                            CreateWorldUnlockMessage(commandBuffer, nextWorldIndex);
-                            
-                            // Salva nelle PlayerPrefs
-                            PlayerPrefs.SetInt($"World{nextWorldIndex}_Unlocked", 1);
-                        }
-                        
-                        // Sblocca personaggio se previsto per questo mondo
-                        int characterToUnlock = _worldCharacterMapping[worldIndex];
-                        if (characterToUnlock >= 0)
-                        {
-                            // Controlla se il personaggio non è già sbloccato
-                            bool isAlreadyUnlocked = (playerProgress.UnlockedCharactersMask & (1 << characterToUnlock)) != 0;
-                            
-                            if (!isAlreadyUnlocked)
-                            {
-                                // Sblocca il personaggio
-                                playerProgress.UnlockedCharactersMask |= (byte)(1 << characterToUnlock);
-                                
-                                // Crea evento di sblocco personaggio
-                                Entity characterUnlockEvent = commandBuffer.CreateEntity();
-                                commandBuffer.AddComponent(characterUnlockEvent, new UnlockEvent
-                                {
-                                    UnlockType = 3, // Personaggio
-                                    UnlockedItemIndex = characterToUnlock,
-                                    UnlockedItemName = new FixedString64Bytes(GetCharacterName(characterToUnlock))
-                                });
-                                
-                                // Crea messaggio UI per lo sblocco personaggio
-                                CreateCharacterUnlockMessage(commandBuffer, characterToUnlock);
-                                
-                                // Salva nelle PlayerPrefs
-                                PlayerPrefs.SetInt($"Character{characterToUnlock}_Unlocked", 1);
-                            }
-                        }
-                        
-                        // Aggiorna timestamp
-                        playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
-                        
-                        // Salva progressione globale
-                        EntityManager.SetComponentData(playerProgressEntity, playerProgress);
+                        // Crea messaggio per la raccolta del frammento
+                        CreateFragmentCollectionMessage(commandBuffer, completionEvent.ValueRO.FragmentIndex);
                     }
                     
-                    // Salva progressione mondo
-                    EntityManager.SetComponentData(worldProgressEntity, worldProgress);
+                    // Sblocca il prossimo mondo se esiste e non è già sbloccato
+                    if (nextWorldIndex < TOTAL_WORLDS && playerProgress.HighestUnlockedWorld < nextWorldIndex)
+                    {
+                        playerProgress.HighestUnlockedWorld = nextWorldIndex;
+                        
+                        // Crea evento di sblocco mondo
+                        Entity unlockEvent = commandBuffer.CreateEntity();
+                        commandBuffer.AddComponent(unlockEvent, new UnlockEvent
+                        {
+                            UnlockType = 1, // Mondo
+                            UnlockedItemIndex = nextWorldIndex,
+                            UnlockedItemName = new FixedString64Bytes(_worldNames[nextWorldIndex])
+                        });
+                        
+                        // Crea un messaggio UI per lo sblocco
+                        CreateWorldUnlockMessage(commandBuffer, nextWorldIndex);
+                        
+                        // Salva nelle PlayerPrefs
+                        PlayerPrefs.SetInt($"World{nextWorldIndex}_Unlocked", 1);
+                    }
                     
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
+                    // Sblocca personaggio se previsto per questo mondo
+                    int characterToUnlock = _worldCharacterMapping[worldIndex];
+                    if (characterToUnlock >= 0)
+                    {
+                        // Controlla se il personaggio non è già sbloccato
+                        bool isAlreadyUnlocked = (playerProgress.UnlockedCharactersMask & (1 << characterToUnlock)) != 0;
+                        
+                        if (!isAlreadyUnlocked)
+                        {
+                            // Sblocca il personaggio
+                            playerProgress.UnlockedCharactersMask |= (byte)(1 << characterToUnlock);
+                            
+                            // Crea evento di sblocco personaggio
+                            Entity characterUnlockEvent = commandBuffer.CreateEntity();
+                            commandBuffer.AddComponent(characterUnlockEvent, new UnlockEvent
+                            {
+                                UnlockType = 3, // Personaggio
+                                UnlockedItemIndex = characterToUnlock,
+                                UnlockedItemName = new FixedString64Bytes(GetCharacterName(characterToUnlock))
+                            });
+                            
+                            // Crea messaggio UI per lo sblocco personaggio
+                            CreateCharacterUnlockMessage(commandBuffer, characterToUnlock);
+                            
+                            // Salva nelle PlayerPrefs
+                            PlayerPrefs.SetInt($"Character{characterToUnlock}_Unlocked", 1);
+                        }
+                    }
                     
-                    // Salva preferenze
-                    PlayerPrefs.Save();
-                }).Run();
+                    // Aggiorna timestamp
+                    playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                    
+                    // Salva progressione globale
+                    EntityManager.SetComponentData(playerProgressEntity, playerProgress);
+                }
+                
+                // Salva progressione mondo
+                EntityManager.SetComponentData(worldProgressEntity, worldProgress);
+                
+                // Rimuovi l'evento dopo l'elaborazione
+                EntityManager.DestroyEntity(entity);
+                
+                // Salva preferenze
+                PlayerPrefs.Save();
+            }
         }
         
         /// <summary>
@@ -296,25 +289,24 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             int totalStars = 0;
             int totalLevelsCompleted = 0;
             
-            Entities
-                .WithoutBurst()
-                .ForEach((in WorldProgressionComponent worldProgress) =>
-                {
-                    if (worldProgress.IsFragmentCollected)
-                        totalFragments++;
-                        
-                    totalStars += worldProgress.StarsCollected;
+            // Utilizziamo SystemAPI.Query per iterare sui componenti
+            foreach (var worldProgress in SystemAPI.Query<RefRO<WorldProgressionComponent>>())
+            {
+                if (worldProgress.ValueRO.IsFragmentCollected)
+                    totalFragments++;
                     
-                    // Conta livelli completati (conta bit a 1 nel bitmap)
-                    byte completedLevels = worldProgress.CompletedLevelsBitmap;
-                    while (completedLevels > 0)
-                    {
-                        if ((completedLevels & 1) == 1)
-                            totalLevelsCompleted++;
-                            
-                        completedLevels >>= 1;
-                    }
-                }).Run();
+                totalStars += worldProgress.ValueRO.StarsCollected;
+                
+                // Conta livelli completati (conta bit a 1 nel bitmap)
+                byte completedLevels = worldProgress.ValueRO.CompletedLevelsBitmap;
+                while (completedLevels > 0)
+                {
+                    if ((completedLevels & 1) == 1)
+                        totalLevelsCompleted++;
+                        
+                    completedLevels >>= 1;
+                }
+            }
                 
             // Aggiorna il componente globale solo se necessario
             bool needsUpdate = false;
@@ -380,13 +372,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Verifica se esiste già una progressione per questo mondo
                 bool worldProgressionExists = false;
                 
-                Entities
-                    .WithoutBurst()
-                    .ForEach((in WorldProgressionComponent worldProgress) =>
+                // Usa SystemAPI.Query per verificare l'esistenza di un mondo
+                foreach (var worldProgress in SystemAPI.Query<RefRO<WorldProgressionComponent>>())
+                {
+                    if (worldProgress.ValueRO.WorldIndex == i)
                     {
-                        if (worldProgress.WorldIndex == i)
-                            worldProgressionExists = true;
-                    }).Run();
+                        worldProgressionExists = true;
+                        break;
+                    }
+                }
                     
                 if (!worldProgressionExists)
                 {
@@ -423,13 +417,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Cerca l'entità esistente
             Entity worldEntity = Entity.Null;
             
-            Entities
-                .WithoutBurst()
-                .ForEach((Entity entity, in WorldProgressionComponent worldProgress) =>
+            // Utilizza SystemAPI.Query per cercare il mondo
+            foreach (var (entity, worldProgress) in SystemAPI.Query<Entity, RefRO<WorldProgressionComponent>>())
+            {
+                if (worldProgress.ValueRO.WorldIndex == worldIndex)
                 {
-                    if (worldProgress.WorldIndex == worldIndex)
-                        worldEntity = entity;
-                }).Run();
+                    worldEntity = entity;
+                    break;
+                }
+            }
                 
             // Se non esiste, crea una nuova entità
             if (worldEntity == Entity.Null)
@@ -437,13 +433,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 InitializeWorldProgressionData();
                 
                 // Cerca di nuovo dopo l'inizializzazione
-                Entities
-                    .WithoutBurst()
-                    .ForEach((Entity entity, in WorldProgressionComponent worldProgress) =>
+                foreach (var (entity, worldProgress) in SystemAPI.Query<Entity, RefRO<WorldProgressionComponent>>())
+                {
+                    if (worldProgress.ValueRO.WorldIndex == worldIndex)
                     {
-                        if (worldProgress.WorldIndex == worldIndex)
-                            worldEntity = entity;
-                    }).Run();
+                        worldEntity = entity;
+                        break;
+                    }
+                }
             }
             
             return worldEntity;

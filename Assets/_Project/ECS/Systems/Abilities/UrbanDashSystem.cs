@@ -18,37 +18,44 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// inclusi velocità aumentata, invulnerabilità e capacità di sfondare ostacoli.
     /// </summary>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-    public partial class UrbanDashSystem : SystemBase
+    public partial struct UrbanDashSystem : ISystem
     {
         private EntityQuery _abilityQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            // Prendi riferimento al command buffer system per creare eventi
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
-            
             // Definisci query per entità con UrbanDashAbilityComponent
-            _abilityQuery = SystemAPI.QueryBuilder()
+            _abilityQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<UrbanDashAbilityComponent, AbilityInputComponent, MovementComponent, HealthComponent, PhysicsComponent>()
-                .Build();
+                .Build(ref state);
             
-            RequireForUpdate(_abilityQuery);
+            // Richiede entità corrispondenti per l'aggiornamento
+            state.RequireForUpdate(_abilityQuery);
+            
+            // Richiede il singleton di EndSimulationEntityCommandBufferSystem per eventi
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state)
         {
+        }
+        
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            // Ottieni il tempo delta
             float deltaTime = SystemAPI.Time.DeltaTime;
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            
+            // Ottieni il command buffer tramite singleton
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
             // Utilizzo di Job IJobEntity per la nuova sintassi con Entities 1.3+
             new UpdateUrbanDashJob
             {
                 DeltaTime = deltaTime,
                 ECB = commandBuffer
-            }.ScheduleParallel();
-            
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            }.ScheduleParallel(state.Dependency).Complete();
         }
         
         /// <summary>
@@ -62,7 +69,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             
             void Execute(
                 Entity entity, 
-                [EntityIndexInQuery] int entityIndexInQuery,
+                [ChunkIndexInQuery] int entityIndexInQuery,
                 ref UrbanDashAbilityComponent urbanDash,
                 ref MovementComponent movement,
                 ref HealthComponent health,

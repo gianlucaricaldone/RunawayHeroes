@@ -16,7 +16,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(WorldProgressionSystem))]
-    public partial class LevelProgressionSystem : SystemBase
+    public partial struct LevelProgressionSystem : ISystem
     {
         // Query per varie entità
         private EntityQuery _playerProgressionQuery;
@@ -24,22 +24,19 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _levelProgressionQuery;
         private EntityQuery _activeLevelQuery;
         
-        // Buffer per i comandi
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         // Stato
-        private bool _initializationComplete = false;
+        private bool _initializationComplete;
         
         // Contatori per la sessione corrente
-        private int _currentSessionScore = 0;
-        private int _currentSessionCollectibles = 0;
-        private int _currentSessionTreasures = 0;
-        private float _currentSessionStartTime = 0;
-        private bool _bonusObjectiveCompleted = false;
+        private int _currentSessionScore;
+        private int _currentSessionCollectibles;
+        private int _currentSessionTreasures;
+        private float _currentSessionStartTime;
+        private bool _bonusObjectiveCompleted;
         
         // Livello attivo
-        private int _activeWorldIndex = -1;
-        private int _activeLevelIndex = -1;
+        private int _activeWorldIndex;
+        private int _activeLevelIndex;
         
         // Costanti
         private const float TIME_FOR_THREE_STARS = 90.0f;  // 1:30
@@ -51,71 +48,84 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Inizializza il sistema
         /// </summary>
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
             // Inizializza query per la progressione globale
-            _playerProgressionQuery = GetEntityQuery(ComponentType.ReadWrite<PlayerProgressionComponent>());
+            _playerProgressionQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAllRW<PlayerProgressionComponent>()
+                .Build(ref state);
             
             // Inizializza query per la progressione dei mondi
-            _worldProgressionQuery = GetEntityQuery(ComponentType.ReadWrite<WorldProgressionComponent>());
+            _worldProgressionQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAllRW<WorldProgressionComponent>()
+                .Build(ref state);
             
             // Inizializza query per la progressione dei livelli
-            _levelProgressionQuery = GetEntityQuery(ComponentType.ReadWrite<LevelProgressionComponent>());
+            _levelProgressionQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAllRW<LevelProgressionComponent>()
+                .Build(ref state);
             
             // Inizializza query per il livello attivo
-            _activeLevelQuery = GetEntityQuery(
-                ComponentType.ReadOnly<LevelTag>()
-            );
+            _activeLevelQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<LevelTag>()
+                .Build(ref state);
             
-            // Ottieni riferimento al command buffer
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton per il command buffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo se esiste progressione o livello attivo
-            RequireAnyForUpdate(new EntityQuery[] { _playerProgressionQuery, _activeLevelQuery });
+            state.RequireAnyForUpdate(new EntityQuery[] { _playerProgressionQuery, _activeLevelQuery });
+            
+            // Inizializza stati
+            _initializationComplete = false;
+            _activeWorldIndex = -1;
+            _activeLevelIndex = -1;
+            _currentSessionScore = 0;
+            _currentSessionCollectibles = 0;
+            _currentSessionTreasures = 0;
+            _currentSessionStartTime = 0;
+            _bonusObjectiveCompleted = false;
         }
         
         /// <summary>
         /// Inizializza la sessione corrente
         /// </summary>
-        protected override void OnStartRunning()
+        public void OnStartRunning(ref SystemState state)
         {
-            base.OnStartRunning();
-            
             // Reimposta contatori per la sessione
             ResetSessionCounters();
             
             // Identifica il livello attivo
-            IdentifyActiveLevel();
+            IdentifyActiveLevel(ref state);
         }
         
         /// <summary>
         /// Aggiorna il sistema di progressione dei livelli
         /// </summary>
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
             // Inizializza se necessario
             if (!_initializationComplete)
             {
-                InitializeLevelProgressionData();
+                InitializeLevelProgressionData(ref state);
                 _initializationComplete = true;
             }
             
             // Ottieni il buffer per i comandi
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
             // Processa eventi di completamento livello
-            ProcessLevelCompletionEvents(commandBuffer);
+            ProcessLevelCompletionEvents(commandBuffer, ref state);
             
             // Processa eventi di raccolta oggetti
-            ProcessCollectionEvents(commandBuffer);
+            ProcessCollectionEvents(commandBuffer, ref state);
             
             // Processa eventi di completamento obiettivi
-            ProcessObjectiveCompletionEvents(commandBuffer);
+            ProcessObjectiveCompletionEvents(commandBuffer, ref state);
             
             // Aggiorna progresso globale
-            UpdateGlobalProgress();
-            
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            UpdateGlobalProgress(ref state);
         }
         
         /// <summary>
@@ -135,113 +145,110 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Identifica il livello attualmente attivo
         /// </summary>
-        private void IdentifyActiveLevel()
+        private void IdentifyActiveLevel(ref SystemState state)
         {
-            Entities
-                .WithoutBurst()
-                .ForEach((in LevelTag levelTag) =>
+            foreach (var levelTag in SystemAPI.Query<RefRO<LevelTag>>())
+            {
+                if (levelTag.ValueRO.IsActive)
                 {
-                    if (levelTag.IsActive)
-                    {
-                        _activeWorldIndex = levelTag.WorldIndex;
-                        _activeLevelIndex = levelTag.LevelIndex;
-                        
-                        Debug.Log($"Livello attivo identificato: Mondo {_activeWorldIndex}, Livello {_activeLevelIndex}");
-                    }
-                }).Run();
+                    _activeWorldIndex = levelTag.ValueRO.WorldIndex;
+                    _activeLevelIndex = levelTag.ValueRO.LevelIndex;
+                    
+                    Debug.Log($"Livello attivo identificato: Mondo {_activeWorldIndex}, Livello {_activeLevelIndex}");
+                }
+            }
         }
         
         /// <summary>
         /// Processa eventi di completamento livello
         /// </summary>
-        private void ProcessLevelCompletionEvents(EntityCommandBuffer commandBuffer)
+        private void ProcessLevelCompletionEvents(EntityCommandBuffer commandBuffer, ref SystemState state)
         {
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in LevelCompletionEvent completionEvent) =>
+            var entityManager = state.EntityManager;
+            
+            foreach (var (entity, completionEvent) in SystemAPI.Query<RefRO<LevelCompletionEvent>>().WithEntityAccess())
+            {
+                int worldIndex = completionEvent.ValueRO.WorldIndex;
+                int levelIndex = completionEvent.ValueRO.LevelIndex;
+                
+                Debug.Log($"Livello {levelIndex} del Mondo {worldIndex} completato!");
+                
+                // Calcola tempo di completamento
+                float completionTime = completionEvent.ValueRO.CompletionTime;
+                if (completionTime <= 0)
                 {
-                    int worldIndex = completionEvent.WorldIndex;
-                    int levelIndex = completionEvent.LevelIndex;
+                    completionTime = SystemAPI.Time.time - _currentSessionStartTime;
+                }
+                
+                // Determina quante stelle guadagnate
+                byte starsEarned = CalculateStars(completionTime, completionEvent.ValueRO.StarsEarned);
+                
+                // Se il livello è nuovo o i dati sono migliori, aggiorna la progressione
+                Entity levelProgressEntity = GetOrCreateLevelProgressionEntity(worldIndex, levelIndex, ref state);
+                var levelProgress = entityManager.GetComponentData<LevelProgressionComponent>(levelProgressEntity);
+                
+                bool isNewBest = false;
+                bool isFirstCompletion = !levelProgress.IsCompleted;
+                
+                // Aggiorna solo se è la prima volta o se è meglio
+                if (isFirstCompletion || starsEarned > levelProgress.StarCount || completionTime < levelProgress.BestCompletionTime)
+                {
+                    isNewBest = true;
                     
-                    Debug.Log($"Livello {levelIndex} del Mondo {worldIndex} completato!");
+                    // Aggiorna progressione livello
+                    levelProgress.StarCount = Math.Max(levelProgress.StarCount, starsEarned);
+                    levelProgress.IsCompleted = true;
+                    levelProgress.BestCompletionTime = isFirstCompletion ? completionTime : Math.Min(levelProgress.BestCompletionTime, completionTime);
+                    levelProgress.AttemptCount++;
+                    levelProgress.LastPlayedTimestamp = DateTime.Now.Ticks;
                     
-                    // Calcola tempo di completamento
-                    float completionTime = completionEvent.CompletionTime;
-                    if (completionTime <= 0)
+                    // Aggiorna con dati di collezionabili e obiettivi bonus
+                    if (completionEvent.ValueRO.BonusObjectiveCompleted || _bonusObjectiveCompleted)
                     {
-                        completionTime = SystemAPI.Time.time - _currentSessionStartTime;
+                        levelProgress.IsBonusObjectiveCompleted = true;
                     }
                     
-                    // Determina quante stelle guadagnate
-                    byte starsEarned = calculateStars(completionTime, completionEvent.StarsEarned);
-                    
-                    // Se il livello è nuovo o i dati sono migliori, aggiorna la progressione
-                    Entity levelProgressEntity = GetOrCreateLevelProgressionEntity(worldIndex, levelIndex);
-                    var levelProgress = EntityManager.GetComponentData<LevelProgressionComponent>(levelProgressEntity);
-                    
-                    bool isNewBest = false;
-                    bool isFirstCompletion = !levelProgress.IsCompleted;
-                    
-                    // Aggiorna solo se è la prima volta o se è meglio
-                    if (isFirstCompletion || starsEarned > levelProgress.StarCount || completionTime < levelProgress.BestCompletionTime)
+                    // Aggiorna bitmap tesori se ci sono nuovi tesori
+                    if (completionEvent.ValueRO.TreasuresFound > 0 || _currentSessionTreasures > 0)
                     {
-                        isNewBest = true;
-                        
-                        // Aggiorna progressione livello
-                        levelProgress.StarCount = Math.Max(levelProgress.StarCount, starsEarned);
-                        levelProgress.IsCompleted = true;
-                        levelProgress.BestCompletionTime = isFirstCompletion ? completionTime : Math.Min(levelProgress.BestCompletionTime, completionTime);
-                        levelProgress.AttemptCount++;
-                        levelProgress.LastPlayedTimestamp = DateTime.Now.Ticks;
-                        
-                        // Aggiorna con dati di collezionabili e obiettivi bonus
-                        if (completionEvent.BonusObjectiveCompleted || _bonusObjectiveCompleted)
+                        int treasuresFound = completionEvent.ValueRO.TreasuresFound > 0 ? 
+                            completionEvent.ValueRO.TreasuresFound : _currentSessionTreasures;
+                            
+                        // Ogni bit nel byte rappresenta un tesoro
+                        for (int i = 0; i < treasuresFound; i++)
                         {
-                            levelProgress.IsBonusObjectiveCompleted = true;
-                        }
-                        
-                        // Aggiorna bitmap tesori se ci sono nuovi tesori
-                        if (completionEvent.TreasuresFound > 0 || _currentSessionTreasures > 0)
-                        {
-                            int treasuresFound = completionEvent.TreasuresFound > 0 ? 
-                                completionEvent.TreasuresFound : _currentSessionTreasures;
-                                
-                            // Ogni bit nel byte rappresenta un tesoro
-                            for (int i = 0; i < treasuresFound; i++)
-                            {
-                                levelProgress.TreasuresFound |= (byte)(1 << i);
-                            }
-                        }
-                        
-                        // Aggiorna entità progressione livello
-                        EntityManager.SetComponentData(levelProgressEntity, levelProgress);
-                        
-                        // Aggiorna anche la progressione del mondo
-                        UpdateWorldProgressionForLevel(worldIndex, levelIndex, starsEarned, levelProgress.IsBonusObjectiveCompleted);
-                        
-                        // Sblocca il prossimo livello se è la prima volta
-                        if (isFirstCompletion)
-                        {
-                            UnlockNextLevel(commandBuffer, worldIndex, levelIndex);
+                            levelProgress.TreasuresFound |= (byte)(1 << i);
                         }
                     }
                     
-                    // Crea messaggio UI appropriato
-                    CreateLevelCompletionMessage(commandBuffer, worldIndex, levelIndex, starsEarned, isNewBest);
+                    // Aggiorna entità progressione livello
+                    entityManager.SetComponentData(levelProgressEntity, levelProgress);
                     
-                    // Reimposta contatori sessione
-                    ResetSessionCounters();
+                    // Aggiorna anche la progressione del mondo
+                    UpdateWorldProgressionForLevel(worldIndex, levelIndex, starsEarned, levelProgress.IsBonusObjectiveCompleted, ref state);
                     
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                    // Sblocca il prossimo livello se è la prima volta
+                    if (isFirstCompletion)
+                    {
+                        UnlockNextLevel(commandBuffer, worldIndex, levelIndex, ref state);
+                    }
+                }
+                
+                // Crea messaggio UI appropriato
+                CreateLevelCompletionMessage(commandBuffer, worldIndex, levelIndex, starsEarned, isNewBest);
+                
+                // Reimposta contatori sessione
+                ResetSessionCounters();
+                
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
         }
         
         /// <summary>
         /// Processa eventi di raccolta oggetti
         /// </summary>
-        private void ProcessCollectionEvents(EntityCommandBuffer commandBuffer)
+        private void ProcessCollectionEvents(EntityCommandBuffer commandBuffer, ref SystemState state)
         {
             // In questa versione non implementiamo la raccolta real-time durante il gameplay
             // In un'implementazione completa, qui gestiremmo eventi come:
@@ -252,46 +259,45 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Processa eventi di completamento obiettivi
         /// </summary>
-        private void ProcessObjectiveCompletionEvents(EntityCommandBuffer commandBuffer)
+        private void ProcessObjectiveCompletionEvents(EntityCommandBuffer commandBuffer, ref SystemState state)
         {
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in ObjectiveCompletedEvent completionEvent) =>
+            var entityManager = state.EntityManager;
+            
+            foreach (var (entity, completionEvent) in SystemAPI.Query<RefRO<ObjectiveCompletedEvent>>().WithEntityAccess())
+            {
+                // Se è un'obiettivo bonus, marcalo come completato
+                if (completionEvent.ValueRO.ObjectiveType == 2 || 
+                    completionEvent.ValueRO.ObjectiveType == 3 || 
+                    completionEvent.ValueRO.ObjectiveType == 5)
                 {
-                    // Se è un'obiettivo bonus, marcalo come completato
-                    if (completionEvent.ObjectiveType == 2 || 
-                        completionEvent.ObjectiveType == 3 || 
-                        completionEvent.ObjectiveType == 5)
+                    _bonusObjectiveCompleted = true;
+                    
+                    // Se siamo in un livello attivo, aggiorniamo subito i dati
+                    if (_activeWorldIndex >= 0 && _activeLevelIndex >= 0)
                     {
-                        _bonusObjectiveCompleted = true;
+                        Entity levelProgressEntity = GetOrCreateLevelProgressionEntity(_activeWorldIndex, _activeLevelIndex, ref state);
+                        var levelProgress = entityManager.GetComponentData<LevelProgressionComponent>(levelProgressEntity);
                         
-                        // Se siamo in un livello attivo, aggiorniamo subito i dati
-                        if (_activeWorldIndex >= 0 && _activeLevelIndex >= 0)
+                        if (!levelProgress.IsBonusObjectiveCompleted)
                         {
-                            Entity levelProgressEntity = GetOrCreateLevelProgressionEntity(_activeWorldIndex, _activeLevelIndex);
-                            var levelProgress = EntityManager.GetComponentData<LevelProgressionComponent>(levelProgressEntity);
+                            levelProgress.IsBonusObjectiveCompleted = true;
+                            entityManager.SetComponentData(levelProgressEntity, levelProgress);
                             
-                            if (!levelProgress.IsBonusObjectiveCompleted)
-                            {
-                                levelProgress.IsBonusObjectiveCompleted = true;
-                                EntityManager.SetComponentData(levelProgressEntity, levelProgress);
-                                
-                                // Aggiorna anche progressione mondo e globale
-                                UpdateWorldProgressionForBonusObjective(_activeWorldIndex);
-                            }
+                            // Aggiorna anche progressione mondo e globale
+                            UpdateWorldProgressionForBonusObjective(_activeWorldIndex, ref state);
                         }
                     }
-                    
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                }
+                
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
         }
         
         /// <summary>
         /// Calcola il numero di stelle guadagnate in base al tempo di completamento
         /// </summary>
-        private byte calculateStars(float completionTime, byte existingStars)
+        private byte CalculateStars(float completionTime, byte existingStars)
         {
             // Rispetta le stelle già assegnate dall'evento
             if (existingStars > 0)
@@ -310,152 +316,148 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Aggiorna la progressione del mondo per un livello completato
         /// </summary>
-        private void UpdateWorldProgressionForLevel(int worldIndex, int levelIndex, byte starsEarned, bool bonusObjectiveCompleted)
+        private void UpdateWorldProgressionForLevel(int worldIndex, int levelIndex, byte starsEarned, bool bonusObjectiveCompleted, ref SystemState state)
         {
             // Trova l'entità di progressione mondo
             Entity worldProgressEntity = Entity.Null;
+            var entityManager = state.EntityManager;
             
-            Entities
-                .WithoutBurst()
-                .ForEach((Entity entity, ref WorldProgressionComponent worldProgress) =>
+            foreach (var (entity, worldProgress) in SystemAPI.Query<RefRW<WorldProgressionComponent>>().WithEntityAccess())
+            {
+                if (worldProgress.ValueRO.WorldIndex == worldIndex)
                 {
-                    if (worldProgress.WorldIndex == worldIndex)
+                    worldProgressEntity = entity;
+                    
+                    // Aggiorna bitmap di completamento
+                    if (levelIndex < 8) // Massimo 8 bit in un byte
                     {
-                        worldProgressEntity = entity;
+                        // Marca questo livello come completato
+                        worldProgress.ValueRW.CompletedLevelsBitmap |= (byte)(1 << levelIndex);
                         
-                        // Aggiorna bitmap di completamento
-                        if (levelIndex < 8) // Massimo 8 bit in un byte
+                        // Se è stato completato al 100% (3 stelle + bonus)
+                        if (starsEarned == 3 && bonusObjectiveCompleted)
                         {
-                            // Marca questo livello come completato
-                            worldProgress.CompletedLevelsBitmap |= (byte)(1 << levelIndex);
-                            
-                            // Se è stato completato al 100% (3 stelle + bonus)
-                            if (starsEarned == 3 && bonusObjectiveCompleted)
-                            {
-                                worldProgress.FullyCompletedLevelsBitmap |= (byte)(1 << levelIndex);
-                            }
-                        }
-                        
-                        // Aggiorna conteggio stelle
-                        int previousStars = worldProgress.StarsCollected;
-                        
-                        // Calcola quante stelle sono già associate a questo livello
-                        int levelBitPosition = levelIndex % 8;
-                        bool isLevelCompleted = (worldProgress.CompletedLevelsBitmap & (1 << levelBitPosition)) != 0;
-                        
-                        // Ottieni stelle precedenti con getStarsForLevel (metodo fittizio)
-                        int previousLevelStars = GetStarsForLevel(worldIndex, levelIndex);
-                        
-                        // Calcola incremento (solo stelle aggiuntive)
-                        int starDifference = starsEarned - previousLevelStars;
-                        if (starDifference > 0)
-                        {
-                            worldProgress.StarsCollected += starDifference;
+                            worldProgress.ValueRW.FullyCompletedLevelsBitmap |= (byte)(1 << levelIndex);
                         }
                     }
-                }).Run();
+                    
+                    // Aggiorna conteggio stelle
+                    int previousStars = worldProgress.ValueRO.StarsCollected;
+                    
+                    // Calcola quante stelle sono già associate a questo livello
+                    int levelBitPosition = levelIndex % 8;
+                    bool isLevelCompleted = (worldProgress.ValueRO.CompletedLevelsBitmap & (1 << levelBitPosition)) != 0;
+                    
+                    // Ottieni stelle precedenti
+                    int previousLevelStars = GetStarsForLevel(worldIndex, levelIndex, ref state);
+                    
+                    // Calcola incremento (solo stelle aggiuntive)
+                    int starDifference = starsEarned - previousLevelStars;
+                    if (starDifference > 0)
+                    {
+                        worldProgress.ValueRW.StarsCollected += starDifference;
+                    }
+                }
+            }
                 
             // Se l'entità è stata trovata e modificata, aggiorna anche la progressione globale
             if (worldProgressEntity != Entity.Null && !_playerProgressionQuery.IsEmpty)
             {
-                var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
-                
                 // Ricalcola il totale stelle e livelli completati
-                UpdateGlobalProgress();
+                UpdateGlobalProgress(ref state);
             }
         }
         
         /// <summary>
         /// Aggiorna la progressione del mondo per un obiettivo bonus completato
         /// </summary>
-        private void UpdateWorldProgressionForBonusObjective(int worldIndex)
+        private void UpdateWorldProgressionForBonusObjective(int worldIndex, ref SystemState state)
         {
             if (!_playerProgressionQuery.IsEmpty)
             {
+                var entityManager = state.EntityManager;
                 var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
+                var playerProgress = entityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
                 
                 // Incrementa counter obiettivi bonus
                 playerProgress.TotalBonusObjectivesCompleted++;
                 playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
                 
-                EntityManager.SetComponentData(playerProgressEntity, playerProgress);
+                entityManager.SetComponentData(playerProgressEntity, playerProgress);
             }
         }
         
         /// <summary>
         /// Sblocca il livello successivo se esiste
         /// </summary>
-        private void UnlockNextLevel(EntityCommandBuffer commandBuffer, int worldIndex, int levelIndex)
+        private void UnlockNextLevel(EntityCommandBuffer commandBuffer, int worldIndex, int levelIndex, ref SystemState state)
         {
             // Calcola indice del prossimo livello
             int nextLevelIndex = levelIndex + 1;
             
             // Trova l'entità di progressione mondo
-            Entities
-                .WithoutBurst()
-                .ForEach((Entity entity, ref WorldProgressionComponent worldProgress) =>
+            foreach (var worldProgress in SystemAPI.Query<RefRW<WorldProgressionComponent>>())
+            {
+                if (worldProgress.ValueRO.WorldIndex == worldIndex)
                 {
-                    if (worldProgress.WorldIndex == worldIndex)
+                    // Se il prossimo livello è valido, sbloccalo
+                    if (nextLevelIndex < 8) // Massimo 8 bit in un byte
                     {
-                        // Se il prossimo livello è valido, sbloccalo
-                        if (nextLevelIndex < 8) // Massimo 8 bit in un byte
+                        // Verifica che non sia già sbloccato
+                        bool isAlreadyUnlocked = (worldProgress.ValueRO.UnlockedLevelsBitmap & (1 << nextLevelIndex)) != 0;
+                        
+                        if (!isAlreadyUnlocked)
                         {
-                            // Verifica che non sia già sbloccato
-                            bool isAlreadyUnlocked = (worldProgress.UnlockedLevelsBitmap & (1 << nextLevelIndex)) != 0;
+                            // Sblocca il prossimo livello
+                            worldProgress.ValueRW.UnlockedLevelsBitmap |= (byte)(1 << nextLevelIndex);
                             
-                            if (!isAlreadyUnlocked)
+                            // Crea evento di sblocco
+                            Entity unlockEvent = commandBuffer.CreateEntity();
+                            commandBuffer.AddComponent(unlockEvent, new UnlockEvent
                             {
-                                // Sblocca il prossimo livello
-                                worldProgress.UnlockedLevelsBitmap |= (byte)(1 << nextLevelIndex);
-                                
-                                // Crea evento di sblocco
-                                Entity unlockEvent = commandBuffer.CreateEntity();
-                                commandBuffer.AddComponent(unlockEvent, new UnlockEvent
-                                {
-                                    UnlockType = 2, // Livello
-                                    UnlockedItemIndex = (worldIndex * 100) + nextLevelIndex, // Codice composito
-                                    UnlockedItemName = new FixedString64Bytes($"Livello {nextLevelIndex + 1} - {GetWorldName(worldIndex)}")
-                                });
-                                
-                                // Crea messaggio UI per lo sblocco
-                                CreateLevelUnlockMessage(commandBuffer, worldIndex, nextLevelIndex);
-                                
-                                // Salva nelle PlayerPrefs
-                                PlayerPrefs.SetInt($"Level_{worldIndex}_{nextLevelIndex}_Unlocked", 1);
-                                PlayerPrefs.Save();
-                            }
-                        }
-                        // Se abbiamo completato l'ultimo livello, considera il mondo completato
-                        else if (nextLevelIndex >= GetMaxLevelsForWorld(worldIndex) &&
-                                 !worldProgress.IsBossDefeated)
-                        {
-                            // Crea evento di completamento mondo
-                            Entity worldCompletionEvent = commandBuffer.CreateEntity();
-                            commandBuffer.AddComponent(worldCompletionEvent, new WorldCompletionEvent
-                            {
-                                WorldIndex = worldIndex,
-                                IsFullyCompleted = IsWorldFullyCompleted(worldProgress),
-                                NextWorldToUnlock = worldIndex + 1,
-                                FragmentIndex = worldIndex,
-                                CharacterUnlocked = worldIndex // Mappa indice mondo a indice personaggio
+                                UnlockType = 2, // Livello
+                                UnlockedItemIndex = (worldIndex * 100) + nextLevelIndex, // Codice composito
+                                UnlockedItemName = new FixedString64Bytes($"Livello {nextLevelIndex + 1} - {GetWorldName(worldIndex)}")
                             });
+                            
+                            // Crea messaggio UI per lo sblocco
+                            CreateLevelUnlockMessage(commandBuffer, worldIndex, nextLevelIndex);
+                            
+                            // Salva nelle PlayerPrefs
+                            PlayerPrefs.SetInt($"Level_{worldIndex}_{nextLevelIndex}_Unlocked", 1);
+                            PlayerPrefs.Save();
                         }
                     }
-                }).Run();
+                    // Se abbiamo completato l'ultimo livello, considera il mondo completato
+                    else if (nextLevelIndex >= GetMaxLevelsForWorld(worldIndex) &&
+                             !worldProgress.ValueRO.IsBossDefeated)
+                    {
+                        // Crea evento di completamento mondo
+                        Entity worldCompletionEvent = commandBuffer.CreateEntity();
+                        commandBuffer.AddComponent(worldCompletionEvent, new WorldCompletionEvent
+                        {
+                            WorldIndex = worldIndex,
+                            IsFullyCompleted = IsWorldFullyCompleted(worldProgress.ValueRO),
+                            NextWorldToUnlock = worldIndex + 1,
+                            FragmentIndex = worldIndex,
+                            CharacterUnlocked = worldIndex // Mappa indice mondo a indice personaggio
+                        });
+                    }
+                }
+            }
         }
         
         /// <summary>
         /// Aggiorna il progresso globale basato sui livelli e mondi
         /// </summary>
-        private void UpdateGlobalProgress()
+        private void UpdateGlobalProgress(ref SystemState state)
         {
             if (_playerProgressionQuery.IsEmpty)
                 return;
                 
+            var entityManager = state.EntityManager;
             var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-            var playerProgress = EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
+            var playerProgress = entityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
             
             // Conta totale stelle e livelli
             int totalStars = 0;
@@ -463,31 +465,27 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             int totalBonusObjectives = 0;
             
             // Scorri mondi
-            Entities
-                .WithoutBurst()
-                .ForEach((in WorldProgressionComponent worldProgress) =>
+            foreach (var worldProgress in SystemAPI.Query<RefRO<WorldProgressionComponent>>())
+            {
+                totalStars += worldProgress.ValueRO.StarsCollected;
+                
+                // Conta livelli completati
+                byte completedLevels = worldProgress.ValueRO.CompletedLevelsBitmap;
+                while (completedLevels > 0)
                 {
-                    totalStars += worldProgress.StarsCollected;
-                    
-                    // Conta livelli completati
-                    byte completedLevels = worldProgress.CompletedLevelsBitmap;
-                    while (completedLevels > 0)
-                    {
-                        totalLevels += (completedLevels & 1);
-                        completedLevels >>= 1;
-                    }
-                }).Run();
+                    totalLevels += (completedLevels & 1);
+                    completedLevels >>= 1;
+                }
+            }
                 
             // Scorri livelli per obiettivi bonus
-            Entities
-                .WithoutBurst()
-                .ForEach((in LevelProgressionComponent levelProgress) =>
+            foreach (var levelProgress in SystemAPI.Query<RefRO<LevelProgressionComponent>>())
+            {
+                if (levelProgress.ValueRO.IsBonusObjectiveCompleted)
                 {
-                    if (levelProgress.IsBonusObjectiveCompleted)
-                    {
-                        totalBonusObjectives++;
-                    }
-                }).Run();
+                    totalBonusObjectives++;
+                }
+            }
                 
             // Aggiorna solo se necessario
             bool needsUpdate = false;
@@ -513,20 +511,21 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             if (needsUpdate)
             {
                 playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
-                EntityManager.SetComponentData(playerProgressEntity, playerProgress);
+                entityManager.SetComponentData(playerProgressEntity, playerProgress);
             }
         }
         
         /// <summary>
         /// Inizializza i dati di progressione
         /// </summary>
-        private void InitializeLevelProgressionData()
+        private void InitializeLevelProgressionData(ref SystemState state)
         {
             // Se non esiste già, crea l'entità per la progressione globale
             if (_playerProgressionQuery.IsEmpty)
             {
-                var entity = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(entity, new PlayerProgressionComponent
+                var entityManager = state.EntityManager;
+                var entity = entityManager.CreateEntity();
+                entityManager.AddComponentData(entity, new PlayerProgressionComponent
                 {
                     CompletedTutorialCount = 0,
                     HighestUnlockedTutorial = 0,
@@ -553,26 +552,26 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Ottiene o crea un'entità di progressione livello
         /// </summary>
-        private Entity GetOrCreateLevelProgressionEntity(int worldIndex, int levelIndex)
+        private Entity GetOrCreateLevelProgressionEntity(int worldIndex, int levelIndex, ref SystemState state)
         {
             // Cerca l'entità esistente
             Entity levelEntity = Entity.Null;
+            var entityManager = state.EntityManager;
             
-            Entities
-                .WithoutBurst()
-                .ForEach((Entity entity, in LevelProgressionComponent levelProgress) =>
+            foreach (var (entity, levelProgress) in SystemAPI.Query<RefRO<LevelProgressionComponent>>().WithEntityAccess())
+            {
+                if (levelProgress.ValueRO.WorldIndex == worldIndex && levelProgress.ValueRO.LevelIndex == levelIndex)
                 {
-                    if (levelProgress.WorldIndex == worldIndex && levelProgress.LevelIndex == levelIndex)
-                    {
-                        levelEntity = entity;
-                    }
-                }).Run();
+                    levelEntity = entity;
+                    break;
+                }
+            }
                 
             // Se non esiste, crea una nuova entità
             if (levelEntity == Entity.Null)
             {
-                levelEntity = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(levelEntity, new LevelProgressionComponent
+                levelEntity = entityManager.CreateEntity();
+                entityManager.AddComponentData(levelEntity, new LevelProgressionComponent
                 {
                     WorldIndex = worldIndex,
                     LevelIndex = levelIndex,
@@ -689,19 +688,18 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Ottiene le stelle già assegnate a un livello
         /// </summary>
-        private int GetStarsForLevel(int worldIndex, int levelIndex)
+        private int GetStarsForLevel(int worldIndex, int levelIndex, ref SystemState state)
         {
             int stars = 0;
             
-            Entities
-                .WithoutBurst()
-                .ForEach((in LevelProgressionComponent levelProgress) =>
+            foreach (var levelProgress in SystemAPI.Query<RefRO<LevelProgressionComponent>>())
+            {
+                if (levelProgress.ValueRO.WorldIndex == worldIndex && levelProgress.ValueRO.LevelIndex == levelIndex)
                 {
-                    if (levelProgress.WorldIndex == worldIndex && levelProgress.LevelIndex == levelIndex)
-                    {
-                        stars = levelProgress.StarCount;
-                    }
-                }).Run();
+                    stars = levelProgress.ValueRO.StarCount;
+                    break;
+                }
+            }
                 
             return stars;
         }

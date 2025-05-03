@@ -11,165 +11,178 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Sistema che gestisce la meccanica del "Focus Time", permettendo al giocatore di
     /// rallentare il tempo per prendere decisioni strategiche e utilizzare oggetti.
     /// </summary>
-    public partial class FocusTimeSystem : SystemBase
+    public partial struct FocusTimeSystem : ISystem
     {
         private EntityQuery _focusTimeQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
         // Singleton globale per il controllo del tempo di gioco
         private Entity _timeManagerEntity;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            // Riferimento al command buffer system per generare eventi
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton per il command buffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Query per entità con il componente FocusTime
-            _focusTimeQuery = GetEntityQuery(
-                ComponentType.ReadWrite<FocusTimeComponent>(),
-                ComponentType.ReadOnly<FocusTimeInputComponent>()
-            );
+            _focusTimeQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<FocusTimeInputComponent>()
+                .WithAllRW<FocusTimeComponent>()
+                .Build(ref state);
             
             // Richiede entità corrispondenti per eseguire l'aggiornamento
-            RequireForUpdate(_focusTimeQuery);
+            state.RequireForUpdate(_focusTimeQuery);
             
             // Crea un'entità singleton per gestire il tempo di gioco globale
-            _timeManagerEntity = EntityManager.CreateEntity();
-            EntityManager.AddComponentData(_timeManagerEntity, new TimeScaleComponent { Scale = 1.0f });
-            EntityManager.AddComponentData(_timeManagerEntity, new TimeManagerTag());
+            _timeManagerEntity = state.EntityManager.CreateEntity();
+            state.EntityManager.AddComponentData(_timeManagerEntity, new TimeScaleComponent { Scale = 1.0f });
+            state.EntityManager.AddComponentData(_timeManagerEntity, new TimeManagerTag());
         }
         
-        protected override void OnUpdate()
+        [Unity.Burst.BurstCompile]
+        public partial struct FocusTimeProcessorJob : IJobEntity
         {
-            float deltaTime =SystemAPI.Time.DeltaTime;
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            public float DeltaTime;
+            public EntityCommandBuffer.ParallelWriter CommandBuffer;
+            public NativeReference<bool> AnyFocusTimeActive;
             
-            // Ottiene l'entità time manager per l'accesso in lettura/scrittura
-            var timeManagerEntity = _timeManagerEntity;
-            var timeScaleComponent = EntityManager.GetComponentData<TimeScaleComponent>(timeManagerEntity);
-            
-            // Traccia se qualche giocatore ha il Focus Time attivo
-            bool anyFocusTimeActive = false;
-            
-            // Elabora le richieste e lo stato del Focus Time
-            Entities
-                .WithName("FocusTimeProcessor")
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref FocusTimeComponent focusTime,
-                          in FocusTimeInputComponent input) => 
+            void Execute(
+                Entity entity, 
+                [ChunkIndexInQuery] int chunkIndexInQuery,
+                ref FocusTimeComponent focusTime,
+                in FocusTimeInputComponent input)
+            {
+                // Aggiorna lo stato del Focus Time (durata, cooldown, energia)
+                bool stateChanged = focusTime.Update(DeltaTime);
+                
+                // Se è stata richiesta l'attivazione del Focus Time
+                if (input.ActivateFocusTime && focusTime.IsAvailable)
                 {
-                    // Aggiorna lo stato del Focus Time (durata, cooldown, energia)
-                    bool stateChanged = focusTime.Update(deltaTime);
+                    bool activated = focusTime.Activate();
                     
-                    // Se è stata richiesta l'attivazione del Focus Time
-                    if (input.ActivateFocusTime && focusTime.IsAvailable)
+                    if (activated)
                     {
-                        bool activated = focusTime.Activate();
-                        
-                        if (activated)
+                        // Genera un evento di attivazione Focus Time
+                        var eventEntity = CommandBuffer.CreateEntity(chunkIndexInQuery);
+                        CommandBuffer.AddComponent(chunkIndexInQuery, eventEntity, new FocusTimeActivatedEvent
                         {
-                            // Genera un evento di attivazione Focus Time
-                            var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new FocusTimeActivatedEvent
+                            EntityActivated = entity,
+                            Duration = focusTime.RemainingTime,
+                            TimeScale = focusTime.TimeScale
+                        });
+                    }
+                }
+                // Se è stata richiesta la disattivazione del Focus Time
+                else if (input.DeactivateFocusTime && focusTime.IsActive)
+                {
+                    focusTime.Deactivate(false); // Cooldown proporzionale
+                    
+                    // Genera un evento di disattivazione Focus Time
+                    var eventEntity = CommandBuffer.CreateEntity(chunkIndexInQuery);
+                    CommandBuffer.AddComponent(chunkIndexInQuery, eventEntity, new FocusTimeDeactivatedEvent
+                    {
+                        EntityDeactivated = entity,
+                        CooldownRemaining = focusTime.CooldownRemaining
+                    });
+                }
+                
+                // Gestione della selezione degli oggetti durante il Focus Time
+                if (focusTime.IsActive)
+                {
+                    AnyFocusTimeActive.Value = true;
+                    
+                    // Se è stato selezionato un oggetto
+                    if (input.SelectedItemIndex >= 0 && input.SelectedItemIndex < focusTime.MaxItemSlots)
+                    {
+                        Entity selectedItem = focusTime.ItemSlots[input.SelectedItemIndex];
+                        
+                        if (selectedItem != Entity.Null)
+                        {
+                            // Genera un evento di utilizzo oggetto
+                            var useItemEvent = CommandBuffer.CreateEntity(chunkIndexInQuery);
+                            CommandBuffer.AddComponent(chunkIndexInQuery, useItemEvent, new ItemUsedEvent
                             {
-                                EntityActivated = entity,
-                                Duration = focusTime.RemainingTime,
-                                TimeScale = focusTime.TimeScale
+                                UserEntity = entity,
+                                ItemEntity = selectedItem,
+                                SlotIndex = input.SelectedItemIndex
+                            });
+                            
+                            // Rimuovi l'oggetto dallo slot dopo l'uso
+                            focusTime.RemoveItem(input.SelectedItemIndex);
+                        }
+                    }
+                    
+                    // Controlla se sono stati trovati nuovi oggetti nel raggio durante il Focus Time
+                    if (input.NewItemDetected && input.NewItemEntity != Entity.Null)
+                    {
+                        // Tenta di aggiungere l'oggetto a uno slot vuoto
+                        int slotIndex = focusTime.AddItem(input.NewItemEntity);
+                        
+                        // Se l'oggetto è stato aggiunto con successo
+                        if (slotIndex >= 0)
+                        {
+                            // Genera un evento di aggiunta oggetto
+                            var addItemEvent = CommandBuffer.CreateEntity(chunkIndexInQuery);
+                            CommandBuffer.AddComponent(chunkIndexInQuery, addItemEvent, new ItemAddedToSlotEvent
+                            {
+                                UserEntity = entity,
+                                ItemEntity = input.NewItemEntity,
+                                SlotIndex = slotIndex
                             });
                         }
                     }
-                    // Se è stata richiesta la disattivazione del Focus Time
-                    else if (input.DeactivateFocusTime && focusTime.IsActive)
+                }
+                
+                // Se lo stato del Focus Time è cambiato, genera eventi appropriati
+                if (stateChanged)
+                {
+                    // Se il Focus Time è diventato disponibile dopo un cooldown
+                    if (focusTime.IsAvailable && !focusTime.IsActive)
                     {
-                        focusTime.Deactivate(false); // Cooldown proporzionale
-                        
-                        // Genera un evento di disattivazione Focus Time
-                        var eventEntity = commandBuffer.CreateEntity(entityInQueryIndex);
-                        commandBuffer.AddComponent(entityInQueryIndex, eventEntity, new FocusTimeDeactivatedEvent
+                        var readyEvent = CommandBuffer.CreateEntity(chunkIndexInQuery);
+                        CommandBuffer.AddComponent(chunkIndexInQuery, readyEvent, new FocusTimeReadyEvent
                         {
-                            EntityDeactivated = entity,
-                            CooldownRemaining = focusTime.CooldownRemaining
+                            EntityReady = entity
                         });
                     }
                     
-                    // Gestione della selezione degli oggetti durante il Focus Time
-                    if (focusTime.IsActive)
+                    // Se l'energia è stata completamente ricaricata
+                    if (focusTime.CurrentEnergy >= focusTime.MaxEnergy)
                     {
-                        anyFocusTimeActive = true;
-                        
-                        // Se è stato selezionato un oggetto
-                        if (input.SelectedItemIndex >= 0 && input.SelectedItemIndex < focusTime.MaxItemSlots)
+                        var fullEnergyEvent = CommandBuffer.CreateEntity(chunkIndexInQuery);
+                        CommandBuffer.AddComponent(chunkIndexInQuery, fullEnergyEvent, new FocusTimeFullEnergyEvent
                         {
-                            Entity selectedItem = focusTime.ItemSlots[input.SelectedItemIndex];
-                            
-                            if (selectedItem != Entity.Null)
-                            {
-                                // Genera un evento di utilizzo oggetto
-                                var useItemEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                commandBuffer.AddComponent(entityInQueryIndex, useItemEvent, new ItemUsedEvent
-                                {
-                                    UserEntity = entity,
-                                    ItemEntity = selectedItem,
-                                    SlotIndex = input.SelectedItemIndex
-                                });
-                                
-                                // Rimuovi l'oggetto dallo slot dopo l'uso
-                                focusTime.RemoveItem(input.SelectedItemIndex);
-                            }
-                        }
-                        
-                        // Controlla se sono stati trovati nuovi oggetti nel raggio durante il Focus Time
-                        if (input.NewItemDetected && input.NewItemEntity != Entity.Null)
-                        {
-                            // Tenta di aggiungere l'oggetto a uno slot vuoto
-                            int slotIndex = focusTime.AddItem(input.NewItemEntity);
-                            
-                            // Se l'oggetto è stato aggiunto con successo
-                            if (slotIndex >= 0)
-                            {
-                                // Genera un evento di aggiunta oggetto
-                                var addItemEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                                commandBuffer.AddComponent(entityInQueryIndex, addItemEvent, new ItemAddedToSlotEvent
-                                {
-                                    UserEntity = entity,
-                                    ItemEntity = input.NewItemEntity,
-                                    SlotIndex = slotIndex
-                                });
-                            }
-                        }
+                            EntityWithFullEnergy = entity
+                        });
                     }
-                    
-                    // Se lo stato del Focus Time è cambiato, genera eventi appropriati
-                    if (stateChanged)
-                    {
-                        // Se il Focus Time è diventato disponibile dopo un cooldown
-                        if (focusTime.IsAvailable && !focusTime.IsActive)
-                        {
-                            var readyEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, readyEvent, new FocusTimeReadyEvent
-                            {
-                                EntityReady = entity
-                            });
-                        }
-                        
-                        // Se l'energia è stata completamente ricaricata
-                        if (focusTime.CurrentEnergy >= focusTime.MaxEnergy)
-                        {
-                            var fullEnergyEvent = commandBuffer.CreateEntity(entityInQueryIndex);
-                            commandBuffer.AddComponent(entityInQueryIndex, fullEnergyEvent, new FocusTimeFullEnergyEvent
-                            {
-                                EntityWithFullEnergy = entity
-                            });
-                        }
-                    }
-                    
-                }).ScheduleParallel();
+                }
+            }
+        }
+        
+        public void OnUpdate(ref SystemState state)
+        {
+            float deltaTime = SystemAPI.Time.DeltaTime;
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
-            // Aggiorna la scala del tempo globale in base allo stato del Focus Time
-            CompleteDependency(); // Assicura che il job precedente sia completo
+            // Ottiene l'entità time manager per l'accesso in lettura/scrittura
+            var timeScaleComponent = state.EntityManager.GetComponentData<TimeScaleComponent>(_timeManagerEntity);
+            
+            // Traccia se qualche giocatore ha il Focus Time attivo
+            var anyFocusTimeActive = new NativeReference<bool>(false, Allocator.TempJob);
+            
+            // Elabora le richieste e lo stato del Focus Time
+            state.Dependency = new FocusTimeProcessorJob
+            {
+                DeltaTime = deltaTime,
+                CommandBuffer = commandBuffer,
+                AnyFocusTimeActive = anyFocusTimeActive
+            }.ScheduleParallel(state.Dependency);
+            
+            // Completa tutte le job per garantire che i dati siano pronti
+            state.CompleteDependency();
             
             // Se qualche giocatore ha il Focus Time attivo, rallenta il tempo globale
-            if (anyFocusTimeActive)
+            if (anyFocusTimeActive.Value)
             {
                 // Recupera il componente FocusTime del giocatore attivo per ottenere il TimeScale
                 // (In un gioco con più giocatori, potrebbe essere necessaria una logica più complessa)
@@ -183,10 +196,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             }
             
             // Aggiorna il componente TimeScale sul singleton
-            EntityManager.SetComponentData(timeManagerEntity, timeScaleComponent);
+            state.EntityManager.SetComponentData(_timeManagerEntity, timeScaleComponent);
             
-            // Assicura che il command buffer venga eseguito
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Rilascia le risorse native
+            anyFocusTimeActive.Dispose();
         }
     }
     

@@ -23,9 +23,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _tutorialProgressQuery;
         private EntityQuery _playerQuery;
         
-        // Buffer per i comandi
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         // Stato
         private bool _initializationComplete = false;
         
@@ -46,8 +43,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 ComponentType.ReadOnly<TransformComponent>()
             );
             
-            // Ottieni riferimento al command buffer
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton di EndSimulationEntityCommandBufferSystem per il CommandBuffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo se esiste un livello tutorial o progressione
             RequireAnyForUpdate(new EntityQuery[] { _tutorialLevelQuery, _tutorialProgressQuery });
@@ -66,7 +63,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             }
             
             // Ottieni il buffer per i comandi
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
             // Controlla il completamento del tutorial
             if (!_tutorialLevelQuery.IsEmpty)
@@ -133,7 +131,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Verifica il raggiungimento degli obiettivi tutorial
             CheckTutorialObjectives();
             
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
         
         /// <summary>
@@ -166,14 +164,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         EntityManager.SetComponentData(tutorialEntity, tutorialLevel);
                         
                         // Crea un'entità con tag di completamento
-                        var commandBuffer = _commandBufferSystem.CreateCommandBuffer();
+                        var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+                        var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
                         Entity completedEntity = commandBuffer.CreateEntity();
                         commandBuffer.AddComponent(completedEntity, new RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag 
                         { 
                             CompletedTutorialIndex = tutorialLevel.CurrentSequence 
                         });
                         
-                        _commandBufferSystem.AddJobHandleForProducer(Dependency);
+                        // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
                         
                         Debug.Log($"Tutorial {tutorialLevel.CurrentSequence} completato!");
                     }
@@ -270,11 +269,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     [UpdateAfter(typeof(ProgressionSystem))]
     public partial class ObjectiveSystem : SystemBase
     {
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         protected override void OnCreate()
         {
-            _commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton di EndSimulationEntityCommandBufferSystem per il CommandBuffer
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
         protected override void OnUpdate()

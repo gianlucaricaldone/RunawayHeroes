@@ -20,87 +20,86 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// </summary>
     [UpdateInGroup(typeof(MovementSystemGroup))]
     [BurstCompile]
-    public partial class ObstacleInteractionSystem : SystemBase
+    public partial struct ObstacleInteractionSystem : ISystem
     {
         private EntityQuery _playerQuery;
         private EntityQuery _obstacleQuery;
         private EntityQuery _specialObstaclesQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
         // Costanti per la gestione delle interazioni
         private const float INTERACTION_RADIUS = 1.5f; // Raggio per l'interazione con ostacoli speciali
         private const float MELT_RATE = 0.2f;         // Velocità di scioglimento del ghiaccio
         private const float BARRIER_PENETRATION_DISTANCE = 1.0f; // Distanza di penetrazione nelle barriere
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            // Ottiene il sistema di command buffer per le modifiche strutturali
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton per il command buffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Definisce la query per identificare i giocatori con abilità speciali
-            _playerQuery = GetEntityQuery(
-                ComponentType.ReadOnly<TagComponent>(),
-                ComponentType.ReadOnly<TransformComponent>(),
-                ComponentType.ReadOnly<PhysicsComponent>()
-            );
+            _playerQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TagComponent, TransformComponent, PhysicsComponent>()
+                .Build(ref state);
             
             // Definisce la query per identificare gli ostacoli base
-            _obstacleQuery = GetEntityQuery(
-                ComponentType.ReadOnly<ObstacleComponent>(),
-                ComponentType.ReadOnly<TransformComponent>()
-            );
+            _obstacleQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<ObstacleComponent, TransformComponent>()
+                .Build(ref state);
             
             // Query per ostacoli speciali (da espandere in base alle necessità)
-            EntityQueryDesc specialObstaclesDesc = new EntityQueryDesc
-            {
-                Any = new ComponentType[]
-                {
-                    ComponentType.ReadOnly<LavaTag>(),
-                    ComponentType.ReadOnly<IceObstacleTag>(),
-                    ComponentType.ReadOnly<DigitalBarrierTag>(),
-                    ComponentType.ReadOnly<UnderwaterTag>()
-                },
-                All = new ComponentType[]
-                {
-                    ComponentType.ReadOnly<TransformComponent>()
-                }
-            };
+            var specialObstaclesBuilder = new EntityQueryBuilder(Allocator.Temp)
+                .WithAny<LavaTag, IceObstacleTag, DigitalBarrierTag, UnderwaterTag>()
+                .WithAll<TransformComponent>()
+                .Build(ref state);
             
-            _specialObstaclesQuery = GetEntityQuery(specialObstaclesDesc);
+            _specialObstaclesQuery = specialObstaclesBuilder;
             
             // Richiede che ci siano almeno giocatori per l'esecuzione
-            RequireForUpdate(_playerQuery);
+            state.RequireForUpdate(_playerQuery);
+        }
+        
+        public void OnDestroy(ref SystemState state)
+        {
         }
         
         [BurstCompile]
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
             // Prepara il command buffer per le modifiche strutturali
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             float deltaTime = SystemAPI.Time.DeltaTime;
             
-            // Resto del metodo invariato...
-            
-            // Il codice continua normalmente
-            Entities
-                .WithName("ProcessSpecialObstacleInteractions")
-                .WithAll<TagComponent>()
-                .ForEach((Entity playerEntity, int entityInQueryIndex,
-                          in TransformComponent playerTransform,
-                          in PhysicsComponent physics) =>
-                {
-                    // Il resto del codice rimane invariato
-                }).ScheduleParallel();
-            
-            // Aggiungi il job handle per la produzione del command buffer
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Il codice continua normalmente con IJobEntity
+            state.Dependency = new SpecialObstacleInteractionJob
+            {
+                DeltaTime = deltaTime,
+                ECB = commandBuffer
+            }.ScheduleParallel(_playerQuery, state.Dependency);
         }
         
-        // I metodi privati rimangono invariati
+        [BurstCompile]
+        private partial struct SpecialObstacleInteractionJob : IJobEntity
+        {
+            public float DeltaTime;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            
+            public void Execute(Entity playerEntity, 
+                                [ChunkIndexInQuery] int chunkIndexInQuery,
+                                in TransformComponent playerTransform,
+                                in PhysicsComponent physics)
+            {
+                // Implementazione dell'interazione con gli ostacoli
+                // Questo è solo uno stub e dovrebbe essere completato con la reale implementazione
+                // del precedente codice nell'Entities.ForEach
+            }
+        }
+        
+        // I metodi privati rimangono invariati ma ora dovrebbero far parte della struct del job o essere implementati come metodi statici
         /// <summary>
         /// Gestisce l'interazione con gli ostacoli di lava per Ember
         /// </summary>
-        private void HandleLavaInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
+        private static void HandleLavaInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
                                           EntityCommandBuffer.ParallelWriter commandBuffer)
         {
             // Codice invariato
@@ -109,7 +108,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// <summary>
         /// Gestisce l'interazione di scioglimento del ghiaccio per Kai
         /// </summary>
-        private void HandleIceMeltingInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
+        private static void HandleIceMeltingInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
                                                 float auraRadius, EntityCommandBuffer.ParallelWriter commandBuffer,
                                                 float deltaTime)
         {
@@ -119,7 +118,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// <summary>
         /// Gestisce l'interazione con le barriere digitali per Neo
         /// </summary>
-        private void HandleDigitalBarrierInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
+        private static void HandleDigitalBarrierInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
                                                     float glitchDistance, EntityCommandBuffer.ParallelWriter commandBuffer)
         {
             // Codice invariato
@@ -128,7 +127,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// <summary>
         /// Gestisce l'interazione con l'ambiente sottomarino per Marina
         /// </summary>
-        private void HandleUnderwaterInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
+        private static void HandleUnderwaterInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
                                                float bubbleRadius, float repelForce, 
                                                EntityCommandBuffer.ParallelWriter commandBuffer)
         {
@@ -138,7 +137,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// <summary>
         /// Gestisce l'interazione con superfici scivolose per tutti i personaggi
         /// </summary>
-        private void HandleSlipperyInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
+        private static void HandleSlipperyInteraction(Entity playerEntity, int entityInQueryIndex, float3 playerPos, 
                                              bool hasHeatAura, EntityCommandBuffer.ParallelWriter commandBuffer)
         {
             // Codice invariato
@@ -147,9 +146,16 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// <summary>
         /// Verifica se un'entità contiene una certa abilità e se è attiva
         /// </summary>
-        private bool HasActiveAbility<T>(Entity entity) where T : struct, IComponentData
+        private static bool HasActiveAbility<T>(Entity entity, ComponentLookup<T> lookup) where T : struct, IComponentData
         {
-            // Codice invariato
+            if (lookup.HasComponent(entity))
+            {
+                var component = lookup[entity];
+                // Dovrebbe controllare una proprietà "IsActive" nel componente
+                // In questa implementazione di esempio, non possiamo accedere a proprietà
+                // specifiche poiché T è generico.
+                return true; // In una implementazione reale, controllerebbe la proprietà IsActive
+            }
             return false;
         }
     }

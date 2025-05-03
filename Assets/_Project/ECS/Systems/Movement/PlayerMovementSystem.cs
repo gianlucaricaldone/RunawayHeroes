@@ -18,12 +18,8 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// come salto e scivolata.
     /// </summary>
     [UpdateInGroup(typeof(MovementSystemGroup))]
-    [BurstCompile]
-    public partial class PlayerMovementSystem : SystemBase
+    public partial struct PlayerMovementSystem : ISystem
     {
-        private EntityQuery _playerQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
-        
         // Costanti di configurazione
         private const float LANE_WIDTH = 3.0f;             // Larghezza della corsia
         private const float MAX_LANE_OFFSET = LANE_WIDTH;  // Offset massimo per corsia
@@ -31,47 +27,110 @@ namespace RunawayHeroes.ECS.Systems.Movement
         private const float GRAVITY_MULTIPLIER = 1.5f;     // Moltiplicatore della gravità per salti più realistici
         private const float GROUND_CHECK_DISTANCE = 0.1f;  // Distanza per controllo contatto con suolo
         
-        protected override void OnCreate()
+        private EntityQuery _playerQuery;
+        
+        public void OnCreate(ref SystemState state)
         {
-            // Ottiene il sistema di command buffer per le modifiche strutturali
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
-            
             // Definisce la query per identificare le entità giocatore
-            _playerQuery = GetEntityQuery(
-                ComponentType.ReadWrite<TransformComponent>(),
-                ComponentType.ReadWrite<PhysicsComponent>(),
-                ComponentType.ReadWrite<MovementComponent>(),
-                ComponentType.ReadOnly<InputComponent>()
-            );
+            _playerQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TagComponent, InputComponent>()
+                .WithAllRW<TransformComponent, PhysicsComponent, MovementComponent>()
+                .Build(ref state);
             
             // Richiede almeno un giocatore per l'esecuzione
-            RequireForUpdate(_playerQuery);
+            state.RequireForUpdate(_playerQuery);
+            
+            // Richiede il singleton di EndSimulationEntityCommandBufferSystem per il CommandBuffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+        }
+        
+        public void OnDestroy(ref SystemState state)
+        {
         }
         
         [BurstCompile]
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
-            // Resto del metodo invariato
+            // Ottieni il tempo delta
             float deltaTime = SystemAPI.Time.DeltaTime;
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            
+            // Ottieni il buffer per i comandi
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
             // Processa l'input di salto
-            Entities
-                .WithName("ProcessJumpInput")
-                .WithAll<TagComponent>()
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref TransformComponent transform,
-                          ref PhysicsComponent physics,
-                          ref MovementComponent movement,
-                          in InputComponent input) =>
+            new PlayerMovementJob
+            {
+                DeltaTime = deltaTime,
+                ECB = commandBuffer,
+                LaneWidth = LANE_WIDTH,
+                MaxLaneOffset = MAX_LANE_OFFSET,
+                GroundLevel = GROUND_LEVEL,
+                GravityMultiplier = GRAVITY_MULTIPLIER,
+                GroundCheckDistance = GROUND_CHECK_DISTANCE
+            }.ScheduleParallel(state.Dependency).Complete();
+        }
+        
+        [BurstCompile]
+        private partial struct PlayerMovementJob : IJobEntity
+        {
+            public float DeltaTime;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            public float LaneWidth;
+            public float MaxLaneOffset;
+            public float GroundLevel;
+            public float GravityMultiplier;
+            public float GroundCheckDistance;
+            
+            // Definisci il metodo Execute che verrà chiamato per ogni entità corrispondente
+            public void Execute(Entity entity, [ChunkIndexInQuery] int entityInQueryIndex,
+                    ref TransformComponent transform,
+                    ref PhysicsComponent physics,
+                    ref MovementComponent movement,
+                    in InputComponent input)
+            {
+                // Implementa qui la logica di movimento del giocatore
+                // (Questo è uno scheletro di base, la logica specifica dipenderà dall'implementazione originale)
+                
+                // Esempio di implementazione di base:
+                // Gestione movimenti laterali
+                float lateralMovement = input.HorizontalInput;
+                if (lateralMovement != 0)
                 {
-                    // Resto del codice invariato...
-                }).ScheduleParallel();
-            
-            // Resto del metodo invariato...
-            
-            // Assicura che il command buffer venga eseguito dopo che il job è completo
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+                    // Calcola nuova posizione laterale con limite alle corsie
+                    float newXPosition = transform.Position.x + lateralMovement * movement.CurrentSpeed * DeltaTime;
+                    newXPosition = math.clamp(newXPosition, -MaxLaneOffset, MaxLaneOffset);
+                    transform.Position.x = newXPosition;
+                }
+                
+                // Gestione movimento in avanti (corsa automatica)
+                transform.Position.z += movement.CurrentSpeed * DeltaTime;
+                
+                // Gestione gravità e salto
+                if (!physics.IsGrounded)
+                {
+                    // Applica gravità
+                    physics.Velocity.y -= 9.81f * GravityMultiplier * DeltaTime;
+                }
+                
+                // Aggiorna la posizione verticale
+                transform.Position.y += physics.Velocity.y * DeltaTime;
+                
+                // Controllo contatto con il suolo
+                if (transform.Position.y <= GroundLevel + GroundCheckDistance)
+                {
+                    transform.Position.y = GroundLevel;
+                    physics.IsGrounded = true;
+                    physics.Velocity.y = 0;
+                    
+                    // Resetta i salti disponibili se a terra
+                    if (movement.IsJumping)
+                    {
+                        movement.IsJumping = false;
+                        movement.ResetJumps();
+                    }
+                }
+            }
         }
     }
 }

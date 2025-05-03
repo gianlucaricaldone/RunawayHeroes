@@ -15,75 +15,39 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Si occupa della ricezione degli input e del routing verso i sistemi
     /// specifici di ciascuna abilità.
     /// </summary>
-    public partial class AbilitySystem : SystemBase
+    public partial struct AbilitySystem : ISystem
     {
         private EntityQuery _inputQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Definisci la query usando EntityQueryBuilder
+            _inputQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<AbilityInputComponent, InputComponent, PlayerDataComponent>()
+                .Build(ref state);
             
-            _inputQuery = GetEntityQuery(
-                ComponentType.ReadWrite<AbilityInputComponent>(),
-                ComponentType.ReadOnly<InputComponent>(),
-                ComponentType.ReadOnly<PlayerDataComponent>()
-            );
+            // Richiedi entità corrispondenti per l'aggiornamento
+            state.RequireForUpdate(_inputQuery);
             
-            RequireForUpdate(_inputQuery);
+            // Richiedi il singleton di EndSimulationEntityCommandBufferSystem per eventi
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state)
         {
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
-            
-            // Processa l'input di abilità e indirizza al sistema appropriato
-            Entities
-                .WithName("AbilityInputProcessor")
-                .ForEach((Entity entity, int entityInQueryIndex,
-                          ref AbilityInputComponent abilityInput,
-                          in InputComponent input,
-                          in PlayerDataComponent playerData) =>
-                {
-                    // Rileva l'attivazione dell'abilità dall'input principale
-                    bool activateAbility = input.AbilityPressed;
-                    
-                    // Imposta l'input e resetta il flag di input una volta elaborato
-                    abilityInput.ActivateAbility = activateAbility;
-                    abilityInput.TargetPosition = input.TouchPosition;
-                    
-                    // Determina il tipo di abilità in base al personaggio
-                    AbilityType abilityType = GetAbilityTypeForCharacter(playerData.Type);
-                    abilityInput.CurrentAbilityType = abilityType;
-                    
-                }).ScheduleParallel();
-            
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
         
-        /// <summary>
-        /// Determina il tipo di abilità in base al tipo di personaggio
-        /// </summary>
-        private static AbilityType GetAbilityTypeForCharacter(CharacterType characterType)
+        public void OnUpdate(ref SystemState state)
         {
-            switch (characterType)
-            {
-                case CharacterType.Alex:
-                    return AbilityType.UrbanDash;
-                case CharacterType.Maya:
-                    return AbilityType.NatureCall;
-                case CharacterType.Kai:
-                    return AbilityType.HeatAura;
-                case CharacterType.Ember:
-                    return AbilityType.FireproofBody;
-                case CharacterType.Marina:
-                    return AbilityType.AirBubble;
-                case CharacterType.Neo:
-                    return AbilityType.ControlledGlitch;
-                default:
-                    return AbilityType.None;
-            }
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            
+            // Processa l'input di abilità e indirizza al sistema appropriato usando IJobEntity
+            new AbilityInputProcessorJob().ScheduleParallel(_inputQuery, state.Dependency).Complete();
+            
+            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
         }
+        
     }
     
     /// <summary>
@@ -119,5 +83,29 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     {
         public Entity EntityID;       // Entità con abilità pronta
         public AbilityType AbilityType; // Tipo di abilità
+    }
+    
+    /// <summary>
+    /// Job per elaborare gli input di abilità
+    /// </summary>
+    public partial struct AbilityInputProcessorJob : IJobEntity
+    {
+        void Execute(Entity entity, 
+                    ref AbilityInputComponent abilityInput,
+                    in InputComponent input,
+                    in PlayerDataComponent playerData)
+        {
+            // Rileva l'attivazione dell'abilità dall'input principale
+            bool activateAbility = input.AbilityPressed;
+            
+            // Imposta l'input e resetta il flag di input una volta elaborato
+            abilityInput.ActivateAbility = activateAbility;
+            abilityInput.TargetPosition = input.TouchPosition;
+            
+            // Determina il tipo di abilità in base al personaggio
+            AbilityType abilityType = GetAbilityTypeForCharacter(playerData.Type);
+            abilityInput.CurrentAbilityType = abilityType;
+        }
+        
     }
 }

@@ -14,39 +14,38 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Sistema che rileva oggetti collezionabili nel raggio del giocatore durante il Focus Time
     /// e li segnala come disponibili per l'aggiunta agli slot.
     /// </summary>
-    public partial class FocusTimeItemDetectionSystem : SystemBase
+    public partial struct FocusTimeItemDetectionSystem : ISystem
     {
         private EntityQuery _playerQuery;
         private EntityQuery _collectibleQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
         // Raggio di rilevamento degli oggetti durante il Focus Time
         private const float FOCUS_TIME_DETECTION_RADIUS = 15.0f;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            _commandBufferSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            // Richiedi singleton per il command buffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Query per il giocatore
-            _playerQuery = GetEntityQuery(
-                ComponentType.ReadOnly<TransformComponent>(),
-                ComponentType.ReadOnly<FocusTimeComponent>(),
-                ComponentType.ReadWrite<FocusTimeInputComponent>()
-            );
+            _playerQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TransformComponent, FocusTimeComponent>()
+                .WithAllRW<FocusTimeInputComponent>()
+                .Build(ref state);
             
             // Query per gli oggetti collezionabili
-            _collectibleQuery = GetEntityQuery(
-                ComponentType.ReadOnly<TransformComponent>(),
-                ComponentType.ReadOnly<CollectibleComponent>()
-            );
+            _collectibleQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TransformComponent, CollectibleComponent>()
+                .Build(ref state);
             
-            RequireForUpdate(_playerQuery);
-            RequireForUpdate(_collectibleQuery);
+            state.RequireForUpdate(_playerQuery);
+            state.RequireForUpdate(_collectibleQuery);
         }
         
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
             // Ottieni il tempo di gioco corrente
             float currentTime = (float)SystemAPI.Time.ElapsedTime;
@@ -95,20 +94,20 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             if (!alreadyInSlots)
                             {
                                 // Aggiorna l'input per segnalare il nuovo oggetto rilevato
-                                var focusTimeInput = EntityManager.GetComponentData<FocusTimeInputComponent>(playerEntity);
+                                var focusTimeInput = state.EntityManager.GetComponentData<FocusTimeInputComponent>(playerEntity);
                                 focusTimeInput.NewItemDetected = true;
                                 focusTimeInput.NewItemEntity = collectibleEntity;
                                 
-                                commandBuffer.SetComponent(0, playerEntity, focusTimeInput);
+                                commandBuffer.SetComponent(i, playerEntity, focusTimeInput);
                                 
                                 // Segnala visivamente che l'oggetto è rilevato (si illumina)
-                                if (EntityManager.HasComponent<RenderComponent>(collectibleEntity))
+                                if (state.EntityManager.HasComponent<RenderComponent>(collectibleEntity))
                                 {
-                                    var renderComponent = EntityManager.GetComponentData<RenderComponent>(collectibleEntity);
+                                    var renderComponent = state.EntityManager.GetComponentData<RenderComponent>(collectibleEntity);
                                     // Imposta l'emissione o altri effetti visivi
                                     // (Questa implementazione dipende dalla specifica struttura di RenderComponent)
                                     
-                                    commandBuffer.SetComponent(0, collectibleEntity, renderComponent);
+                                    commandBuffer.SetComponent(i, collectibleEntity, renderComponent);
                                 }
                                 
                                 // Interrompi dopo aver trovato un oggetto (elabora un oggetto alla volta)
@@ -119,15 +118,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 }
             }
             
-            // Rilascia le array native
-            playerEntities.Dispose();
-            playerTransforms.Dispose();
-            focusTimeComponents.Dispose();
-            collectibleEntities.Dispose();
-            collectibleTransforms.Dispose();
-            
-            // Assicura che il command buffer venga eseguito
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Cleanup delle risorse native
+            state.Dependency = playerEntities.Dispose(state.Dependency);
+            state.Dependency = playerTransforms.Dispose(state.Dependency);
+            state.Dependency = focusTimeComponents.Dispose(state.Dependency);
+            state.Dependency = collectibleEntities.Dispose(state.Dependency);
+            state.Dependency = collectibleTransforms.Dispose(state.Dependency);
         }
     }
 }

@@ -15,32 +15,32 @@ using RunawayHeroes.ECS.Events;
 namespace RunawayHeroes.ECS.Systems.Abilities
 {
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-    public partial class AirBubbleSystem : SystemBase
+    public partial struct AirBubbleSystem : ISystem
     {
         private EntityQuery _abilityQuery;
         private EntityQuery _underwaterEnemyQuery;
-        private EndSimulationEntityCommandBufferSystem _commandBufferSystem;
         
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            _commandBufferSystem = World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
-            _abilityQuery = SystemAPI.QueryBuilder()
+            _abilityQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<AirBubbleAbilityComponent, AbilityInputComponent, MarinaComponent>()
-                .Build();
+                .Build(ref state);
             
             // Query per nemici acquatici
-            _underwaterEnemyQuery = SystemAPI.QueryBuilder()
+            _underwaterEnemyQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<EnemyComponent, UnderwaterTag>()
-                .Build();
+                .Build(ref state);
             
-            RequireForUpdate(_abilityQuery);
+            state.RequireForUpdate(_abilityQuery);
         }
         
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
-            var commandBuffer = _commandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
             // Ottieni la lista di nemici subacquei prima di entrare nel job
             var underwaterEnemies = _underwaterEnemyQuery.ToEntityArray(Allocator.TempJob);
@@ -50,36 +50,39 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             // Popola le posizioni e i dati fisici dei nemici
             for (int i = 0; i < underwaterEnemies.Length; i++)
             {
-                if (EntityManager.HasComponent<TransformComponent>(underwaterEnemies[i]))
+                if (state.EntityManager.HasComponent<TransformComponent>(underwaterEnemies[i]))
                 {
-                    enemyPositions[i] = EntityManager.GetComponentData<TransformComponent>(underwaterEnemies[i]).Position;
+                    enemyPositions[i] = state.EntityManager.GetComponentData<TransformComponent>(underwaterEnemies[i]).Position;
                 }
                 
-                if (EntityManager.HasComponent<PhysicsComponent>(underwaterEnemies[i]))
+                if (state.EntityManager.HasComponent<PhysicsComponent>(underwaterEnemies[i]))
                 {
-                    enemyPhysics[i] = EntityManager.GetComponentData<PhysicsComponent>(underwaterEnemies[i]);
+                    enemyPhysics[i] = state.EntityManager.GetComponentData<PhysicsComponent>(underwaterEnemies[i]);
                 }
             }
             
             // Aggiornamento dell'abilità e interazione con i nemici
-            new AirBubbleUpdateJob
+            state.Dependency = new AirBubbleUpdateJob
             {
                 DeltaTime = deltaTime,
                 ECB = commandBuffer,
                 UnderwaterEnemies = underwaterEnemies,
                 EnemyPositions = enemyPositions,
                 EnemyPhysics = enemyPhysics
-            }.ScheduleParallel();
+            }.ScheduleParallel(state.Dependency);
             
             // Aggiornamento degli effetti visivi - non è possibile usare Burst a causa di EntityManager
-            new AirBubbleVisualUpdateJob
+            state.Dependency = new AirBubbleVisualUpdateJob
             {
                 DeltaTime = deltaTime,
                 ECB = commandBuffer,
-                EntityManager = EntityManager
-            }.Run();
+                EntityManager = state.EntityManager
+            }.Schedule(state.Dependency);
             
-            _commandBufferSystem.AddJobHandleForProducer(Dependency);
+            // Cleanup delle risorse native
+            state.Dependency = underwaterEnemies.Dispose(state.Dependency);
+            state.Dependency = enemyPositions.Dispose(state.Dependency);
+            state.Dependency = enemyPhysics.Dispose(state.Dependency);
         }
         
         [BurstCompile]
@@ -94,7 +97,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             
             void Execute(
                 Entity entity,
-                [EntityIndexInQuery] int entityIndexInQuery,
+                [ChunkIndexInQuery] int chunkIndexInQuery,
                 ref AirBubbleAbilityComponent airBubble,
                 in AbilityInputComponent abilityInput,
                 in TransformComponent transform,
@@ -112,8 +115,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         airBubble.RemainingTime = 0;
                         stateChanged = true;
                         
-                        var endAbilityEvent = ECB.CreateEntity(entityIndexInQuery);
-                        ECB.AddComponent(entityIndexInQuery, endAbilityEvent, new AbilityEndedEvent
+                        var endAbilityEvent = ECB.CreateEntity(chunkIndexInQuery);
+                        ECB.AddComponent(chunkIndexInQuery, endAbilityEvent, new AbilityEndedEvent
                         {
                             EntityID = entity,
                             AbilityType = AbilityType.AirBubble
@@ -134,10 +137,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                                 
                                 var physics = EnemyPhysics[i];
                                 physics.Velocity += repulsionDir * repulsionStrength;
-                                ECB.SetComponent(entityIndexInQuery, UnderwaterEnemies[i], physics);
+                                ECB.SetComponent(chunkIndexInQuery, UnderwaterEnemies[i], physics);
                                 
-                                var repulsionEvent = ECB.CreateEntity(entityIndexInQuery);
-                                ECB.AddComponent(entityIndexInQuery, repulsionEvent, new EnemyRepulsionEvent
+                                var repulsionEvent = ECB.CreateEntity(chunkIndexInQuery);
+                                ECB.AddComponent(chunkIndexInQuery, repulsionEvent, new EnemyRepulsionEvent
                                 {
                                     EnemyEntity = UnderwaterEnemies[i],
                                     SourceEntity = entity,
@@ -158,8 +161,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         airBubble.CooldownRemaining = 0;
                         stateChanged = true;
                         
-                        var readyEvent = ECB.CreateEntity(entityIndexInQuery);
-                        ECB.AddComponent(entityIndexInQuery, readyEvent, new AbilityReadyEvent
+                        var readyEvent = ECB.CreateEntity(chunkIndexInQuery);
+                        ECB.AddComponent(chunkIndexInQuery, readyEvent, new AbilityReadyEvent
                         {
                             EntityID = entity,
                             AbilityType = AbilityType.AirBubble
@@ -177,8 +180,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                     airBubble.BubbleRadius *= (1.0f + marinaComponent.WaterBreathing);
                     airBubble.RepelForce *= (1.0f + marinaComponent.ElectricResistance * 0.5f);
                     
-                    var activateEvent = ECB.CreateEntity(entityIndexInQuery);
-                    ECB.AddComponent(entityIndexInQuery, activateEvent, new AbilityActivatedEvent
+                    var activateEvent = ECB.CreateEntity(chunkIndexInQuery);
+                    ECB.AddComponent(chunkIndexInQuery, activateEvent, new AbilityActivatedEvent
                     {
                         EntityID = entity,
                         AbilityType = AbilityType.AirBubble,
@@ -186,8 +189,8 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                         Duration = airBubble.Duration
                     });
                     
-                    var bubbleEntity = ECB.CreateEntity(entityIndexInQuery);
-                    ECB.AddComponent(entityIndexInQuery, bubbleEntity, new AirBubbleVisualComponent
+                    var bubbleEntity = ECB.CreateEntity(chunkIndexInQuery);
+                    ECB.AddComponent(chunkIndexInQuery, bubbleEntity, new AirBubbleVisualComponent
                     {
                         OwnerEntity = entity,
                         Radius = airBubble.BubbleRadius,
@@ -207,7 +210,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             
             void Execute(
                 Entity entity,
-                [EntityIndexInQuery] int entityIndexInQuery,
+                [ChunkIndexInQuery] int chunkIndexInQuery,
                 ref AirBubbleVisualComponent bubbleVisual,
                 ref TransformComponent transform)
             {
@@ -215,7 +218,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                 
                 if (bubbleVisual.RemainingTime <= 0)
                 {
-                    ECB.DestroyEntity(entityIndexInQuery, entity);
+                    ECB.DestroyEntity(chunkIndexInQuery, entity);
                 }
                 else
                 {
@@ -238,6 +241,4 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     }
     
     public struct UnderwaterTag : IComponentData { }
-    
-
 }
