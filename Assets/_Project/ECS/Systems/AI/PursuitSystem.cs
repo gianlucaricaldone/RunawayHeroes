@@ -18,12 +18,15 @@ namespace RunawayHeroes.ECS.Systems.AI
     [BurstCompile]
     public partial struct PursuitSystem : ISystem
     {
+        #region Fields
         // Query per le entità in inseguimento
         private EntityQuery _pursuitQuery;
         
         // Query per i giocatori (target)
         private EntityQuery _targetQuery;
+        #endregion
         
+        #region Lifecycle
         /// <summary>
         /// Inizializza il sistema di inseguimento
         /// </summary>
@@ -53,7 +56,9 @@ namespace RunawayHeroes.ECS.Systems.AI
         {
             // Nessuna risorsa da pulire
         }
+        #endregion
         
+        #region Update
         /// <summary>
         /// Aggiorna il comportamento di inseguimento di tutti i nemici
         /// </summary>
@@ -88,7 +93,9 @@ namespace RunawayHeroes.ECS.Systems.AI
             state.Dependency = targetTransforms.Dispose(state.Dependency);
             state.Dependency = targetPositions.Dispose(state.Dependency);
         }
+        #endregion
         
+        #region Jobs
         /// <summary>
         /// Job che gestisce il comportamento di inseguimento
         /// </summary>
@@ -173,5 +180,6 @@ namespace RunawayHeroes.ECS.Systems.AI
                 return nearestPosition;
             }
         }
+        #endregion
     }
 }

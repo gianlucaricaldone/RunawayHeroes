@@ -20,6 +20,7 @@ namespace RunawayHeroes.ECS.Systems.AI
     [BurstCompile]
     public partial struct BossPhasesSystem : ISystem
     {
+        #region Fields
         // Query per i boss
         private EntityQuery _bossQuery;
         
@@ -28,7 +29,9 @@ namespace RunawayHeroes.ECS.Systems.AI
         
         // Query per i giocatori
         private EntityQuery _playerQuery;
+        #endregion
         
+        #region Lifecycle
         /// <summary>
         /// Inizializza il sistema di fasi dei boss
         /// </summary>
@@ -65,7 +68,9 @@ namespace RunawayHeroes.ECS.Systems.AI
         {
             // Nessuna risorsa da pulire
         }
+        #endregion
         
+        #region Update
         /// <summary>
         /// Aggiorna le fasi e stati dei boss
         /// </summary>
@@ -141,7 +146,9 @@ namespace RunawayHeroes.ECS.Systems.AI
                 state.Dependency = playerTransforms.Dispose(state.Dependency);
             }
         }
+        #endregion
         
+        #region Jobs
         /// <summary>
         /// Job che gestisce i cambiamenti di fase dei boss
         /// </summary>
@@ -386,6 +393,7 @@ namespace RunawayHeroes.ECS.Systems.AI
                 }
             }
         }
+        #endregion
     }
     
     // Eventi del sistema

@@ -19,6 +19,7 @@ namespace RunawayHeroes.ECS.Systems.AI
     [BurstCompile]
     public partial struct AttackPatternSystem : ISystem
     {
+        #region Fields
         // Query per le entità in stato di attacco
         private EntityQuery _attackingQuery;
         
@@ -27,7 +28,9 @@ namespace RunawayHeroes.ECS.Systems.AI
         
         // Stati di attacco in corso
         private ComponentLookup<AttackingStateComponent> _attackingStateLookup;
+        #endregion
         
+        #region Lifecycle
         /// <summary>
         /// Inizializza il sistema di pattern di attacco
         /// </summary>
@@ -59,7 +62,9 @@ namespace RunawayHeroes.ECS.Systems.AI
         {
             // Nessuna risorsa da pulire
         }
+        #endregion
         
+        #region Update
         /// <summary>
         /// Aggiorna i pattern di attacco per tutti i nemici in stato di attacco
         /// </summary>
@@ -119,7 +124,9 @@ namespace RunawayHeroes.ECS.Systems.AI
             // Cleanup
             state.Dependency = targetPositions.Dispose(processActiveAttacksJob);
         }
+        #endregion
         
+        #region Event Handlers
         [BurstDiscard]
         private void ProcessEnemyAttackEvents(ref SystemState state, EntityCommandBuffer ecb)
         {
@@ -162,7 +169,9 @@ namespace RunawayHeroes.ECS.Systems.AI
                 eventEntities.Dispose();
             }
         }
+        #endregion
         
+        #region Jobs
         /// <summary>
         /// Job che aggiorna i timer di cooldown degli attacchi
         /// </summary>
@@ -404,6 +413,7 @@ namespace RunawayHeroes.ECS.Systems.AI
                 }
             }
         }
+        #endregion
     }
     
     /// <summary>

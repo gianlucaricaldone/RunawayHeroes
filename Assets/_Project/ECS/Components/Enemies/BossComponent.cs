@@ -18,7 +18,9 @@ namespace RunawayHeroes.ECS.Components.Enemies
         public int TotalPhases;               // Numero totale di fasi
         
         // Soglie di fase
-        public float[] PhaseThresholds;       // Soglie di salute per le transizioni di fase (es. 0.7f, 0.4f, 0.1f)
+        // Soglie di salute per le transizioni di fase (es. 0.7f, 0.4f, 0.1f)
+        // Nota: questo array deve essere inizializzato durante la creazione, non può avere un inizializzatore di campo
+        public float[] PhaseThresholds;
         
         // Timer e cooldown
         public float PhaseTransitionTimer;    // Timer per le transizioni di fase

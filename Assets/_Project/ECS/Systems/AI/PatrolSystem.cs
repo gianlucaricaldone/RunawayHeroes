@@ -18,9 +18,12 @@ namespace RunawayHeroes.ECS.Systems.AI
     [BurstCompile]
     public partial struct PatrolSystem : ISystem
     {
+        #region Fields
         // Query per le entità con comportamento di pattugliamento
         private EntityQuery _patrolQuery;
-        
+        #endregion
+
+        #region Lifecycle
         /// <summary>
         /// Inizializza il sistema di pattugliamento
         /// </summary>
@@ -44,7 +47,9 @@ namespace RunawayHeroes.ECS.Systems.AI
         {
             // Nessuna risorsa da pulire
         }
+        #endregion
         
+        #region Update
         /// <summary>
         /// Aggiorna il movimento di pattugliamento di tutti i nemici
         /// </summary>
@@ -65,7 +70,9 @@ namespace RunawayHeroes.ECS.Systems.AI
                 ECB = commandBuffer.AsParallelWriter()
             }.ScheduleParallel(_patrolQuery, state.Dependency);
         }
+        #endregion
         
+        #region Jobs
         /// <summary>
         /// Job che gestisce il movimento di pattugliamento
         /// </summary>
@@ -161,5 +168,6 @@ namespace RunawayHeroes.ECS.Systems.AI
                 }
             }
         }
+        #endregion
     }
 }
