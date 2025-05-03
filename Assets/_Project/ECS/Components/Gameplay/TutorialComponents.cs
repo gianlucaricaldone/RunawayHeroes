@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using Unity.Entities;
 using Unity.Collections;
+using Unity.Mathematics;
 
 namespace RunawayHeroes.ECS.Components.Gameplay
 {

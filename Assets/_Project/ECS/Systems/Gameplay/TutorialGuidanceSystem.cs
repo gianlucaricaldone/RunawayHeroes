@@ -5,6 +5,7 @@ using Unity.Transforms;
 using Unity.Collections;
 using Unity.Burst;
 using Unity.Jobs;
+using Unity.Mathematics;
 using System;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;

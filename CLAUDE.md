@@ -359,3 +359,9 @@ Per file di progettazione fai riferimento ai pdf nella cartella:
 
 Per il GDD del gioco fare riferimento a:
 `/Users/gianlucaricaldone/Progetti/RunawayHeroes/Documentation/Game Design Document.pdf`
+
+Utilizza per capire la struttura delle classi il documento di skeleton a:
+`/Users/gianlucaricaldone/Progetti/RunawayHeroes/Documentation/class_skeleton_complete.txt`
+
+Utilizza per capire la struttura delle cartelle il file:
+`/Users/gianlucaricaldone/Progetti/RunawayHeroes/Documentation/unity_folder_structure.txt`

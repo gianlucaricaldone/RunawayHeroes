@@ -1,0 +1,329 @@
+# Runaway Heroes - Indice delle Classi
+# Generato il: Sat May  3 12:46:58 CEST 2025
+
+private class CyclicDependency
+private class ProfilerScope : System.IDisposable
+private class SystemInfo
+public class AirCurrentAuthoring : BaseObstacleAuthoring
+public class AirCurrentBaker : Baker<AirCurrentAuthoring>
+public class ArcadeMenuController : MonoBehaviour
+public class AudioManager : MonoBehaviour
+public class BootSequence : MonoBehaviour
+public class CameraBridgeBaker : Baker<UnityCameraBridge>
+public class CameraFollow : MonoBehaviour
+public class ComponentDataInspector
+public class DigitalBarrierAuthoring : BaseObstacleAuthoring
+public class DigitalBarrierBaker : Baker<DigitalBarrierAuthoring>
+public class ECSBootstrap : MonoBehaviour
+public class ECSComponentWizard
+public class ECSSystemWizard
+public class EntityDebugWindow
+public class EntityInspector
+public class GameBootstrap : MonoBehaviour
+public class GameManager : MonoBehaviour
+public class IceObstacleAuthoring : BaseObstacleAuthoring
+public class IceObstacleBaker : Baker<IceObstacleAuthoring>
+public class InputBridge : MonoBehaviour
+public class InputBridgeBaker : Baker<InputBridge>
+public class LavaObstacleAuthoring : BaseObstacleAuthoring
+public class LavaObstacleBaker : Baker<LavaObstacleAuthoring>
+public class LevelButton
+public class LevelManager : MonoBehaviour
+public class LevelValidator : MonoBehaviour
+public class LevelValidatorEditor : UnityEditor.Editor
+public class MainMenuManager : MonoBehaviour
+public class MenuController : MonoBehaviour
+public class ObstacleSetup
+public class ObstacleSystemGroup : ComponentSystemGroup
+public class PhysicsBridgeBaker : Baker<UnityPhysicsBridge>
+public class PlayerBridge : MonoBehaviour
+public class PlayerBridgeBaker : Baker<PlayerBridge>
+public class PlayerController : MonoBehaviour
+public class ProgressTracker : MonoBehaviour
+public class ScenarioSetup
+public class ShopCategory
+public class ShopItem
+public class ShopMenuController : MonoBehaviour
+public class SlipperyObstacleAuthoring : BaseObstacleAuthoring
+public class SlipperyObstacleBaker : Baker<SlipperyObstacleAuthoring>
+public class Sound
+public class StandardObstacleAuthoring : BaseObstacleAuthoring
+public class StandardObstacleBaker : Baker<StandardObstacleAuthoring>
+public class SystemDependencyAnalyzer : EditorWindow
+public class SystemMonitorWindow
+public class ToxicGasAuthoring : BaseObstacleAuthoring
+public class ToxicGasBaker : Baker<ToxicGasAuthoring>
+public class TutorialLevelInitializer : MonoBehaviour
+public class TutorialLevelSequence
+public class TutorialManagerWindow : MonoBehaviour
+public class TutorialMessagePanel : MonoBehaviour
+public class TutorialScenarioEditor : UnityEditor.Editor
+public class TutorialSceneSetup : MonoBehaviour
+public class TutorialSequenceEditor : UnityEditor.Editor
+public class TutorialTestHelper : EditorWindow
+public class UIManager : MonoBehaviour
+public class UIPanel
+public class UITransitionManager : MonoBehaviour
+public class UnderwaterObstacleAuthoring : BaseObstacleAuthoring
+public class UnderwaterObstacleBaker : Baker<UnderwaterObstacleAuthoring>
+public class UnityCameraBridge : MonoBehaviour
+public class UnityPhysicsBridge : MonoBehaviour
+public class ValidationIssue
+public class ValidationResult
+public class WorldBootstrap : MonoBehaviour
+public class WorldCategory
+public enum AbilityType
+public enum CharacterType
+public enum DamageType : byte
+public enum DoorwayDirection
+public enum DoorwayType
+public enum HazardType : byte
+public enum IssueType
+public enum MovementAnimationState : byte
+public enum ObstacleCategory : byte
+public enum ObstaclePlacement
+public enum ObstaclePlacement : byte
+public enum ObstaclePreset
+public enum ObstacleType
+public enum RoomState
+public enum RoomType
+public enum SegmentContentType
+public enum SegmentType
+public enum StatusEffectType : byte
+public enum WorldTheme
+public enum WorldType
+public struct A01_UnderwaterSection : IComponentData
+public struct A02_AbyssalCurrent : IComponentData
+public struct A03_SwingingTentacles : IComponentData
+public struct A04_TanglingSeaweed : IComponentData
+public struct A05_AbyssalJellyfish : IComponentData
+public struct A06_ToxicGasBubble : IComponentData
+public struct A07_AbyssalChasm : IComponentData
+public struct A08_InkSpray : IComponentData
+public struct AIStateComponent : IComponentData
+public struct AbilityActivatedEvent : IComponentData
+public struct AbilityComponent : IComponentData
+public struct AbilityEndedEvent : IComponentData
+public struct AbilityInputComponent : IComponentData
+public struct AbilityReadyEvent : IComponentData
+public struct AbyssObstacleTag : IComponentData { }
+public struct ActiveMessageTag : IComponentData
+public struct ActiveObjectiveTag : IComponentData
+public struct ActiveTag : IComponentData { }
+public struct AirBubbleAbilityComponent : IComponentData
+public struct AirBubbleVisualComponent : IComponentData
+public struct AlexComponent : IComponentData
+public struct AnimationStateChangedEvent : IComponentData
+public struct AttackComponent : IComponentData
+public struct BossComponent : IComponentData
+public struct C01_Car : IComponentData
+public struct C02_Van : IComponentData
+public struct C03_SurveillanceDrone : IComponentData
+public struct C04_PoliceBarricade : IComponentData
+public struct C05_FireHydrant : IComponentData
+public struct C06_RunawayCar : IComponentData
+public struct C07_RoadConstruction : IComponentData
+public struct C08_FallenNeonSign : IComponentData
+public struct CameraSettingsComponent : IComponentData
+public struct CameraTag : IComponentData { }
+public struct CameraTargetComponent : IComponentData
+public struct CharacterSwitchEvent : IComponentData
+public struct CharacterSwitchedEvent : IComponentData
+public struct CharacterUnlockedEvent : IComponentData
+public struct CheckpointComponent : IComponentData
+public struct CheckpointReachedEvent : IComponentData
+public struct CollectibleComponent : IComponentData
+public struct CollisionEvent : IComponentData
+public struct CombinedAbilitiesEvent : IComponentData
+public struct ControlledGlitchAbilityComponent : IComponentData
+public struct CurrentInteractionEvent : IComponentData
+public struct CurrentTag : IComponentData
+public struct D01_DataBarrier : IComponentData
+public struct D02_Firewall : IComponentData
+public struct D03_CorruptionBlock : IComponentData
+public struct D04_SpatialGlitch : IComponentData
+public struct D05_DataSpike : IComponentData
+public struct D06_ActiveVirus : IComponentData
+public struct D07_DistortionField : IComponentData
+public struct D08_CodeMatrix : IComponentData
+public struct DamageEvent : IComponentData
+public struct DigitalBarrierTag : IComponentData
+public struct DigitalBarrierTag : IComponentData { }
+public struct DisableEntityTag : IComponentData { }
+public struct DoorwayComponent : IComponentData
+public struct DroneComponent : IComponentData
+public struct EmberComponent : IComponentData
+public struct EnemyComponent : IComponentData
+public struct EnemyDefeatedEvent : IComponentData
+public struct EnemyRepulsionEvent : IComponentData
+public struct EnemySpawnConfigComponent : IComponentData
+public struct EnergyWaveEvent : IComponentData
+public struct EnvironmentalBonus
+public struct EnvironmentalEffectComponent : IComponentData
+public struct F01_FallenLog : IComponentData
+public struct F02_FallenTree : IComponentData
+public struct F03_ProtrudingRoots : IComponentData
+public struct F04_PoisonousPlant : IComponentData
+public struct F05_HangingVines : IComponentData
+public struct F06_WaspNest : IComponentData
+public struct F07_MudPit : IComponentData
+public struct F08_SwingingLog : IComponentData
+public struct FireBodyVisualComponent : IComponentData
+public struct FireproofBodyAbilityComponent : IComponentData
+public struct FocusTimeActivatedEvent : IComponentData
+public struct FocusTimeComponent : IComponentData
+public struct FocusTimeDeactivatedEvent : IComponentData
+public struct FocusTimeFullEnergyEvent : IComponentData
+public struct FocusTimeInputComponent : IComponentData
+public struct FocusTimeReadyEvent : IComponentData
+public struct ForestObstacleTag : IComponentData { }
+public struct FragmentCollectedEvent : IComponentData
+public struct FragmentResonanceComponent : IComponentData
+public struct GlitchTeleportEndEvent : IComponentData
+public struct GlitchTeleportStartEvent : IComponentData
+public struct HazardComponent : IComponentData
+public struct HealthComponent : IComponentData
+public struct HeatAuraAbilityComponent : IComponentData
+public struct HeatAuraVisualComponent : IComponentData
+public struct IceIntegrityComponent : IComponentData
+public struct IceMeltEffectComponent : IComponentData
+public struct IceMeltedEvent : IComponentData
+public struct IceObstacleTag : IComponentData
+public struct IceObstacleTag : IComponentData { }
+public struct IdentityComponent : IComponentData
+public struct InputBridgeTag : IComponentData { }
+public struct InputComponent : IComponentData
+public struct InputSettingsComponent : IComponentData
+public struct ItemAddedToSlotEvent : IComponentData
+public struct ItemUsedEvent : IComponentData
+public struct JumpInputComponent : IComponentData
+public struct JumpStartedEvent : IComponentData
+public struct KaiComponent : IComponentData
+public struct LandingEvent : IComponentData
+public struct LavaTag : IComponentData
+public struct LavaTag : IComponentData { }
+public struct LavaWalkingEvent : IComponentData
+public struct LevelCompletedEvent : IComponentData
+public struct LevelCompletionEvent : IComponentData
+public struct LevelComponent : IComponentData
+public struct LevelProgressionComponent : IComponentData
+public struct LevelTag : IComponentData
+public struct MarinaComponent : IComponentData
+public struct MayaComponent : IComponentData
+public struct MessageHideEvent : IComponentData
+public struct MessageShowEvent : IComponentData
+public struct MidBossComponent : IComponentData
+public struct MovementComponent : IComponentData
+public struct MovementStartedEvent : IComponentData
+public struct MovementStoppedEvent : IComponentData
+public struct NatureAllyComponent : IComponentData
+public struct NatureCallAbilityComponent : IComponentData
+public struct NeoComponent : IComponentData
+public struct ObjectiveCompletedEvent : IComponentData
+public struct ObjectiveComponent : IComponentData
+public struct ObjectiveProgressComponent : IComponentData
+public struct ObjectiveProgressEvent : IComponentData
+public struct ObstacleBreakThroughEvent : IComponentData
+public struct ObstacleComponent : IComponentData
+public struct ObstacleHitEvent : IComponentData
+public struct ObstacleSetup
+public struct ObstacleSpawnConfigComponent : IComponentData
+public struct ObstacleTypeComponent : IComponentData
+public struct OxygenInteractionEvent : IComponentData
+public struct PathComponent : IComponentData
+public struct PathSegmentBuffer : IBufferElementData
+public struct PathSegmentComponent : IComponentData
+public struct PatrolComponent : IComponentData
+public struct PhysicsComponent : IComponentData
+public struct PhysicsTag : IComponentData { }
+public struct PlayerDataComponent : IComponentData
+public struct PlayerMovementComponent : IComponentData
+public struct PlayerProgressionComponent : IComponentData
+public struct PlayerTag : IComponentData { }
+public struct ProgressionAdvancementEvent : IComponentData
+public struct ProgressionSaveEvent : IComponentData
+public struct QueuedMessageTag : IComponentData
+public struct RandomLevelConfigComponent : IComponentData
+public struct RenderComponent : IComponentData
+public struct RequiresConnectionTag : IComponentData { }
+public struct RequiresContentGenerationTag : IComponentData { }
+public struct ResonanceInputComponent : IComponentData
+public struct ResonanceReadyEvent : IComponentData
+public struct ResonanceUnlockedEvent : IComponentData
+public struct ResonanceUpgradedEvent : IComponentData
+public struct RoomComponent : IComponentData
+public struct RoomDoorwayBuffer : IBufferElementData
+public struct RoomPopulatedTag : IComponentData { }
+public struct RoomTemplateComponent : IComponentData
+public struct RunnerLevelConfigComponent : IComponentData
+public struct ScenarioActivationTag : IComponentData
+public struct ScenarioReference : IComponentData
+public struct SegmentContentBuffer : IBufferElementData
+public struct SlideEndedEvent : IComponentData
+public struct SlideInputComponent : IComponentData
+public struct SlideStartedEvent : IComponentData
+public struct SlipInteractionEvent : IComponentData
+public struct SlipperyTag : IComponentData
+public struct SpawnPointComponent : IComponentData
+public struct T01_IceWall : IComponentData
+public struct T02_IceBlock : IComponentData
+public struct T03_IcySurface : IComponentData
+public struct T04_IceStalactite : IComponentData
+public struct T05_FrostGeyser : IComponentData
+public struct T06_Avalanche : IComponentData
+public struct T07_IceBridge : IComponentData
+public struct T08_FreezingWind : IComponentData
+public struct TagComponent : IComponentData
+public struct TimeManagerTag : IComponentData { }
+public struct TimeScaleComponent : IComponentData
+public struct TouchInputComponent : IComponentData
+public struct ToxicGroundTag : IComponentData
+public struct TransformComponent : IComponentData
+public struct TriggeredTag : IComponentData
+public struct TundraObstacleTag : IComponentData { }
+public struct TutorialCompletedTag : IComponentData
+public struct TutorialCompletionEvent : IComponentData
+public struct TutorialCompletionTag : IComponentData
+public struct TutorialFinishedEvent : IComponentData
+public struct TutorialLevelData
+public struct TutorialLevelInfoComponent : IComponentData
+public struct TutorialLevelTag : IComponentData
+public struct TutorialObstacleBuffer : IBufferElementData
+public struct TutorialProgressComponent : IComponentData
+public struct TutorialProgressionComponent : IComponentData
+public struct TutorialScenario
+public struct TutorialScenarioBuffer : IBufferElementData
+public struct TutorialScenarioComponent : IComponentData
+public struct U01_LowBarrier : IComponentData
+public struct U02_HighBarrier : IComponentData
+public struct U03_Gap : IComponentData
+public struct U04_SideObstacle : IComponentData
+public struct U05_HangingObject : IComponentData
+public struct U06_DoubleBarrier : IComponentData
+public struct U07_FloorSpikes : IComponentData
+public struct U08_PowerContainer : IComponentData
+public struct UIMessageComponent : IComponentData
+public struct UnderwaterTag : IComponentData
+public struct UnderwaterTag : IComponentData { }
+public struct UniversalObstacleTag : IComponentData
+public struct UnlockEvent : IComponentData
+public struct UrbanDashAbilityComponent : IComponentData
+public struct UrbanObstacleTag : IComponentData { }
+public struct V01_LavaPool : IComponentData
+public struct V02_LavaGeyser : IComponentData
+public struct V03_VolcanicRock : IComponentData
+public struct V04_FireWall : IComponentData
+public struct V05_VolcanicBomb : IComponentData
+public struct V06_VolcanicAsh : IComponentData
+public struct V07_PyroclasticFlow : IComponentData
+public struct V08_UnstableGround : IComponentData
+public struct VirtualObstacleTag : IComponentData { }
+public struct VolcanoObstacleTag : IComponentData { }
+public struct WorldCompletionEvent : IComponentData
+public struct WorldDifficultyConfigComponent : IComponentData
+public struct WorldIdentifierComponent : IComponentData
+public struct WorldProgressionComponent : IComponentData
+public struct WorldTag : IComponentData
+public struct WorldUnlockedTag : IComponentData
+public class DOTSVersionChecker : EditorWindow
+public class SystemDebugger : MonoBehaviour

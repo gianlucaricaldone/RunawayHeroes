@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using RunawayHeroes.ECS.Components.World;
+using RunawayHeroes.ECS.Components.Core;
 using System;
 
 namespace RunawayHeroes.ECS.Systems.World
@@ -88,9 +89,4 @@ namespace RunawayHeroes.ECS.Systems.World
             _commandBufferSystem.AddJobHandleForProducer(Dependency);
         }
     }
-    
-    /// <summary>
-    /// Tag per identificare le entità del giocatore
-    /// </summary>
-    public struct PlayerTag : IComponentData { }
 }

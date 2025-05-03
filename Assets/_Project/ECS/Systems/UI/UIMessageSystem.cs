@@ -361,7 +361,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             float time = 0f;
             while (time < FADE_IN_TIME)
             {
-                time += Time.deltaTime;
+                time += SystemAPI.Time.DeltaTime;
                 canvasGroup.alpha = Mathf.Lerp(0f, 1f, time / FADE_IN_TIME);
                 yield return null;
             }
@@ -373,7 +373,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             float time = 0f;
             while (time < FADE_OUT_TIME)
             {
-                time += Time.deltaTime;
+                time += SystemAPI.Time.DeltaTime;
                 canvasGroup.alpha = Mathf.Lerp(1f, 0f, time / FADE_OUT_TIME);
                 yield return null;
             }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Entities;
 using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Components.Core;
 
 namespace RunawayHeroes.Runtime.Characters
 {

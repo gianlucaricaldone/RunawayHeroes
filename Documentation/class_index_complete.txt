@@ -1,0 +1,449 @@
+# Runaway Heroes - Indice delle Classi
+# Generato il: 03/05/2025 12:47:04
+
+public abstract class BaseObstacleAuthoring
+public enum ObstaclePreset
+public class StandardObstacleAuthoring
+public class StandardObstacleBaker
+public class LavaObstacleAuthoring
+public class LavaObstacleBaker
+public class IceObstacleAuthoring
+public class IceObstacleBaker
+public class SlipperyObstacleAuthoring
+public class SlipperyObstacleBaker
+public class DigitalBarrierAuthoring
+public class DigitalBarrierBaker
+public class UnderwaterObstacleAuthoring
+public class UnderwaterObstacleBaker
+public class AirCurrentAuthoring
+public class AirCurrentBaker
+public class ToxicGasAuthoring
+public class ToxicGasBaker
+public class TutorialSequenceEditor
+public class TutorialTestHelper
+public class ShopMenuController
+public class ShopCategory
+public class ShopItem
+public class TutorialMessagePanel
+public class ArcadeMenuController
+public class WorldCategory
+public class LevelButton
+public class MenuController
+public static class BackButtonHandler
+public class UITransitionManager
+public class GameBootstrap
+public class TutorialLevelInitializer
+public class ScenarioSetup
+public class ObstacleSetup
+public enum ObstacleType
+public class ECSBootstrap
+public class WorldBootstrap
+public class BootSequence
+public class UnityCameraBridge
+public class CameraBridgeBaker
+public struct CameraTag
+public struct CameraSettingsComponent
+public struct CameraTargetComponent
+public class UnityPhysicsBridge
+public class PhysicsBridgeBaker
+public struct PhysicsTag
+public class InputBridge
+public class InputBridgeBaker
+public struct InputBridgeTag
+public struct InputSettingsComponent
+public class PlayerBridge
+public class PlayerBridgeBaker
+public class LevelManager
+public class AudioManager
+public class Sound
+public class MainMenuManager
+public class UIManager
+public class UIPanel
+public class GameManager
+public class TutorialManagerWindow
+public class TutorialLevelInitializer
+public enum WorldTheme
+public struct TutorialScenario
+public class TutorialSceneSetup
+public class CameraFollow
+public class ProgressTracker
+public struct TutorialLevelData
+public struct TutorialScenario
+public struct ObstacleSetup
+public enum ObstaclePlacement
+public class PlayerController
+public struct PlayerMovementComponent
+public struct TransformComponent
+public static class EntityQueries
+public static class ECSLogger
+public static class ComponentExtensions
+public static class EntityDebugger
+public static class SystemUtilities
+private class ProfilerScope
+public static class StringExtensions
+public static class VectorExtensions
+public static class MathHelper
+public static class StringHelper
+public static class DebugHelper
+public enum ObstaclePlacement
+public struct ObstacleSetup
+public class EntityDebugWindow
+public class SystemMonitorWindow
+public class DOTSVersionChecker
+public class SystemDependencyAnalyzer
+private class SystemInfo
+private class CyclicDependency
+public class SystemDebugger
+public class ComponentDataInspector
+public class EntityInspector
+public class ECSSystemWizard
+public class ECSComponentWizard
+public class LevelValidator
+public class ValidationIssue
+public enum IssueType
+public class ValidationResult
+public enum ObstacleType
+public struct UIMessageComponent
+public struct ActiveMessageTag
+public struct QueuedMessageTag
+public struct MessageShowEvent
+public struct MessageHideEvent
+public struct PlayerTag
+public struct ActiveTag
+public struct TagComponent
+public struct TransformComponent
+public struct IdentityComponent
+public struct PhysicsComponent
+public struct RenderComponent
+public struct SlideInputComponent
+public struct JumpInputComponent
+public struct TouchInputComponent
+public struct InputComponent
+public struct AbilityInputComponent
+public struct ResonanceInputComponent
+public struct FocusTimeInputComponent
+public struct SpawnPointComponent
+public struct WorldIdentifierComponent
+public struct ObstacleSpawnConfigComponent
+public struct RoomTemplateComponent
+public enum RoomType
+public struct RoomComponent
+public enum RoomState
+public struct LevelComponent
+public struct RoomDoorwayBuffer
+public struct RandomLevelConfigComponent
+public struct DoorwayComponent
+public enum DoorwayType
+public enum DoorwayDirection
+public struct EnemySpawnConfigComponent
+public struct CheckpointComponent
+public struct RunnerLevelConfigComponent
+public struct WorldDifficultyConfigComponent
+public struct HazardComponent
+public enum HazardType
+public enum StatusEffectType
+public struct SegmentContentBuffer
+public enum SegmentContentType
+public struct PathSegmentComponent
+public enum SegmentType
+public enum WorldTheme
+public struct PathComponent
+public struct PathSegmentBuffer
+public struct UrbanDashAbilityComponent
+public struct FireproofBodyAbilityComponent
+public struct HeatAuraAbilityComponent
+public struct NatureCallAbilityComponent
+public struct ControlledGlitchAbilityComponent
+public struct AbilityComponent
+public struct AirBubbleAbilityComponent
+public struct ObjectiveComponent
+public struct ActiveObjectiveTag
+public struct ObjectiveProgressComponent
+public struct ObjectiveCompletedEvent
+public struct ObjectiveProgressEvent
+public struct LavaTag
+public struct IceObstacleTag
+public struct IceIntegrityComponent
+public struct DigitalBarrierTag
+public struct UnderwaterTag
+public struct SlipperyTag
+public struct ToxicGroundTag
+public struct CurrentTag
+public struct IceMeltEffectComponent
+public struct FocusTimeComponent
+public struct TutorialLevelInfoComponent
+public struct TutorialScenarioBuffer
+public struct TutorialObstacleBuffer
+public struct ScenarioReference
+public struct TutorialProgressComponent
+public struct TutorialCompletionTag
+public struct TutorialFinishedEvent
+public struct ScenarioActivationTag
+public struct EnvironmentalEffectComponent
+public struct CollectibleComponent
+public struct FragmentResonanceComponent
+public struct EnvironmentalBonus
+public struct CharacterSwitchedEvent
+public struct CharacterUnlockedEvent
+public struct ResonanceUnlockedEvent
+public struct ResonanceUpgradedEvent
+public struct ResonanceReadyEvent
+public struct EnergyWaveEvent
+public struct CombinedAbilitiesEvent
+public struct HealthComponent
+public struct MovementComponent
+public struct ObstacleComponent
+public struct PlayerProgressionComponent
+public struct TutorialProgressionComponent
+public struct TutorialLevelTag
+public struct TutorialCompletedTag
+public struct TutorialCompletionEvent
+public struct WorldProgressionComponent
+public struct WorldTag
+public struct WorldCompletionEvent
+public struct WorldUnlockedTag
+public struct LevelProgressionComponent
+public struct LevelTag
+public struct LevelCompletionEvent
+public struct ProgressionAdvancementEvent
+public struct UnlockEvent
+public struct ProgressionSaveEvent
+public struct EmberComponent
+public struct MayaComponent
+public struct PlayerDataComponent
+public enum CharacterType
+public enum WorldType
+public struct KaiComponent
+public struct MarinaComponent
+public struct AlexComponent
+public struct NeoComponent
+public struct EnemyComponent
+public struct DroneComponent
+public struct MidBossComponent
+public struct AIStateComponent
+public struct AttackComponent
+public struct PatrolComponent
+public struct BossComponent
+public partial class GameplayEventHandler
+public partial class DamageEventHandler
+public partial class CollisionEventHandler
+public partial class UIEventHandler
+public struct LevelCompletedEvent
+public struct CollisionEvent
+public struct LavaWalkingEvent
+public struct GlitchTeleportStartEvent
+public struct GlitchTeleportEndEvent
+public struct EnemyRepulsionEvent
+public struct IceMeltedEvent
+public struct SlipInteractionEvent
+public struct CurrentInteractionEvent
+public struct OxygenInteractionEvent
+public struct FragmentCollectedEvent
+public struct CharacterSwitchEvent
+public struct FocusTimeActivatedEvent
+public struct FocusTimeDeactivatedEvent
+public struct FocusTimeReadyEvent
+public struct FocusTimeFullEnergyEvent
+public struct ItemAddedToSlotEvent
+public struct ItemUsedEvent
+public struct JumpStartedEvent
+public struct LandingEvent
+public struct SlideStartedEvent
+public struct SlideEndedEvent
+public struct MovementStartedEvent
+public struct MovementStoppedEvent
+public struct AnimationStateChangedEvent
+public struct ObstacleHitEvent
+public enum MovementAnimationState
+public struct AbilityActivatedEvent
+public struct EnemyDefeatedEvent
+public struct CheckpointReachedEvent
+public struct DamageEvent
+public partial class FocusTimeUISystem
+public partial class UIMessageSystem
+public partial class ObjectiveFeedbackSystem
+public partial class ResonanceUISystem
+public partial class RenderSystem
+public partial class PhysicsSystem
+public partial class EntityLifecycleSystem
+public partial class CollisionSystem
+public partial class TransformSystem
+public partial class HitboxSystem
+public partial class KnockbackSystem
+public partial class DamageSystem
+public partial class HealthSystem
+public partial class InputSystem
+public partial class TouchInputSystem
+public partial class GestureRecognitionSystem
+public partial class ObstacleSystem
+public partial class RandomLevelGenerationSystem
+public partial class LevelGenerationSystem
+public partial class CheckpointSystem
+public partial class ThematicObstacleGenerationSystem
+public class ObstacleSystemGroup
+public partial class EnvironmentalEffectSystem
+public partial class SegmentContentGenerationSystem
+public partial class RoomConnectionSystem
+public struct RequiresConnectionTag
+public partial class HazardSystem
+public partial class RoomPopulationSystem
+public struct RoomPopulatedTag
+public partial class DynamicSegmentLoadingSystem
+public partial class RunnerLevelGenerationSystem
+public struct RequiresContentGenerationTag
+public partial class UrbanDashSystem
+private partial struct UpdateUrbanDashJob
+public partial class FireproofBodySystem
+public struct FireBodyVisualComponent
+public struct LavaTag
+public struct LavaWalkingEvent
+public partial class FragmentResonanceSystem
+public partial class NatureCallSystem
+public struct NatureAllyComponent
+public struct DisableEntityTag
+public partial class ControlledGlitchSystem
+public struct DigitalBarrierTag
+public struct GlitchTeleportStartEvent
+public struct GlitchTeleportEndEvent
+public partial class AbilitySystem
+public enum AbilityType
+public struct AbilityEndedEvent
+public struct AbilityReadyEvent
+public partial class AirBubbleSystem
+private partial struct AirBubbleUpdateJob
+private partial struct AirBubbleVisualUpdateJob
+public struct AirBubbleVisualComponent
+public struct UnderwaterTag
+public partial class HeatAuraSystem
+public struct HeatAuraVisualComponent
+public struct IceObstacleTag
+public struct IceIntegrityComponent
+public struct IceMeltEffectComponent
+public partial class FocusTimeSystem
+public struct TimeScaleComponent
+public struct TimeManagerTag
+public partial struct SlideSystem
+private partial struct SlideProcessorJob
+public partial struct JumpSystem
+private partial struct JumpProcessorJob
+public partial class ObstacleInteractionSystem
+public partial struct ObstacleCollisionSystem
+private partial struct ProcessCollisionsJob
+public struct ObstacleBreakThroughEvent
+public enum DamageType
+public struct DamageEvent
+public partial class NavigationSystem
+public partial class ObstacleAvoidanceSystem
+public partial class PlayerMovementSystem
+public partial class PatrolSystem
+public partial class AttackPatternSystem
+public partial class EnemyAISystem
+public partial class BossPhasesSystem
+public partial class PursuitSystem
+public partial class TutorialProgressionSystem
+public partial class FocusTimeItemDetectionSystem
+public partial class WorldProgressionSystem
+public partial class LevelProgressionSystem
+public partial class ScoreSystem
+public partial class ProgressionEventSystem
+public partial class ProgressionSystem
+public partial class ObjectiveSystem
+public partial class DifficultySystem
+public partial class PowerupSystem
+public partial class CollectibleSystem
+public partial class TutorialGuidanceSystem
+public struct TutorialScenarioComponent
+public struct TutorialObstacleBuffer
+public struct TriggeredTag
+public struct TutorialLevelTag
+public static class ColosalYeti
+public static class CorruptedAI
+public static class Ember
+public static class SpiritGuardian
+public static class MutantKraken
+public static class MagmaElemental
+public static class Marina
+public static class Kai
+public static class CyborgSecurity
+public static class Maya
+public static class Alex
+public static class Neo
+public static class PlayerArchetypes
+public static class ObstacleArchetypes
+public static class CollectibleArchetypes
+public static class EnemyArchetypes
+public static class CollectibleFactory
+public static class FXFactory
+public static class PlayerFactory
+public static class WorldEntityFactory
+public static class EnemyFactory
+public static class BossFactory
+public struct TundraObstacleTag
+public struct T01_IceWall
+public struct T02_IceBlock
+public struct T03_IcySurface
+public struct T04_IceStalactite
+public struct T05_FrostGeyser
+public struct T06_Avalanche
+public struct T07_IceBridge
+public struct T08_FreezingWind
+public struct ObstacleTypeComponent
+public enum ObstacleCategory
+public struct UniversalObstacleTag
+public struct VolcanoObstacleTag
+public struct V01_LavaPool
+public struct V02_LavaGeyser
+public struct V03_VolcanicRock
+public struct V04_FireWall
+public struct V05_VolcanicBomb
+public struct V06_VolcanicAsh
+public struct V07_PyroclasticFlow
+public struct V08_UnstableGround
+public struct UrbanObstacleTag
+public struct C01_Car
+public struct C02_Van
+public struct C03_SurveillanceDrone
+public struct C04_PoliceBarricade
+public struct C05_FireHydrant
+public struct C06_RunawayCar
+public struct C07_RoadConstruction
+public struct C08_FallenNeonSign
+public struct U01_LowBarrier
+public struct U02_HighBarrier
+public struct U03_Gap
+public struct U04_SideObstacle
+public struct U05_HangingObject
+public struct U06_DoubleBarrier
+public struct U07_FloorSpikes
+public struct U08_PowerContainer
+public struct AbyssObstacleTag
+public struct A01_UnderwaterSection
+public struct A02_AbyssalCurrent
+public struct A03_SwingingTentacles
+public struct A04_TanglingSeaweed
+public struct A05_AbyssalJellyfish
+public struct A06_ToxicGasBubble
+public struct A07_AbyssalChasm
+public struct A08_InkSpray
+public struct ForestObstacleTag
+public struct F01_FallenLog
+public struct F02_FallenTree
+public struct F03_ProtrudingRoots
+public struct F04_PoisonousPlant
+public struct F05_HangingVines
+public struct F06_WaspNest
+public struct F07_MudPit
+public struct F08_SwingingLog
+public static class ObstacleCatalog
+public static class ObstacleFactory
+public struct VirtualObstacleTag
+public struct D01_DataBarrier
+public struct D02_Firewall
+public struct D03_CorruptionBlock
+public struct D04_SpatialGlitch
+public struct D05_DataSpike
+public struct D06_ActiveVirus
+public struct D07_DistortionField
+public struct D08_CodeMatrix
+public partial class MovementSystemGroup
+public partial class GameplaySystemGroup

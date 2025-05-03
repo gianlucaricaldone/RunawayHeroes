@@ -124,9 +124,4 @@ namespace RunawayHeroes.Runtime.Bridge
             }
         }
     }
-    
-    /// <summary>
-    /// Tag per identificare le entità giocatore
-    /// </summary>
-    public struct PlayerTag : IComponentData { }
 }

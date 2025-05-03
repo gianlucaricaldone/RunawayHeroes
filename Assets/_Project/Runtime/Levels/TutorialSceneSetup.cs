@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Entities;
 using UnityEngine.SceneManagement;
+using RunawayHeroes.Runtime.Characters;
 
 namespace RunawayHeroes.Runtime.Levels
 {
