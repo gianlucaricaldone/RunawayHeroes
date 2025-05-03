@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 03/05/2025 21:18:30
+# Generato il: 03/05/2025 23:54:32
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -220,10 +220,16 @@ public struct NeoComponent
 public struct EnemyComponent
 public struct DroneComponent
 public struct MidBossComponent
+public enum MidBossType
+public enum SpecialAbilityType
 public struct AIStateComponent
 public struct AttackComponent
+public enum AttackPatternType
+public enum ElementType
+public enum StatusEffectType
 public struct PatrolComponent
 public struct BossComponent
+public enum BossType
 public partial class GameplayEventHandler
 public partial class DamageEventHandler
 public partial class CollisionEventHandler
@@ -260,23 +266,72 @@ public struct EnemyDefeatedEvent
 public struct CheckpointReachedEvent
 public struct DamageEvent
 public partial class FocusTimeUISystem
-public partial class UIMessageSystem
+public partial struct UIMessageSystem
 public partial class ObjectiveFeedbackSystem
-public partial class ResonanceUISystem
-public partial class RenderSystem
-public partial class PhysicsSystem
-public partial class EntityLifecycleSystem
-public partial class CollisionSystem
-public partial class TransformSystem
-public partial class HitboxSystem
-public partial class KnockbackSystem
-public partial class DamageSystem
-public partial class HealthSystem
+public partial struct ResonanceUISystem
+public class ResonanceUISystemGroup
+public partial struct RenderSystem
+public partial struct SyncRenderTransformsJob
+public struct RenderComponent
+public partial struct PhysicsSystem
+public partial struct PhysicsSimulationJob
+public partial struct EntityLifecycleSystem
+public partial struct CollisionSystem
+public partial struct CollisionDetectionJob
+public struct CollisionEvent
+public partial struct TransformSystem
+public partial struct SyncTransformsJob
+public partial struct HitboxSystem
+public struct ProcessHitboxesJob
+public struct HitboxComponent
+public struct HurtboxComponent
+public struct InvulnerableTag
+public enum AttackType
+public struct HitEvent
+public partial struct KnockbackSystem
+public struct ProcessHitEventsJob
+public partial struct UpdateKnockbackJob
+public struct KnockbackComponent
+public struct KnockbackStartedEvent
+public struct KnockbackEndedEvent
+public partial struct DamageSystem
+public partial struct ProcessDamageEventsJob
+public struct ArmorComponent
+public enum BlockReason
+public struct DamageReceivedEvent
+public struct DamageBlockedEvent
+public struct DeathEvent
+public partial struct HealthSystem
+public partial struct ProcessHealthJob
+public struct HealthRegeneratedEvent
+public struct ShieldRegeneratedEvent
 public partial struct InputSystem
 public partial struct UpdatePlayerInputJob
-public partial class TouchInputSystem
-public partial class GestureRecognitionSystem
-public partial class ObstacleSystem
+public partial struct TouchInputSystem
+public struct TouchInputSingleton
+public struct TouchInputComponent
+public partial struct GestureRecognitionSystem
+public struct GestureRecognitionSingleton
+public struct GestureComponent
+public partial struct ObstacleSystem
+private partial struct UpdateMovingObstaclesJob
+private partial struct UpdateTemporaryObstaclesJob
+private partial struct UpdateSequencedObstaclesJob
+private partial struct UpdateDamagedObstaclesJob
+private partial struct ActivateObstaclesByDistanceJob
+public struct PatrolPathComponent
+public struct OscillatingObstacleComponent
+public struct RotatingObstacleComponent
+public struct TemporaryObstacleComponent
+public struct SequencedBehaviorComponent
+public enum PhaseType
+public struct DamagedStateComponent
+public struct DestructionDelayComponent
+public struct MovingObstacleTag
+public struct ObstaclePhaseChangedEvent
+public struct ObstacleDestroyedEvent
+public struct ObstacleRepairedEvent
+public struct ObstacleDamageEffectEvent
 public partial struct RandomLevelGenerationSystem
 public partial struct ProcessRandomLevelConfigsJob
 public partial struct LevelGenerationSystem
@@ -285,13 +340,19 @@ public partial class CheckpointSystem
 public partial class ThematicObstacleGenerationSystem
 public class ObstacleSystemGroup
 public partial class EnvironmentalEffectSystem
-public partial class SegmentContentGenerationSystem
+public partial struct SegmentContentGenerationSystem
+public partial struct GenerateSegmentContentsJob
 public partial class RoomConnectionSystem
 public struct RequiresConnectionTag
-public partial class HazardSystem
+public partial struct HazardSystem
+private partial struct ProcessHazardZonesJob
+private partial struct UpdateHazardVisualsJob
+public struct StatusEffectComponent
+public struct InvulnerableTag
+public struct DamageEvent
+public struct HazardVisualEffectEvent
 public partial struct RoomPopulationSystem
 public partial struct PopulateRoomsJob
-public struct RoomPopulatedTag
 public struct RoomPopulatedTag
 public partial struct DynamicSegmentLoadingSystem
 private partial struct ManageSegmentActivationJob
@@ -335,7 +396,7 @@ public struct IceObstacleTag
 public struct IceIntegrityComponent
 public struct IceMeltEffectComponent
 public partial struct HeatAuraProcessingJob
-public struct HeatAuraVisualUpdateJob
+public partial struct HeatAuraVisualUpdateJob
 public partial struct FocusTimeSystem
 public partial struct FocusTimeProcessorJob
 public struct TimeScaleComponent
@@ -352,23 +413,49 @@ private partial struct ProcessCollisionsJob
 public struct ObstacleBreakThroughEvent
 public enum DamageType
 public struct DamageEvent
-public partial class NavigationSystem
-public partial class ObstacleAvoidanceSystem
+public partial struct NavigationSystem
+public struct NavigatorComponent
+public enum PathStatus
+public struct DestinationReachedEvent
+public partial struct ObstacleAvoidanceSystem
+public partial struct ObstacleAvoidanceJob
+public struct ObstacleAvoiderComponent
 public partial struct PlayerMovementSystem
 private partial struct PlayerMovementJob
-public partial class PatrolSystem
-public partial class AttackPatternSystem
-public partial class EnemyAISystem
-public partial class BossPhasesSystem
-public partial class PursuitSystem
-public partial class TutorialProgressionSystem
+public partial struct PatrolSystem
+private partial struct PatrolMovementJob
+public partial struct AttackPatternSystem
+private partial struct UpdateAttackCooldownsJob
+private partial struct ProcessActiveAttacksJob
+public struct AttackingStateComponent
+public enum AttackPhase
+public struct DamageEvent
+public partial struct EnemyAISystem
+public enum AIState
+public struct EnemyAIComponent
+public struct AIStateExitEvent
+public struct AIStateEnterEvent
+public struct EnemyAttackEvent
+public partial struct BossPhasesSystem
+private partial struct BossPhaseManagementJob
+private partial struct MidBossStateManagementJob
+public struct BossActivationEvent
+public struct BossPhaseTransitionStartEvent
+public struct BossPhaseTransitionEndEvent
+public struct BossSpecialAttackReadyEvent
+public struct MidBossActivationEvent
+public struct MidBossEnrageEvent
+public struct MidBossSpecialAbilityReadyEvent
+public partial struct PursuitSystem
+private partial struct PursuitJob
+public partial struct TutorialProgressionSystem
 public partial struct FocusTimeItemDetectionSystem
-public partial class WorldProgressionSystem
+public partial struct WorldProgressionSystem
 public partial struct LevelProgressionSystem
 public partial class ScoreSystem
-public partial class ProgressionEventSystem
-public partial class ProgressionSystem
-public partial class ObjectiveSystem
+public partial struct ProgressionEventSystem
+public partial struct ProgressionSystem
+public partial struct ObjectiveSystem
 public partial class DifficultySystem
 public partial class PowerupSystem
 public partial class CollectibleSystem
@@ -377,7 +464,6 @@ public partial struct CheckScenarioTriggerJob
 public struct TutorialScenarioComponent
 public struct TutorialObstacleBuffer
 public struct TriggeredTag
-public struct TutorialLevelTag
 public static class ColosalYeti
 public static class CorruptedAI
 public static class Ember

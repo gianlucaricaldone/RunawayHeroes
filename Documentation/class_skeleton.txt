@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: Sat May  3 21:18:19 CEST 2025
+# Generato il: Sat May  3 23:54:19 CEST 2025
 # Questo file contiene le definizioni di classi, interfacce, metodi pubblici/protetti, proprietà ed eventi.
 # Include anche variabili [SerializeField] e variabili protected/private esposte.
 
@@ -110,14 +110,20 @@ namespace RunawayHeroes.ECS.Components.Enemies
     public struct AIStateComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/AttackComponent.cs
     public struct AttackComponent : IComponentData
+    public enum AttackPatternType : byte
+    public enum ElementType : byte
+    public enum StatusEffectType : byte
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/BossComponent.cs
     public struct BossComponent : IComponentData
+    public enum BossType : byte
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/DroneComponent.cs
     public struct DroneComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/EnemyComponent.cs
     public struct EnemyComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/MidBossComponent.cs
     public struct MidBossComponent : IComponentData
+    public enum MidBossType : byte
+    public enum SpecialAbilityType : byte
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/PatrolComponent.cs
     public struct PatrolComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Gameplay/CollectibleComponent.cs
@@ -231,7 +237,6 @@ namespace RunawayHeroes.ECS.Components.World
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/HazardComponent.cs
     public struct HazardComponent : IComponentData
     public enum HazardType : byte
-    public enum StatusEffectType : byte
     public static HazardComponent CreateLavaHazard(float radius, float damagePerSecond)
     public static HazardComponent CreateToxicHazard(float radius, float damagePerSecond)
     public static HazardComponent CreateElectrifiedHazard(float radius, float damagePerSecond)
@@ -460,8 +465,22 @@ namespace RunawayHeroes.ECS.Events.Handlers
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Events/EventHandlers/UIEventHandler.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/AI/AttackPatternSystem.cs
 namespace RunawayHeroes.ECS.Systems.AI
+    public struct AttackingStateComponent : IComponentData
+    public enum AttackPhase : byte
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/AI/BossPhasesSystem.cs
+    public struct BossActivationEvent : IComponentData
+    public struct BossPhaseTransitionStartEvent : IComponentData
+    public struct BossPhaseTransitionEndEvent : IComponentData
+    public struct BossSpecialAttackReadyEvent : IComponentData
+    public struct MidBossActivationEvent : IComponentData
+    public struct MidBossEnrageEvent : IComponentData
+    public struct MidBossSpecialAbilityReadyEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/AI/EnemyAISystem.cs
+    public enum AIState : byte
+    public struct EnemyAIComponent : IComponentData
+    public struct AIStateExitEvent : IComponentData
+    public struct AIStateEnterEvent : IComponentData
+    public struct EnemyAttackEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/AI/PatrolSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/AI/PursuitSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/AbilitySystem.cs
@@ -484,7 +503,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/HeatAuraSystem.cs
     public struct HeatAuraVisualComponent : IComponentData
     public struct IceObstacleTag : IComponentData { }
-    public struct HeatAuraVisualUpdateJob
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/NatureCallSystem.cs
     public struct NatureAllyComponent : IComponentData
     public struct DisableEntityTag : IComponentData { }
@@ -493,9 +511,26 @@ namespace RunawayHeroes.ECS.Systems.Abilities
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Abilities/UrbanDashSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Combat/DamageSystem.cs
 namespace RunawayHeroes.ECS.Systems.Combat
+    public struct ArmorComponent : IComponentData
+    public enum BlockReason : byte
+    public struct DamageReceivedEvent : IComponentData
+    public struct DamageBlockedEvent : IComponentData
+    public struct DeathEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Combat/HealthSystem.cs
+    public struct HealthRegeneratedEvent : IComponentData
+    public struct ShieldRegeneratedEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Combat/HitboxSystem.cs
+    public struct ProcessHitboxesJob : IJob
+    public struct HitboxComponent : IComponentData
+    public struct HurtboxComponent : IComponentData
+    public struct InvulnerableTag : IComponentData
+    public enum AttackType : byte
+    public struct HitEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Combat/KnockbackSystem.cs
+    public struct ProcessHitEventsJob : IJob
+    public struct KnockbackComponent : IComponentData
+    public struct KnockbackStartedEvent : IComponentData
+    public struct KnockbackEndedEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Core/CollisionSystem.cs
 namespace RunawayHeroes.ECS.Systems.Core
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Core/EntityLifecycleSystem.cs
@@ -511,7 +546,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay.Group
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/LevelProgressionSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/PowerupSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/ProgressionEventSystem.cs
-    protected override void OnStartRunning()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/ProgressionSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/ScoreSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/TutorialGuidanceSystem.cs
@@ -521,14 +555,21 @@ namespace RunawayHeroes.ECS.Systems.Gameplay.Group
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Gameplay/WorldProgressionSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Input/GestureRecognitionSystem.cs
 namespace RunawayHeroes.ECS.Systems.Input
+    public struct GestureRecognitionSingleton : IComponentData
+    public struct GestureComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Input/InputSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Input/TouchInputSystem.cs
+    public struct TouchInputSingleton : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/Group/MovementSystemGroup.cs
 namespace RunawayHeroes.ECS.Systems.Movement.Group
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/JumpSystem.cs
 namespace RunawayHeroes.ECS.Systems.Movement
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/NavigationSystem.cs
+    public struct NavigatorComponent : IComponentData
+    public enum PathStatus : byte
+    public struct DestinationReachedEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/ObstacleAvoidanceSystem.cs
+    public struct ObstacleAvoiderComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/ObstacleCollisionSystem.cs
     public struct ObstacleBreakThroughEvent : IComponentData
     public enum DamageType : byte
@@ -538,16 +579,34 @@ namespace RunawayHeroes.ECS.Systems.Movement
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/SlideSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/FocusTimeUISystem.cs
 namespace RunawayHeroes.ECS.Systems.UI
+    protected override void OnStartRunning()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ObjectiveFeedbackSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceUISystem.cs
+    public class ResonanceUISystemGroup : ComponentSystemGroup
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/UIMessageSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/CheckpointSystem.cs
 namespace RunawayHeroes.ECS.Systems.World
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/DynamicSegmentLoadingSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/EnvironmentalEffectSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/HazardSystem.cs
+    public struct StatusEffectComponent : IComponentData
+    public struct InvulnerableTag : IComponentData {}
+    public struct HazardVisualEffectEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/LevelGenerationSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/ObstacleSystem.cs
+    public struct PatrolPathComponent : IComponentData
+    public struct OscillatingObstacleComponent : IComponentData
+    public struct RotatingObstacleComponent : IComponentData
+    public struct TemporaryObstacleComponent : IComponentData
+    public struct SequencedBehaviorComponent : IComponentData
+    public enum PhaseType : byte
+    public struct DamagedStateComponent : IComponentData
+    public struct DestructionDelayComponent : IComponentData
+    public struct MovingObstacleTag : IComponentData {}
+    public struct ObstaclePhaseChangedEvent : IComponentData
+    public struct ObstacleDestroyedEvent : IComponentData
+    public struct ObstacleRepairedEvent : IComponentData
+    public struct ObstacleDamageEffectEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/ObstacleSystemGroup.cs
     public class ObstacleSystemGroup : ComponentSystemGroup
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/RandomLevelGenerationSystem.cs

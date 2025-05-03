@@ -1,20 +1,183 @@
+using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
+using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Components.Characters;
 
 namespace RunawayHeroes.ECS.Events.Handlers
 {
     /// <summary>
-    /// 
+    /// Sistema che gestisce gli eventi di danno inflitti tra entità
     /// </summary>
-    public partial class DamageEventHandler : SystemBase
+    [BurstCompile]
+    public partial struct DamageEventHandler : ISystem
     {
-        protected override void OnCreate()
+        private EntityQuery _damageEventsQuery;
+        
+        /// <summary>
+        /// Inizializza il sistema e definisce le query necessarie
+        /// </summary>
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            
+            // Query per le entità con DamageEvent
+            _damageEventsQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<DamageEvent>()
+                .Build(ref state);
+                
+            state.RequireForUpdate(_damageEventsQuery);
         }
 
-        protected override void OnUpdate()
+        /// <summary>
+        /// Esegue la pulizia delle risorse allocate
+        /// </summary>
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
         {
-            
+            // Cleanup di eventuali risorse
         }
+
+        /// <summary>
+        /// Elabora tutti gli eventi di danno presenti nel frame corrente
+        /// </summary>
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            // Ottiene il buffer di comandi per eventuali modifiche strutturali
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            
+            // Esegue il job di elaborazione eventi
+            state.Dependency = new ProcessDamageEventsJob
+            {
+                ECB = ecb
+            }.ScheduleParallel(state.Dependency);
+        }
+        
+        /// <summary>
+        /// Job che elabora gli eventi di danno
+        /// </summary>
+        [BurstCompile]
+        private partial struct ProcessDamageEventsJob : IJobEntity
+        {
+            public EntityCommandBuffer ECB;
+            
+            // Definisce il metodo che verrà eseguito per ogni entità che soddisfa la query
+            private void Execute(Entity entity, [EntityIndexInQuery] int sortKey, in DamageEvent damageEvent)
+            {
+                // Implementa la logica di gestione del danno
+                // Esempi di azioni possibili:
+                // - Ridurre la salute dell'entità danneggiata
+                // - Applicare effetti di stato (avvelenamento, stordimento, ecc.)
+                // - Creare effetti visivi per il danno
+                // - Aggiornare statistiche di combattimento
+                // - Verificare condizioni di morte
+                
+                if (SystemAPI.HasComponent<HealthComponent>(damageEvent.TargetEntity))
+                {
+                    var health = SystemAPI.GetComponent<HealthComponent>(damageEvent.TargetEntity);
+                    
+                    // Calcola il danno effettivo considerando resistenze e moltiplicatori
+                    float actualDamage = damageEvent.DamageAmount;
+                    
+                    // Se l'entità ha un componente di difesa, applica modificatori
+                    if (SystemAPI.HasComponent<DefenseComponent>(damageEvent.TargetEntity))
+                    {
+                        var defense = SystemAPI.GetComponent<DefenseComponent>(damageEvent.TargetEntity);
+                        actualDamage = CalculateDamageWithDefense(damageEvent.DamageAmount, 
+                                                                 damageEvent.DamageType, 
+                                                                 defense);
+                    }
+                    
+                    // Aggiorna la salute
+                    health.CurrentHealth -= actualDamage;
+                    
+                    // Garantisce che la salute non scenda sotto zero
+                    health.CurrentHealth = math.max(0, health.CurrentHealth);
+                    
+                    // Aggiorna il componente
+                    SystemAPI.SetComponent(damageEvent.TargetEntity, health);
+                    
+                    // Se l'entità ha raggiunto 0 salute, crea un evento di morte
+                    if (health.CurrentHealth <= 0 && !health.IsDead)
+                    {
+                        health.IsDead = true;
+                        SystemAPI.SetComponent(damageEvent.TargetEntity, health);
+                        
+                        // Crea un evento di morte
+                        Entity deathEvent = ECB.CreateEntity(sortKey);
+                        ECB.AddComponent(sortKey, deathEvent, new DeathEvent 
+                        { 
+                            DeadEntity = damageEvent.TargetEntity,
+                            KillerEntity = damageEvent.SourceEntity
+                        });
+                    }
+                    
+                    // Crea evento di feedback danno per effetti visivi/audio
+                    Entity feedbackEvent = ECB.CreateEntity(sortKey);
+                    ECB.AddComponent(sortKey, feedbackEvent, new DamageFeedbackEvent
+                    {
+                        TargetEntity = damageEvent.TargetEntity,
+                        DamageAmount = actualDamage,
+                        DamageType = damageEvent.DamageType,
+                        IsCritical = damageEvent.IsCritical,
+                        HitPoint = damageEvent.HitPoint
+                    });
+                }
+                
+                // Elimina l'evento dopo l'elaborazione
+                ECB.DestroyEntity(sortKey, entity);
+            }
+            
+            /// <summary>
+            /// Calcola il danno effettivo considerando le resistenze della difesa
+            /// </summary>
+            private float CalculateDamageWithDefense(float rawDamage, byte damageType, DefenseComponent defense)
+            {
+                float damageMultiplier = 1.0f;
+                
+                // Applica resistenze in base al tipo di danno
+                switch (damageType)
+                {
+                    case 0: // Fisico
+                        damageMultiplier = 1.0f - math.clamp(defense.PhysicalResistance / 100.0f, 0.0f, 0.75f);
+                        break;
+                    case 1: // Elementale
+                        damageMultiplier = 1.0f - math.clamp(defense.ElementalResistance / 100.0f, 0.0f, 0.75f);
+                        break;
+                    case 2: // Energia
+                        damageMultiplier = 1.0f - math.clamp(defense.EnergyResistance / 100.0f, 0.0f, 0.75f);
+                        break;
+                    default:
+                        damageMultiplier = 1.0f;
+                        break;
+                }
+                
+                // Calcola danno finale
+                return rawDamage * damageMultiplier;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Evento di feedback visivo per il danno
+    /// </summary>
+    public struct DamageFeedbackEvent : IComponentData
+    {
+        public Entity TargetEntity;    // Entità che ha subito danno
+        public float DamageAmount;     // Quantità di danno
+        public byte DamageType;        // Tipo di danno
+        public bool IsCritical;        // Se è un colpo critico
+        public float3 HitPoint;        // Punto di impatto
+    }
+    
+    /// <summary>
+    /// Evento di morte di un'entità
+    /// </summary>
+    public struct DeathEvent : IComponentData
+    {
+        public Entity DeadEntity;      // Entità morta
+        public Entity KillerEntity;    // Entità che ha causato la morte
     }
 }

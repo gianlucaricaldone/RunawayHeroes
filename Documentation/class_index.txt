@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Sat May  3 21:18:23 CEST 2025
+# Generato il: Sat May  3 23:54:24 CEST 2025
 
 private class CyclicDependency
 private class ProfilerScope : System.IDisposable
@@ -40,6 +40,7 @@ public class PlayerBridge : MonoBehaviour
 public class PlayerBridgeBaker : Baker<PlayerBridge>
 public class PlayerController : MonoBehaviour
 public class ProgressTracker : MonoBehaviour
+public class ResonanceUISystemGroup : ComponentSystemGroup
 public class ScenarioSetup
 public class ShopCategory
 public class ShopItem
@@ -72,23 +73,34 @@ public class ValidationIssue
 public class ValidationResult
 public class WorldBootstrap : MonoBehaviour
 public class WorldCategory
+public enum AIState : byte
 public enum AbilityType
+public enum AttackPatternType : byte
+public enum AttackPhase : byte
+public enum AttackType : byte
+public enum BlockReason : byte
+public enum BossType : byte
 public enum CharacterType
 public enum DamageType : byte
 public enum DoorwayDirection
 public enum DoorwayType
+public enum ElementType : byte
 public enum HazardType : byte
 public enum IssueType
+public enum MidBossType : byte
 public enum MovementAnimationState : byte
 public enum ObstacleCategory : byte
 public enum ObstaclePlacement
 public enum ObstaclePlacement : byte
 public enum ObstaclePreset
 public enum ObstacleType
+public enum PathStatus : byte
+public enum PhaseType : byte
 public enum RoomState
 public enum RoomType
 public enum SegmentContentType
 public enum SegmentType
+public enum SpecialAbilityType : byte
 public enum StatusEffectType : byte
 public enum WorldTheme
 public enum WorldType
@@ -101,6 +113,8 @@ public struct A06_ToxicGasBubble : IComponentData
 public struct A07_AbyssalChasm : IComponentData
 public struct A08_InkSpray : IComponentData
 public struct AIStateComponent : IComponentData
+public struct AIStateEnterEvent : IComponentData
+public struct AIStateExitEvent : IComponentData
 public struct AbilityActivatedEvent : IComponentData
 public struct AbilityComponent : IComponentData
 public struct AbilityEndedEvent : IComponentData
@@ -114,8 +128,14 @@ public struct AirBubbleAbilityComponent : IComponentData
 public struct AirBubbleVisualComponent : IComponentData
 public struct AlexComponent : IComponentData
 public struct AnimationStateChangedEvent : IComponentData
+public struct ArmorComponent : IComponentData
 public struct AttackComponent : IComponentData
+public struct AttackingStateComponent : IComponentData
+public struct BossActivationEvent : IComponentData
 public struct BossComponent : IComponentData
+public struct BossPhaseTransitionEndEvent : IComponentData
+public struct BossPhaseTransitionStartEvent : IComponentData
+public struct BossSpecialAttackReadyEvent : IComponentData
 public struct C01_Car : IComponentData
 public struct C02_Van : IComponentData
 public struct C03_SurveillanceDrone : IComponentData
@@ -146,13 +166,21 @@ public struct D05_DataSpike : IComponentData
 public struct D06_ActiveVirus : IComponentData
 public struct D07_DistortionField : IComponentData
 public struct D08_CodeMatrix : IComponentData
+public struct DamageBlockedEvent : IComponentData
 public struct DamageEvent : IComponentData
+public struct DamageReceivedEvent : IComponentData
+public struct DamagedStateComponent : IComponentData
+public struct DeathEvent : IComponentData
+public struct DestinationReachedEvent : IComponentData
+public struct DestructionDelayComponent : IComponentData
 public struct DigitalBarrierTag : IComponentData
 public struct DigitalBarrierTag : IComponentData { }
 public struct DisableEntityTag : IComponentData { }
 public struct DoorwayComponent : IComponentData
 public struct DroneComponent : IComponentData
 public struct EmberComponent : IComponentData
+public struct EnemyAIComponent : IComponentData
+public struct EnemyAttackEvent : IComponentData
 public struct EnemyComponent : IComponentData
 public struct EnemyDefeatedEvent : IComponentData
 public struct EnemyRepulsionEvent : IComponentData
@@ -179,13 +207,19 @@ public struct FocusTimeReadyEvent : IComponentData
 public struct ForestObstacleTag : IComponentData { }
 public struct FragmentCollectedEvent : IComponentData
 public struct FragmentResonanceComponent : IComponentData
+public struct GestureComponent : IComponentData
+public struct GestureRecognitionSingleton : IComponentData
 public struct GlitchTeleportEndEvent : IComponentData
 public struct GlitchTeleportStartEvent : IComponentData
 public struct HazardComponent : IComponentData
+public struct HazardVisualEffectEvent : IComponentData
 public struct HealthComponent : IComponentData
+public struct HealthRegeneratedEvent : IComponentData
 public struct HeatAuraAbilityComponent : IComponentData
 public struct HeatAuraVisualComponent : IComponentData
-public struct HeatAuraVisualUpdateJob
+public struct HitEvent : IComponentData
+public struct HitboxComponent : IComponentData
+public struct HurtboxComponent : IComponentData
 public struct IceIntegrityComponent : IComponentData
 public struct IceMeltEffectComponent : IComponentData
 public struct IceMeltedEvent : IComponentData
@@ -195,11 +229,16 @@ public struct IdentityComponent : IComponentData
 public struct InputBridgeTag : IComponentData { }
 public struct InputComponent : IComponentData
 public struct InputSettingsComponent : IComponentData
+public struct InvulnerableTag : IComponentData
+public struct InvulnerableTag : IComponentData {}
 public struct ItemAddedToSlotEvent : IComponentData
 public struct ItemUsedEvent : IComponentData
 public struct JumpInputComponent : IComponentData
 public struct JumpStartedEvent : IComponentData
 public struct KaiComponent : IComponentData
+public struct KnockbackComponent : IComponentData
+public struct KnockbackEndedEvent : IComponentData
+public struct KnockbackStartedEvent : IComponentData
 public struct LandingEvent : IComponentData
 public struct LavaTag : IComponentData
 public struct LavaTag : IComponentData { }
@@ -213,36 +252,50 @@ public struct MarinaComponent : IComponentData
 public struct MayaComponent : IComponentData
 public struct MessageHideEvent : IComponentData
 public struct MessageShowEvent : IComponentData
+public struct MidBossActivationEvent : IComponentData
 public struct MidBossComponent : IComponentData
+public struct MidBossEnrageEvent : IComponentData
+public struct MidBossSpecialAbilityReadyEvent : IComponentData
 public struct MovementComponent : IComponentData
 public struct MovementStartedEvent : IComponentData
 public struct MovementStoppedEvent : IComponentData
+public struct MovingObstacleTag : IComponentData {}
 public struct NatureAllyComponent : IComponentData
 public struct NatureAllyTargetInteractionJob
 public struct NatureCallAbilityComponent : IComponentData
 public struct NatureCallAbilityJob
+public struct NavigatorComponent : IComponentData
 public struct NeoComponent : IComponentData
 public struct ObjectiveCompletedEvent : IComponentData
 public struct ObjectiveComponent : IComponentData
 public struct ObjectiveProgressComponent : IComponentData
 public struct ObjectiveProgressEvent : IComponentData
+public struct ObstacleAvoiderComponent : IComponentData
 public struct ObstacleBreakThroughEvent : IComponentData
 public struct ObstacleComponent : IComponentData
+public struct ObstacleDamageEffectEvent : IComponentData
+public struct ObstacleDestroyedEvent : IComponentData
 public struct ObstacleHitEvent : IComponentData
+public struct ObstaclePhaseChangedEvent : IComponentData
+public struct ObstacleRepairedEvent : IComponentData
 public struct ObstacleSetup
 public struct ObstacleSpawnConfigComponent : IComponentData
 public struct ObstacleTypeComponent : IComponentData
+public struct OscillatingObstacleComponent : IComponentData
 public struct OxygenInteractionEvent : IComponentData
 public struct PathComponent : IComponentData
 public struct PathSegmentBuffer : IBufferElementData
 public struct PathSegmentComponent : IComponentData
 public struct PatrolComponent : IComponentData
+public struct PatrolPathComponent : IComponentData
 public struct PhysicsComponent : IComponentData
 public struct PhysicsTag : IComponentData { }
 public struct PlayerDataComponent : IComponentData
 public struct PlayerMovementComponent : IComponentData
 public struct PlayerProgressionComponent : IComponentData
 public struct PlayerTag : IComponentData { }
+public struct ProcessHitEventsJob : IJob
+public struct ProcessHitboxesJob : IJob
 public struct ProgressionAdvancementEvent : IComponentData
 public struct ProgressionSaveEvent : IComponentData
 public struct QueuedMessageTag : IComponentData
@@ -257,10 +310,13 @@ public struct RoomComponent : IComponentData
 public struct RoomDoorwayBuffer : IBufferElementData
 public struct RoomPopulatedTag : IComponentData { }
 public struct RoomTemplateComponent : IComponentData
+public struct RotatingObstacleComponent : IComponentData
 public struct RunnerLevelConfigComponent : IComponentData
 public struct ScenarioActivationTag : IComponentData
 public struct ScenarioReference : IComponentData
 public struct SegmentContentBuffer : IBufferElementData
+public struct SequencedBehaviorComponent : IComponentData
+public struct ShieldRegeneratedEvent : IComponentData
 public struct SlideEndedEvent : IComponentData
 public struct SlideInputComponent : IComponentData
 public struct SlideStartedEvent : IComponentData
@@ -268,6 +324,7 @@ public struct SlipInteractionEvent : IComponentData
 public struct SlipperyTag : IComponentData
 public struct SlipperyTag : IComponentData { }
 public struct SpawnPointComponent : IComponentData
+public struct StatusEffectComponent : IComponentData
 public struct T01_IceWall : IComponentData
 public struct T02_IceBlock : IComponentData
 public struct T03_IcySurface : IComponentData
@@ -277,9 +334,11 @@ public struct T06_Avalanche : IComponentData
 public struct T07_IceBridge : IComponentData
 public struct T08_FreezingWind : IComponentData
 public struct TagComponent : IComponentData
+public struct TemporaryObstacleComponent : IComponentData
 public struct TimeManagerTag : IComponentData { }
 public struct TimeScaleComponent : IComponentData
 public struct TouchInputComponent : IComponentData
+public struct TouchInputSingleton : IComponentData
 public struct ToxicGroundTag : IComponentData
 public struct TransformComponent : IComponentData
 public struct TriggeredTag : IComponentData

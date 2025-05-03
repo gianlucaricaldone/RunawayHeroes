@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 03/05/2025 21:18:30
+# Generato il: 03/05/2025 23:54:32
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -4671,11 +4671,66 @@ namespace RunawayHeroes.ECS.Components.Enemies
 namespace RunawayHeroes.ECS.Components.Enemies
 {
      <summary>
-    /// 
+    /// Componente che definisce le caratteristiche di un mid-boss.
+    /// I mid-boss sono nemici più potenti dei normali ma meno complessi dei boss finali,
+    /// che possono apparire a metà livello o alla fine di segmenti specifici.
     /// </summary>
 
     public struct MidBossComponent : IComponentData
     {
+        public MidBossType Type;
+        public int Tier;
+        public bool HasEnragedState;
+        public float EnrageThreshold;
+        public float EnragedDamageMultiplier;
+        public float EnragedSpeedMultiplier;
+        public SpecialAbilityType SpecialAbility;
+        public float SpecialAbilityCooldown;
+        public float CurrentSpecialCooldown;
+        public bool IsEnraged;
+        public bool IsActivated;
+    }
+     <summary>
+    /// Tipi di mid-boss disponibili nel gioco
+    /// </summary>
+
+    public enum MidBossType
+    {
+        SecurityCaptain = 0,
+        ArmoredDrone = 1,
+        TurretCommander = 2,
+        ElderShaman = 10,
+        CorruptedTreent = 11,
+        PrimalHunter = 12,
+        FrostGiant = 20,
+        IceGolem = 21,
+        StormCaller = 22,
+        LavaConstruct = 30,
+        AshWraith = 31,
+        MagmaSerpent = 32,
+        DeepStalker = 40,
+        CoralGuardian = 41,
+        VoidSiren = 42,
+        BinaryReaper = 50,
+        FirewallEnforcer = 51,
+        DataPredator = 52
+    }
+     <summary>
+    /// Abilità speciali dei mid-boss
+    /// </summary>
+
+    public enum SpecialAbilityType
+    {
+        None = 0,
+        AreaStun = 1,
+        ShieldBurst = 2,
+        TeleportStrike = 3,
+        SummonMinions = 4,
+        ElementalFury = 5,
+        HealthDrain = 6,
+        BerserkRage = 7,
+        DamageReflection = 8,
+        DeathThroes = 9
     }
 }
 
@@ -4699,11 +4754,77 @@ namespace RunawayHeroes.ECS.Components.Enemies
 namespace RunawayHeroes.ECS.Components.Enemies
 {
      <summary>
-    /// 
+    /// Componente che definisce le proprietà e i parametri di attacco
+    /// per un'entità nemica o per oggetti che possono infliggere danni.
     /// </summary>
 
     public struct AttackComponent : IComponentData
     {
+        public float BaseDamage;
+        public float AttackRange;
+        public float AttackCooldown;
+        public float CurrentCooldown;
+        public AttackPatternType PatternType;
+        public byte PatternVariant;
+        public float PatternSpeed;
+        public float CriticalChance;
+        public float CriticalMultiplier;
+        public ElementType ElementType;
+        public StatusEffectType StatusEffect;
+        public float StatusEffectChance;
+        public float StatusEffectDuration;
+        public bool IsAreaEffect;
+        public float AreaRadius;
+        public float AreaFalloff;
+    }
+     <summary>
+    /// Tipi di pattern di attacco disponibili
+    /// </summary>
+
+    public enum AttackPatternType
+    {
+        Direct = 0,
+        Sweep = 1,
+        Burst = 2,
+        Charge = 3,
+        Projectile = 4,
+        AOE = 5,
+        Summon = 6,
+        DoT = 7,
+        Teleport = 8,
+        Special = 9
+    }
+     <summary>
+    /// Tipi di elementi per gli attacchi
+    /// </summary>
+
+    public enum ElementType
+    {
+        None = 0,
+        Fire = 1,
+        Ice = 2,
+        Electric = 3,
+        Poison = 4,
+        Digital = 5,
+        Water = 6,
+        Earth = 7,
+        Wind = 8
+    }
+     <summary>
+    /// Tipi di effetti di stato che possono essere applicati da un attacco
+    /// </summary>
+
+    public enum StatusEffectType
+    {
+        None = 0,
+        Burn = 1,
+        Freeze = 2,
+        Paralyze = 3,
+        Poison = 4,
+        Corrupt = 5,
+        Drown = 6,
+        Stun = 7,
+        Confuse = 8
     }
 }
 
@@ -4713,11 +4834,25 @@ namespace RunawayHeroes.ECS.Components.Enemies
 namespace RunawayHeroes.ECS.Components.Enemies
 {
      <summary>
-    /// 
+    /// Componente che definisce il comportamento di pattugliamento di un nemico.
+    /// Gestisce il percorso di pattugliamento, le tempistiche e le configurazioni per
+    /// i nemici che seguono percorsi predefiniti.
     /// </summary>
 
     public struct PatrolComponent : IComponentData
     {
+        public float3 StartPoint;
+        public float3 EndPoint;
+        public byte CurrentWaypointIndex;
+        public float WaypointReachedDistance;
+        public float PatrolSpeed;
+        public float WaitTimeAtWaypoint;
+        public float WaitTimer;
+        public bool IsWaiting;
+        public bool IsCircular;
+        public bool IsReversing;
+        public float LookAheadDistance;
+        public float RotationSpeed;
     }
 }
 
@@ -4727,11 +4862,50 @@ namespace RunawayHeroes.ECS.Components.Enemies
 namespace RunawayHeroes.ECS.Components.Enemies
 {
      <summary>
-    /// 
+    /// Componente che definisce le caratteristiche e il comportamento di un boss.
+    /// I boss sono nemici speciali con meccaniche di combattimento complesse basate
+    /// su fasi e con attacchi unici al tema del mondo in cui si trovano.
     /// </summary>
 
     public struct BossComponent : IComponentData
     {
+        public BossType Type;
+        public int CurrentPhase;
+        public int TotalPhases;
+        public float[] PhaseThresholds;
+        public float PhaseTransitionTimer;
+        public float SpecialAttackCooldown;
+        public float CurrentPhaseIntensity;
+        public float PhaseIntensityRate;
+        public bool IsInvulnerable;
+        public float InvulnerabilityTimer;
+        public bool HasMinions;
+        public int MaxMinionCount;
+        public float MinionSpawnCooldown;
+        public bool IsEnraged;
+        public bool IsActivated;
+        public float GetCurrentHealthPercentage(float currentHealth, float maxHealth);
+        public bool ShouldTransitionToNextPhase(float currentHealth, float maxHealth);
+    }
+     <summary>
+    /// Tipi di boss disponibili nel gioco
+    /// </summary>
+
+    public enum BossType
+    {
+        SecurityDirector = 0,
+        PrototypeWarMech = 1,
+        AncientGuardian = 10,
+        CorruptedSpirit = 11,
+        FrostLord = 20,
+        AncientConstruct = 21,
+        MoltenTitan = 30,
+        FireElemental = 31,
+        AbyssalHorror = 40,
+        DeepDweller = 41,
+        CorruptedAI = 50,
+        SecurityOvermind = 51,
+        Architect = 100
     }
 }
 
@@ -5221,13 +5395,13 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// inclusi i messaggi di istruzione del tutorial, notifiche e avvisi.
     /// </summary>
 
-    public partial class UIMessageSystem : ISystem
+    public partial struct UIMessageSystem : ISystem
     {
         private GameObject _messagePanel;
         private TextMeshProUGUI _messageText;
         private Animator _messageAnimator;
         private Image _backgroundImage;
-        private readonly Color[] _messageTypeColors;
+        private Color[] _messageTypeColors;
         private bool _isMessageVisible;
         private float _messageTimer;
         private Entity _currentMessageEntity;
@@ -5267,12 +5441,12 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// Mostra il pannello dei messaggi con animazione
         /// </summary>
 
-        private void ShowMessage();
+        private void ShowMessage(SystemState state);
          <summary>
         /// Nasconde il pannello dei messaggi con animazione
         /// </summary>
 
-        private void HideCurrentMessage();
+        private void HideCurrentMessage(SystemState state);
         private System.Collections.IEnumerator FadeIn(CanvasGroup canvasGroup);
         private System.Collections.IEnumerator FadeOut(CanvasGroup canvasGroup, GameObject panel);
         private System.Collections.IEnumerator DisableAfterDelay(GameObject obj, float delay);
@@ -5352,7 +5526,7 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// permettendo al giocatore di cambiare personaggio durante il gameplay.
     /// </summary>
 
-    public partial class ResonanceUISystem : SystemBase
+    public partial struct ResonanceUISystem : ISystem
     {
         private GameObject _resonanceButton;
         private GameObject _characterMenu;
@@ -5370,9 +5544,11 @@ namespace RunawayHeroes.ECS.Systems.UI
         private float _waveEffectTimer;
         private float _unlockEffectTimer;
         private EntityQuery _resonanceQuery;
-        protected override void OnCreate();
-        protected override void OnStartRunning();
-        protected override void OnUpdate();
+        public SystemState SystemState { ... }
+        public void OnCreate(SystemState state);
+        public void OnStartRunning(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
          <summary>
         /// Aggiorna l'overlay del cooldown
         /// </summary>
@@ -5419,6 +5595,10 @@ namespace RunawayHeroes.ECS.Systems.UI
 
         public void PlayUnlockEffect(int characterIndex);
     }
+    public class ResonanceUISystemGroup : ComponentSystemGroup
+    {
+        public SystemState SystemState { ... }
+    }
 }
 
 
@@ -5432,21 +5612,53 @@ namespace RunawayHeroes.ECS.Systems.Core
     /// Gestisce aspetti come materiali, mesh, effetti visivi e visibilità delle entità.
     /// </summary>
 
-    public partial class RenderSystem : SystemBase
+    public partial struct RenderSystem : ISystem
     {
+        private EntityQuery _renderableEntitiesQuery;
          <summary>
         /// Inizializza il sistema di rendering, configurando eventuali risorse grafiche condivise,
         /// shader, e query per le entità che necessitano di rendering.
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna la rappresentazione visiva di tutte le entità con componenti di rendering,
         /// sincronizzando le loro proprietà grafiche con lo stato attuale dei componenti ECS.
         /// Gestisce ottimizzazioni come culling e level of detail.
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
+         <summary>
+        /// Metodo per operazioni di rendering che richiedono accesso all'API Unity
+        /// e non sono compatibili con Burst
+        /// </summary>
+
+        private void UpdateRenderingState(SystemState state);
+    }
+     <summary>
+    /// Job per sincronizzare i dati di trasformazione con il sistema di rendering
+    /// </summary>
+
+    public partial struct SyncRenderTransformsJob : IJobEntity
+    {
+        public void Execute(TransformComponent transform, RenderComponent renderer);
+    }
+     <summary>
+    /// Componente che collega un'entità ECS con la sua rappresentazione visiva in Unity
+    /// </summary>
+
+    public struct RenderComponent : IComponentData
+    {
+        public Entity VisualEntity;
+        public bool IsVisible;
+        public float CullingDistance;
+        public int RenderLayer;
+        public int MaterialID;
     }
 }
 
@@ -5460,19 +5672,33 @@ namespace RunawayHeroes.ECS.Systems.Core
     /// Si occupa di applicare gravità, aggiornare velocità e posizioni e gestire collisioni semplici.
     /// </summary>
 
-    public partial class PhysicsSystem : SystemBase
+    public partial struct PhysicsSystem : ISystem
     {
         private EntityQuery _physicsQuery;
          <summary>
         /// Inizializza il sistema e definisce le query per le entità
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulizia delle risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna la simulazione fisica per tutte le entità rilevanti ad ogni frame
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job che esegue la simulazione fisica per ciascuna entità
+    /// </summary>
+
+    public partial struct PhysicsSimulationJob : IJobEntity
+    {
+        public float DeltaTime;
+        public void Execute(TransformComponent transform, PhysicsComponent physics);
     }
 }
 
@@ -5488,20 +5714,28 @@ namespace RunawayHeroes.ECS.Systems.Core
     /// o eventi di gioco.
     /// </summary>
 
-    public partial class EntityLifecycleSystem : SystemBase
+    public partial struct EntityLifecycleSystem : ISystem
     {
+        private EntityQuery _timeBasedEntitiesQuery;
+        private EntityQuery _distanceBasedEntitiesQuery;
+        private EntityQuery _poolableEntitiesQuery;
          <summary>
         /// Inizializza il sistema di gestione del ciclo di vita delle entità e 
         /// configura le query necessarie.
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce eventuali risorse allocate dal sistema
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
          <summary>
         /// Gestisce la creazione, distruzione e lo stato di attivazione delle entità
         /// in base a vari criteri come distanza, tempo di vita, o eventi specifici.
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
     }
 }
 
@@ -5516,21 +5750,49 @@ namespace RunawayHeroes.ECS.Systems.Core
     /// tra giocatori, nemici, proiettili, ostacoli e altri elementi interattivi.
     /// </summary>
 
-    public partial class CollisionSystem : SystemBase
+    public partial struct CollisionSystem : ISystem
     {
+        private EntityQuery _collidersQuery;
          <summary>
         /// Inizializza il sistema di collisione, configurando le strutture dati necessarie
         /// per la gestione efficiente delle collisioni e registrando eventuali callback.
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
          <summary>
         /// Rileva e gestisce le collisioni tra entità ad ogni frame, generando eventi
         /// appropriati e applicando effetti fisici come rimbalzi, danneggiamenti o trigger.
         /// Ottimizza il processo utilizzando tecniche di broad e narrow phase.
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per la detection delle collisioni (stub)
+    /// </summary>
+
+    public partial struct CollisionDetectionJob : IJob
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public void Execute();
+    }
+     <summary>
+    /// Evento generato quando avviene una collisione tra due entità
+    /// </summary>
+
+    public struct CollisionEvent : IComponentData
+    {
+        public Entity EntityA;
+        public Entity EntityB;
+        public float3 ContactPoint;
+        public float3 Normal;
+        public float ImpactForce;
+        public bool IsTrigger;
     }
 }
 
@@ -5545,21 +5807,35 @@ namespace RunawayHeroes.ECS.Systems.Core
     /// delle entità nel mondo di gioco.
     /// </summary>
 
-    public partial class TransformSystem : SystemBase
+    public partial struct TransformSystem : ISystem
     {
+        private EntityQuery _transformQuery;
          <summary>
-        /// Inizializza il sistema di trasformazione, configurando eventuali query di entità
-        /// o dipendenze con altri sistemi.
+        /// Inizializza il sistema di trasformazione, configurando le query di entità
+        /// necessarie per la sincronizzazione.
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Cleanup del sistema quando viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna la trasformazione di tutte le entità che hanno sia un TransformComponent
         /// che le necessarie componenti di trasformazione native di Unity DOTS (come Translation,
         /// Rotation, e NonUniformScale).
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per sincronizzare TransformComponent con componenti di trasformazione native
+    /// </summary>
+
+    public partial struct SyncTransformsJob : IJobEntity
+    {
+        public void Execute(LocalTransform localTransform, RunawayHeroes.ECS.Components.Core.TransformComponent transformComponent);
     }
 }
 
@@ -5569,13 +5845,106 @@ namespace RunawayHeroes.ECS.Systems.Core
 namespace RunawayHeroes.ECS.Systems.Combat
 {
      <summary>
-    /// 
+    /// Sistema responsabile della gestione delle hitbox di attacco e hurtbox di danno.
+    /// Rileva collisioni tra hitbox offensive e hurtbox difensive, generando eventi di danno
+    /// quando si verificano impatti validi. Gestisce anche la tempistica degli attacchi e
+    /// i frame di invulnerabilità.
     /// </summary>
 
-    public partial class HitboxSystem : SystemBase
+    public partial struct HitboxSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _hitboxQuery;
+        private EntityQuery _hurtboxQuery;
+         <summary>
+        /// Inizializza il sistema di hitbox e prepara le query per le entità
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna le hitbox e rileva le collisioni ad ogni frame
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job che processa tutte le hitbox e rileva collisioni con hurtbox
+    /// </summary>
+
+    public struct ProcessHitboxesJob : IJob
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public NativeArray<Entity> HitboxEntities;
+        public NativeArray<HitboxComponent> HitboxComponents;
+        public NativeArray<TransformComponent> HitboxTransforms;
+        public NativeArray<Entity> HurtboxEntities;
+        public NativeArray<HurtboxComponent> HurtboxComponents;
+        public NativeArray<TransformComponent> HurtboxTransforms;
+        public void Execute();
+    }
+     <summary>
+    /// Componente che definisce una hitbox (box di attacco)
+    /// </summary>
+
+    public struct HitboxComponent : IComponentData
+    {
+        public Entity OwnerEntity;
+        public float Radius;
+        public float Damage;
+        public AttackType AttackType;
+        public float KnockbackForce;
+        public float InitialActiveTime;
+        public float RemainingActiveTime;
+        public Entity HitEntities;
+    }
+     <summary>
+    /// Componente che definisce una hurtbox (box di vulnerabilità)
+    /// </summary>
+
+    public struct HurtboxComponent : IComponentData
+    {
+        public Entity OwnerEntity;
+        public float Radius;
+        public float DamageMultiplier;
+    }
+     <summary>
+    /// Tag per indicare entità temporaneamente invulnerabili
+    /// </summary>
+
+    public struct InvulnerableTag : IComponentData
+    {
+    }
+     <summary>
+    /// Tipi di attacco supportati
+    /// </summary>
+
+    public enum AttackType
+    {
+        Melee = 0,
+        Ranged = 1,
+        Special = 2,
+        Environmental = 3
+    }
+     <summary>
+    /// Evento generato quando una hitbox colpisce una hurtbox
+    /// </summary>
+
+    public struct HitEvent : IComponentData
+    {
+        public Entity AttackerEntity;
+        public Entity VictimEntity;
+        public Entity HitboxEntity;
+        public Entity HurtboxEntity;
+        public float3 HitPoint;
+        public float Damage;
+        public AttackType AttackType;
+        public float3 KnockbackDirection;
+        public float KnockbackForce;
     }
 }
 
@@ -5585,13 +5954,88 @@ namespace RunawayHeroes.ECS.Systems.Combat
 namespace RunawayHeroes.ECS.Systems.Combat
 {
      <summary>
-    /// 
+    /// Sistema che gestisce l'effetto di knockback (spinta) applicato alle entità
+    /// in seguito a colpi, esplosioni o altre forze. Applica una forza temporanea
+    /// che spinge l'entità in una certa direzione, considerando peso, resistenza
+    /// e altre caratteristiche dell'entità.
     /// </summary>
 
-    public partial class KnockbackSystem : SystemBase
+    public partial struct KnockbackSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _knockbackQuery;
+        private EntityQuery _hitEventsQuery;
+         <summary>
+        /// Inizializza il sistema di knockback e prepara le query per le entità
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna gli effetti di knockback ad ogni frame
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job che processa gli eventi di hit per applicare nuovo knockback
+    /// </summary>
+
+    public struct ProcessHitEventsJob : IJob
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public NativeArray<HitEvent> HitEvents;
+        public NativeArray<Entity> HitEntities;
+        public EntityManager EntityManager;
+        public ComponentLookup<PhysicsComponent> PhysicsLookup;
+        public void Execute();
+    }
+     <summary>
+    /// Job che aggiorna le entità con knockback attivo
+    /// </summary>
+
+    public partial struct UpdateKnockbackJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public void Execute(Entity entity, int entityInQueryIndex, KnockbackComponent knockback, PhysicsComponent physics);
+    }
+     <summary>
+    /// Componente che rappresenta un effetto di knockback attivo su un'entità
+    /// </summary>
+
+    public struct KnockbackComponent : IComponentData
+    {
+        public float3 Direction;
+        public float RemainingForce;
+        public float RemainingTime;
+        public float Duration;
+        public Entity AttackerEntity;
+    }
+     <summary>
+    /// Evento generato quando inizia un effetto di knockback
+    /// </summary>
+
+    public struct KnockbackStartedEvent : IComponentData
+    {
+        public Entity VictimEntity;
+        public Entity AttackerEntity;
+        public float3 KnockbackDirection;
+        public float KnockbackForce;
+        public float3 StartPosition;
+    }
+     <summary>
+    /// Evento generato quando termina un effetto di knockback
+    /// </summary>
+
+    public struct KnockbackEndedEvent : IComponentData
+    {
+        public Entity VictimEntity;
+        public Entity AttackerEntity;
+        public float TotalDistance;
     }
 }
 
@@ -5601,13 +6045,96 @@ namespace RunawayHeroes.ECS.Systems.Combat
 namespace RunawayHeroes.ECS.Systems.Combat
 {
      <summary>
-    /// 
+    /// Sistema che gestisce l'applicazione del danno alle entità.
+    /// Elabora gli eventi di danno, applica modificatori di resistenza/vulnerabilità 
+    /// e notifica gli altri sistemi attraverso eventi specifici.
     /// </summary>
 
-    public partial class DamageSystem : SystemBase
+    public partial struct DamageSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _damageEventsQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per elaborare gli eventi di danno
+    /// </summary>
+
+    public partial struct ProcessDamageEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<ArmorComponent> ArmorLookup;
+        public EntityManager EntityManager;
+        public void Execute(Entity entity, int entityInQueryIndex, DamageEvent damageEvent);
+         <summary>
+        /// Calcola il danno finale considerando armatura e resistenze
+        /// </summary>
+
+        private float CalculateFinalDamage(DamageEvent damageEvent);
+    }
+     <summary>
+    /// Componente che rappresenta l'armatura e le resistenze di un'entità
+    /// </summary>
+
+    public struct ArmorComponent : IComponentData
+    {
+        public float PhysicalDamageReduction;
+        public float EnemyDamageReduction;
+        public float HazardDamageReduction;
+        public float FallDamageReduction;
+        public float StatusEffectResistance;
+    }
+     <summary>
+    /// Motivi per cui un danno può essere bloccato
+    /// </summary>
+
+    public enum BlockReason
+    {
+        Invulnerability = 0,
+        Immunity = 1,
+        Shield = 2,
+        Dodge = 3,
+        Parry = 4,
+        AbilityBlock = 5
+    }
+     <summary>
+    /// Evento generato quando un'entità riceve danno
+    /// </summary>
+
+    public struct DamageReceivedEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public Entity SourceEntity;
+        public float DamageAmount;
+        public DamageType DamageType;
+        public float3 ImpactPosition;
+        public float RemainingHealth;
+        public float RemainingShield;
+    }
+     <summary>
+    /// Evento generato quando un danno viene bloccato
+    /// </summary>
+
+    public struct DamageBlockedEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public Entity SourceEntity;
+        public float DamageAmount;
+        public DamageType DamageType;
+        public BlockReason BlockReason;
+    }
+     <summary>
+    /// Evento generato quando un'entità muore
+    /// </summary>
+
+    public struct DeathEvent : IComponentData
+    {
+        public Entity DeadEntity;
+        public Entity KillerEntity;
+        public DamageType DamageType;
+        public float3 DeathPosition;
     }
 }
 
@@ -5617,13 +6144,48 @@ namespace RunawayHeroes.ECS.Systems.Combat
 namespace RunawayHeroes.ECS.Systems.Combat
 {
      <summary>
-    /// 
+    /// Sistema che gestisce la salute delle entità, il recupero della salute,
+    /// la gestione delle invulnerabilità temporanee e lo stato di morte.
     /// </summary>
 
-    public partial class HealthSystem : SystemBase
+    public partial struct HealthSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _healthEntitiesQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per gestire il componente salute delle entità
+    /// </summary>
+
+    public partial struct ProcessHealthJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public void Execute(Entity entity, int entityInQueryIndex, HealthComponent health);
+    }
+     <summary>
+    /// Evento generato quando un'entità rigenera salute
+    /// </summary>
+
+    public struct HealthRegeneratedEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public float RegenAmount;
+        public float CurrentHealth;
+        public float CurrentShield;
+    }
+     <summary>
+    /// Evento generato quando un'entità rigenera scudo
+    /// </summary>
+
+    public struct ShieldRegeneratedEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public float RegenAmount;
+        public float CurrentHealth;
+        public float CurrentShield;
     }
 }
 
@@ -5683,13 +6245,59 @@ namespace RunawayHeroes.ECS.Systems.Input
 namespace RunawayHeroes.ECS.Systems.Input
 {
      <summary>
-    /// 
+    /// Sistema che gestisce gli input touch per dispositivi mobili.
+    /// Elabora gli eventi di touch, riconosce i gesti principali e li
+    /// converte in componenti di input utilizzabili dagli altri sistemi.
     /// </summary>
 
-    public partial class TouchInputSystem : SystemBase
+    public partial struct TouchInputSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private Entity _inputEntity;
+        private float _swipeThreshold;
+        private float _tapThreshold;
+        private float _doubleTapThreshold;
+        private bool _isTouching;
+        private float _touchStartTime;
+        private float2 _touchStartPosition;
+        private float _lastTapTime;
+         <summary>
+        /// Inizializza il sistema di input touch
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulizia delle risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Elabora gli input touch ad ogni frame
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Tag per il singleton dell'input touch
+    /// </summary>
+
+    public struct TouchInputSingleton : IComponentData
+    {
+    }
+     <summary>
+    /// Componente che contiene lo stato dell'input touch
+    /// </summary>
+
+    public struct TouchInputComponent : IComponentData
+    {
+        public bool IsTouching;
+        public float2 TouchPosition;
+        public float2 TouchDelta;
+        public bool Tap;
+        public bool DoubleTap;
+        public bool SwipeUp;
+        public bool SwipeDown;
+        public bool SwipeLeft;
+        public bool SwipeRight;
     }
 }
 
@@ -5699,13 +6307,63 @@ namespace RunawayHeroes.ECS.Systems.Input
 namespace RunawayHeroes.ECS.Systems.Input
 {
      <summary>
-    /// 
+    /// Sistema responsabile del riconoscimento di gesti complessi
+    /// come pinch, rotate, e altri pattern di movimento che possono
+    /// attivare abilità speciali o comandi di gioco avanzati.
     /// </summary>
 
-    public partial class GestureRecognitionSystem : SystemBase
+    public partial struct GestureRecognitionSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private Entity _gestureEntity;
+        private float _pinchThreshold;
+        private float _rotationThreshold;
+        private float _longPressThreshold;
+        private float _edgeSwipeThreshold;
+        private bool _isMultiTouch;
+        private float _touchStartTime;
+        private float2 _touch1StartPos;
+        private float2 _touch2StartPos;
+        private float _initialTouchDistance;
+        private float _initialTouchAngle;
+         <summary>
+        /// Inizializza il sistema di riconoscimento gesti
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulizia delle risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna il riconoscimento dei gesti ad ogni frame
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Tag per il singleton del sistema di riconoscimento gesti
+    /// </summary>
+
+    public struct GestureRecognitionSingleton : IComponentData
+    {
+    }
+     <summary>
+    /// Componente che contiene lo stato dei gesti riconosciuti
+    /// </summary>
+
+    public struct GestureComponent : IComponentData
+    {
+        public bool PinchIn;
+        public bool PinchOut;
+        public bool Rotate;
+        public float RotationAngle;
+        public bool LongPress;
+        public float2 LongPressPosition;
+        public bool EdgeSwipeTop;
+        public bool EdgeSwipeBottom;
+        public bool EdgeSwipeLeft;
+        public bool EdgeSwipeRight;
     }
 }
 
@@ -5715,13 +6373,253 @@ namespace RunawayHeroes.ECS.Systems.Input
 namespace RunawayHeroes.ECS.Systems.World
 {
      <summary>
-    /// 
+    /// Sistema che gestisce il comportamento e lo stato degli ostacoli nel gioco.
+    /// Si occupa di aggiornare, attivare e disattivare ostacoli in base a varie condizioni.
     /// </summary>
 
-    public partial class ObstacleSystem : SystemBase
+    public partial struct ObstacleSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _activeObstaclesQuery;
+        private EntityQuery _movingObstaclesQuery;
+        private EntityQuery _temporaryObstaclesQuery;
+        private EntityQuery _sequencedObstaclesQuery;
+        private EntityQuery _damagedObstaclesQuery;
+        private float _obstacleUpdateTimer;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di gestione ostacoli
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna lo stato e il comportamento degli ostacoli
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int sortKey, PhysicsComponent physics, TransformComponent transform, ObstacleComponent obstacle);
+         void Execute(Entity entity, int sortKey, TemporaryObstacleComponent temporary);
+         void Execute(Entity entity, int sortKey, SequencedBehaviorComponent sequence);
+         void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, DamagedStateComponent damaged);
+         void Execute(Entity entity, int sortKey, TransformComponent transform, ObstacleComponent obstacle);
+    }
+     <summary>
+        /// Job che aggiorna gli ostacoli in movimento
+        /// </summary>
+
+    private partial struct UpdateMovingObstaclesJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, PhysicsComponent physics, TransformComponent transform, ObstacleComponent obstacle);
+    }
+     <summary>
+        /// Job che aggiorna gli ostacoli temporanei (con durata limitata)
+        /// </summary>
+
+    private partial struct UpdateTemporaryObstaclesJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, TemporaryObstacleComponent temporary);
+    }
+     <summary>
+        /// Job che aggiorna gli ostacoli con comportamenti in sequenza
+        /// </summary>
+
+    private partial struct UpdateSequencedObstaclesJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, SequencedBehaviorComponent sequence);
+    }
+     <summary>
+        /// Job che aggiorna gli ostacoli danneggiati
+        /// </summary>
+
+    private partial struct UpdateDamagedObstaclesJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, DamagedStateComponent damaged);
+    }
+     <summary>
+        /// Job che attiva gli ostacoli in base alla distanza dai giocatori
+        /// </summary>
+
+    private partial struct ActivateObstaclesByDistanceJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, TransformComponent transform, ObstacleComponent obstacle);
+    }
+     <summary>
+    /// Componente per ostacoli che si muovono lungo un percorso predefinito
+    /// </summary>
+
+    public struct PatrolPathComponent : IComponentData
+    {
+        public float3 StartPoint;
+        public float3 EndPoint;
+        public byte CurrentPointIndex;
+        public byte TotalPoints;
+        public float3 CurrentPoint;
+        public float MoveSpeed;
+        public bool IsLooping;
+        public float3 GetPoint(int index);
+    }
+     <summary>
+    /// Componente per ostacoli che si muovono con moto oscillatorio
+    /// </summary>
+
+    public struct OscillatingObstacleComponent : IComponentData
+    {
+        public float3 CenterPosition;
+        public float AmplitudeX;
+        public float AmplitudeY;
+        public float AmplitudeZ;
+        public float FrequencyX;
+        public float FrequencyY;
+        public float FrequencyZ;
+        public float CurrentTime;
+    }
+     <summary>
+    /// Componente per ostacoli rotanti
+    /// </summary>
+
+    public struct RotatingObstacleComponent : IComponentData
+    {
+        public float3 RotationAxis;
+        public float RotationSpeed;
+    }
+     <summary>
+    /// Componente per ostacoli temporanei con durata limitata
+    /// </summary>
+
+    public struct TemporaryObstacleComponent : IComponentData
+    {
+        public float TotalLifetime;
+        public float RemainingLifetime;
+        public bool HasFadeOut;
+        public float FadeOutTime;
+    }
+     <summary>
+    /// Componente per ostacoli con comportamenti in sequenza
+    /// </summary>
+
+    public struct SequencedBehaviorComponent : IComponentData
+    {
+        public byte CurrentPhase;
+        public byte TotalPhases;
+        public float CurrentPhaseTimer;
+        public PhaseType Phase1Type;
+        public PhaseType Phase2Type;
+        public PhaseType Phase3Type;
+        public PhaseType Phase4Type;
+        public float Phase1Duration;
+        public float Phase2Duration;
+        public float Phase3Duration;
+        public float Phase4Duration;
+        public float3 Phase1Direction;
+        public float3 Phase2Direction;
+        public float3 Phase3Direction;
+        public float3 Phase4Direction;
+        public float Phase1Speed;
+        public float Phase2Speed;
+        public float Phase3Speed;
+        public float Phase4Speed;
+        public float GetPhaseDuration(int phaseIndex);
+        public PhaseType GetPhaseType(int phaseIndex);
+        public float3 GetPhaseDirection(int phaseIndex);
+        public float GetPhaseSpeed(int phaseIndex);
+    }
+    public enum PhaseType
+    {
+        Idle = 0,
+        Warning = 1,
+        Active = 2,
+        Recovery = 3
+    }
+     <summary>
+    /// Componente per ostacoli danneggiati
+    /// </summary>
+
+    public struct DamagedStateComponent : IComponentData
+    {
+        public float MaxIntegrity;
+        public float CurrentIntegrity;
+        public byte DamageLevel;
+        public bool IsDestroyed;
+        public bool CanRecover;
+        public float RecoveryDelay;
+        public float RecoveryTimer;
+        public bool HasContinuousEffects;
+        public float EffectInterval;
+        public float EffectTimer;
+        public byte EffectType;
+    }
+     <summary>
+    /// Componente per il ritardo della distruzione
+    /// </summary>
+
+    public struct DestructionDelayComponent : IComponentData
+    {
+        public float DestroyDelay;
+        public float RemainingTime;
+    }
+     <summary>
+    /// Tag per ostacoli in movimento
+    /// </summary>
+
+    public struct MovingObstacleTag : IComponentData
+    {
+    }
+     <summary>
+    /// Evento generato quando un ostacolo cambia fase
+    /// </summary>
+
+    public struct ObstaclePhaseChangedEvent : IComponentData
+    {
+        public Entity ObstacleEntity;
+        public byte NewPhase;
+        public byte TotalPhases;
+    }
+     <summary>
+    /// Evento generato quando un ostacolo viene distrutto
+    /// </summary>
+
+    public struct ObstacleDestroyedEvent : IComponentData
+    {
+        public Entity ObstacleEntity;
+    }
+     <summary>
+    /// Evento generato quando un ostacolo viene riparato
+    /// </summary>
+
+    public struct ObstacleRepairedEvent : IComponentData
+    {
+        public Entity ObstacleEntity;
+    }
+     <summary>
+    /// Evento generato per gli effetti di danno
+    /// </summary>
+
+    public struct ObstacleDamageEffectEvent : IComponentData
+    {
+        public Entity ObstacleEntity;
+        public byte DamageLevel;
+        public byte EffectType;
     }
 }
 
@@ -5899,37 +6797,50 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema responsabile della generazione dei contenuti (ostacoli, nemici, ecc.) in un segmento di percorso
     /// </summary>
 
-    public partial class SegmentContentGenerationSystem : SystemBase
+    public partial struct SegmentContentGenerationSystem : ISystem
     {
-        private Unity.Mathematics.Random _random;
         private uint _seed;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _segmentQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job per generare i contenuti dei segmenti
+    /// </summary>
+
+    public partial struct GenerateSegmentContentsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public uint Seed;
+        public ObstacleSpawnConfigComponent ObstacleConfig;
+        public EnemySpawnConfigComponent EnemyConfig;
+        public void Execute(Entity segmentEntity, int entityInQueryIndex, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer);
          <summary>
         /// Genera ostacoli all'interno di un segmento
         /// </summary>
 
-        private void GenerateObstacles(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, ObstacleSpawnConfigComponent config, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void GenerateObstacles(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, ObstacleSpawnConfigComponent config, Unity.Mathematics.Random random);
          <summary>
         /// Aggiunge tag speciali agli ostacoli in base al tema del segmento
         /// </summary>
 
-        private void AddSpecialObstacleTags(int entityInQueryIndex, Entity obstacleEntity, WorldTheme theme, ObstacleSpawnConfigComponent config, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void AddSpecialObstacleTags(int entityInQueryIndex, Entity obstacleEntity, WorldTheme theme, ObstacleSpawnConfigComponent config, Unity.Mathematics.Random random);
          <summary>
         /// Genera nemici all'interno di un segmento
         /// </summary>
 
-        private void GenerateEnemies(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, EnemySpawnConfigComponent config, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void GenerateEnemies(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, EnemySpawnConfigComponent config, Unity.Mathematics.Random random);
          <summary>
         /// Genera un singolo nemico nella posizione specificata
         /// </summary>
 
-        private void SpawnEnemy(int entityInQueryIndex, Entity segmentEntity, float3 position, WorldTheme theme, DynamicBuffer<SegmentContentBuffer> contentBuffer, EnemySpawnConfigComponent config, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void SpawnEnemy(int entityInQueryIndex, Entity segmentEntity, float3 position, WorldTheme theme, DynamicBuffer<SegmentContentBuffer> contentBuffer, EnemySpawnConfigComponent config, Unity.Mathematics.Random random);
          <summary>
         /// Genera collezionabili all'interno di un segmento
         /// </summary>
 
-        private void GenerateCollectibles(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void GenerateCollectibles(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, Unity.Mathematics.Random random);
     }
 }
 
@@ -5967,13 +6878,105 @@ namespace RunawayHeroes.ECS.Systems.World
 namespace RunawayHeroes.ECS.Systems.World
 {
      <summary>
-    /// 
+    /// Sistema che gestisce le zone pericolose (hazard) nell'ambiente di gioco.
+    /// Si occupa del rilevamento di entità all'interno di aree pericolose,
+    /// dell'applicazione di danni e effetti di stato, e dell'aggiornamento
+    /// delle proprietà delle zone pericolose nel tempo.
     /// </summary>
 
-    public partial class HazardSystem : SystemBase
+    public partial struct HazardSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _hazardsQuery;
+        private EntityQuery _vulnerableEntitiesQuery;
+        private ComponentLookup<StatusEffectComponent> _statusEffectLookup;
+        private float _effectTimer;
+        public float DeltaTime;
+        public float EffectTimer;
+        public NativeArray<float3> VulnerablePositions;
+        public NativeArray<Entity> VulnerableEntities;
+        public ComponentLookup<StatusEffectComponent> StatusEffects;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di gestione delle zone pericolose
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna gli effetti delle zone pericolose
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int sortKey, TransformComponent transform, HazardComponent hazard);
+         void Execute(Entity entity, int sortKey, HazardComponent hazard);
+    }
+     <summary>
+        /// Job che gestisce gli effetti delle zone pericolose sulle entità
+        /// </summary>
+
+    private partial struct ProcessHazardZonesJob : IJobEntity
+    {
+        public float DeltaTime;
+        public float EffectTimer;
+        public NativeArray<float3> VulnerablePositions;
+        public NativeArray<Entity> VulnerableEntities;
+        public ComponentLookup<StatusEffectComponent> StatusEffects;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, TransformComponent transform, HazardComponent hazard);
+    }
+     <summary>
+        /// Job che aggiorna gli effetti visivi delle zone pericolose
+        /// </summary>
+
+    private partial struct UpdateHazardVisualsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, HazardComponent hazard);
+    }
+     <summary>
+    /// Componente che rappresenta un effetto di stato attivo su un'entità
+    /// </summary>
+
+    public struct StatusEffectComponent : IComponentData
+    {
+        public byte Type;
+        public float Intensity;
+        public float Duration;
+        public float RemainingDuration;
+        public Entity SourceEntity;
+    }
+     <summary>
+    /// Tag per entità invulnerabili ai pericoli
+    /// </summary>
+
+    public struct InvulnerableTag : IComponentData
+    {
+    }
+     <summary>
+    /// Evento generato quando un'entità subisce danno
+    /// </summary>
+
+    public struct DamageEvent : IComponentData
+    {
+        public Entity Target;
+        public float Amount;
+        public Entity Source;
+        public byte DamageType;
+    }
+     <summary>
+    /// Evento generato per gli effetti visivi delle zone pericolose
+    /// </summary>
+
+    public struct HazardVisualEffectEvent : IComponentData
+    {
+        public Entity HazardEntity;
+        public byte EffectType;
+        public float Intensity;
     }
 }
 
@@ -6023,27 +7026,6 @@ namespace RunawayHeroes.ECS.Systems.World
         /// </summary>
 
         private void CreateObstacle(int entityInQueryIndex, Entity roomEntity, RoomComponent room, Unity.Mathematics.Random random);
-    }
-     <summary>
-    /// Tag component per identificare le stanze già popolate
-    /// </summary>
-
-    public struct RoomPopulatedTag : IComponentData
-    {
-         ref RoomComponent room;
-         ref RoomComponent ;
-         float enemyProbability;
-         float ;
-         float collectibleProbability;
-         float ;
-         float obstacleProbability;
-         float ;
-         ref EntityCommandBuffer.ParallelWriter commandBuffer;
-         ref EntityCommandBuffer.ParallelWriter Unity;
-         Mathematics.Random random;
-         int roomArea;
-         int maxEntities;
-         int numEnemies;
     }
      <summary>
     /// Tag component per identificare le stanze già popolate
@@ -6620,12 +7602,12 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     /// Job per aggiornare le visualizzazioni dell'aura di calore
     /// </summary>
 
-    public struct HeatAuraVisualUpdateJob
+    public partial struct HeatAuraVisualUpdateJob : IJobEntity
     {
         public float DeltaTime;
-        public EntityManager EntityManager;
         public EntityCommandBuffer.ParallelWriter ECB;
-        public void Run(EntityManager entityManager, EntityQuery query);
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public void Execute(int chunkIndexInQuery, Entity entity, HeatAuraVisualComponent auraVisual, TransformComponent transform);
     }
 }
 
@@ -6976,13 +7958,71 @@ namespace RunawayHeroes.ECS.Systems.Movement
 namespace RunawayHeroes.ECS.Systems.Movement
 {
      <summary>
-    /// 
+    /// Sistema che gestisce la navigazione delle entità nel mondo di gioco,
+    /// utilizzando il sistema di navigazione di Unity per calcolare percorsi
+    /// evitando ostacoli e seguendo il mesh di navigazione.
     /// </summary>
 
-    public partial class NavigationSystem : SystemBase
+    public partial struct NavigationSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _navigatorQuery;
+         <summary>
+        /// Inizializza il sistema di navigazione, configurando le query e altre risorse necessarie
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna la navigazione di tutte le entità ad ogni frame
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         <summary>
+        /// Calcola un percorso utilizzando il NavMesh di Unity
+        /// </summary>
+
+        private void CalculatePath(NavigatorComponent navigator, float3 startPosition);
+    }
+     <summary>
+    /// Componente che rappresenta un'entità navigante
+    /// </summary>
+
+    public struct NavigatorComponent : IComponentData
+    {
+        public bool HasDestination;
+        public float3 Destination;
+        public float MovementSpeed;
+        public float SteeringSpeed;
+        public bool RotateTowardsTarget;
+        public PathStatus PathStatus;
+        public float3[] PathPoints;
+        public int CurrentPathIndex;
+        public float WaypointReachedThreshold;
+    }
+     <summary>
+    /// Stato del calcolo del percorso
+    /// </summary>
+
+    public enum PathStatus
+    {
+        None = 0,
+        Calculating = 1,
+        Ready = 2,
+        Failed = 3
+    }
+     <summary>
+    /// Evento generato quando un'entità raggiunge la sua destinazione
+    /// </summary>
+
+    public struct DestinationReachedEvent : IComponentData
+    {
+        public Entity NavigatorEntity;
+        public float3 FinalDestination;
+        public float3 ActualPosition;
     }
 }
 
@@ -6992,13 +8032,54 @@ namespace RunawayHeroes.ECS.Systems.Movement
 namespace RunawayHeroes.ECS.Systems.Movement
 {
      <summary>
-    /// 
+    /// Sistema che implementa comportamenti di steering per evitare ostacoli.
+    /// Rileva potenziali collisioni con ostacoli nel percorso delle entità mobili
+    /// e modifica il loro movimento per evitarli in modo realistico.
     /// </summary>
 
-    public partial class ObstacleAvoidanceSystem : SystemBase
+    public partial struct ObstacleAvoidanceSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _avoidersQuery;
+        private EntityQuery _obstaclesQuery;
+         <summary>
+        /// Inizializza il sistema di obstacle avoidance
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna il comportamento di evitamento ostacoli per tutte le entità
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+    }
+     <summary>
+    /// Job che implementa il comportamento di obstacle avoidance
+    /// </summary>
+
+    public partial struct ObstacleAvoidanceJob : IJobEntity
+    {
+        public float DeltaTime;
+        public NativeArray<Entity> Obstacles;
+        public NativeArray<TransformComponent> ObstaclePositions;
+        public NativeArray<ObstacleComponent> ObstacleComponents;
+        public void Execute(Entity entity, PhysicsComponent physics, TransformComponent transform, ObstacleAvoiderComponent avoider);
+    }
+     <summary>
+    /// Componente che definisce il comportamento di obstacle avoidance
+    /// </summary>
+
+    public struct ObstacleAvoiderComponent : IComponentData
+    {
+        public float DetectionRadius;
+        public float AvoidanceRadius;
+        public float AvoidanceStrength;
+        public float MaxSteeringForce;
+        public float MoveSpeed;
     }
 }
 
@@ -7052,13 +8133,42 @@ namespace RunawayHeroes.ECS.Systems.Movement
 namespace RunawayHeroes.ECS.Systems.AI
 {
      <summary>
-    /// 
+    /// Sistema che gestisce il movimento di pattugliamento dei nemici.
+    /// Si occupa di far muovere i nemici lungo percorsi predefiniti o generati
+    /// dinamicamente, gestendo le tempistiche di attesa e le transizioni tra waypoint.
     /// </summary>
 
-    public partial class PatrolSystem : SystemBase
+    public partial struct PatrolSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _patrolQuery;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di pattugliamento
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna il movimento di pattugliamento di tutti i nemici
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int sortKey, PatrolComponent patrol, TransformComponent transform, PhysicsComponent physics);
+    }
+     <summary>
+        /// Job che gestisce il movimento di pattugliamento
+        /// </summary>
+
+    private partial struct PatrolMovementJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, PatrolComponent patrol, TransformComponent transform, PhysicsComponent physics);
     }
 }
 
@@ -7068,13 +8178,116 @@ namespace RunawayHeroes.ECS.Systems.AI
 namespace RunawayHeroes.ECS.Systems.AI
 {
      <summary>
-    /// 
+    /// Sistema che gestisce i pattern di attacco dei nemici.
+    /// Implementa logiche di attacco complesse in base ai tipi di pattern
+    /// definiti, coordina le fasi di attacco e genera gli eventi di danno.
     /// </summary>
 
-    public partial class AttackPatternSystem : SystemBase
+    public partial struct AttackPatternSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _attackingQuery;
+        private EntityQuery _targetQuery;
+        private ComponentLookup<AttackingStateComponent> _attackingStateLookup;
+        public float DeltaTime;
+        public float DeltaTime;
+        public NativeArray<float3> TargetPositions;
+        public ComponentLookup<AttackingStateComponent> AttackingStates;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di pattern di attacco
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna i pattern di attacco per tutti i nemici in stato di attacco
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void ProcessEnemyAttackEvents(SystemState state, EntityCommandBuffer ecb);
+         void Execute(AttackComponent attackComponent);
+         void Execute(Entity entity, int sortKey, AttackComponent attackComponent, TransformComponent transform, PhysicsComponent physics);
+         <summary>
+            /// Ottiene la durata di un pattern di attacco in base al tipo
+            /// </summary>
+
+        private float GetPatternDuration(AttackPatternType patternType);
+         <summary>
+            /// Applica il comportamento specifico per il pattern di attacco
+            /// </summary>
+
+        private void ApplyAttackPatternBehavior(Entity entity, int sortKey, AttackComponent attackComponent, TransformComponent transform, PhysicsComponent physics, AttackingStateComponent attackState);
+    }
+     <summary>
+        /// Job che aggiorna i timer di cooldown degli attacchi
+        /// </summary>
+
+    private partial struct UpdateAttackCooldownsJob : IJobEntity
+    {
+        public float DeltaTime;
+         void Execute(AttackComponent attackComponent);
+    }
+     <summary>
+        /// Job che elabora gli attacchi attivamente in esecuzione
+        /// </summary>
+
+    private partial struct ProcessActiveAttacksJob : IJobEntity
+    {
+        public float DeltaTime;
+        public NativeArray<float3> TargetPositions;
+        public ComponentLookup<AttackingStateComponent> AttackingStates;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, AttackComponent attackComponent, TransformComponent transform, PhysicsComponent physics);
+         <summary>
+            /// Ottiene la durata di un pattern di attacco in base al tipo
+            /// </summary>
+
+        private float GetPatternDuration(AttackPatternType patternType);
+         <summary>
+            /// Applica il comportamento specifico per il pattern di attacco
+            /// </summary>
+
+        private void ApplyAttackPatternBehavior(Entity entity, int sortKey, AttackComponent attackComponent, TransformComponent transform, PhysicsComponent physics, AttackingStateComponent attackState);
+    }
+     <summary>
+    /// Componente che rappresenta lo stato di un attacco in esecuzione
+    /// </summary>
+
+    public struct AttackingStateComponent : IComponentData
+    {
+        public float3 TargetPosition;
+        public byte AttackType;
+        public float StartTime;
+        public AttackPhase Phase;
+        public float Progress;
+    }
+     <summary>
+    /// Fasi di un attacco
+    /// </summary>
+
+    public enum AttackPhase
+    {
+        Startup = 0,
+        Active = 1,
+        Recovery = 2
+    }
+     <summary>
+    /// Evento di danno generato dagli attacchi
+    /// </summary>
+
+    public struct DamageEvent : IComponentData
+    {
+        public Entity SourceEntity;
+        public float3 TargetPosition;
+        public float Damage;
+        public float DamageRadius;
+        public byte ElementType;
+        public byte StatusEffectType;
+        public float StatusEffectDuration;
     }
 }
 
@@ -7084,13 +8297,118 @@ namespace RunawayHeroes.ECS.Systems.AI
 namespace RunawayHeroes.ECS.Systems.AI
 {
      <summary>
-    /// 
+    /// Sistema principale che coordina l'intelligenza artificiale dei nemici.
+    /// Gestisce il processo decisionale degli agenti nemici, la selezione degli
+    /// stati di comportamento, e le transizioni tra gli stati.
     /// </summary>
 
-    public partial class EnemyAISystem : SystemBase
+    public partial struct EnemyAISystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _aiAgentsQuery;
+        private EntityQuery _playerQuery;
+         <summary>
+        /// Inizializza il sistema di IA nemica
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna l'IA di tutti i nemici ad ogni frame
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         <summary>
+        /// Aggiorna i timer dell'IA
+        /// </summary>
+
+        private void UpdateAITimers(EnemyAIComponent ai, float deltaTime);
+         <summary>
+        /// Determina il prossimo stato dell'IA in base a vari fattori
+        /// </summary>
+
+        private AIState DetermineNextState(EnemyAIComponent ai, float distanceToPlayer, float3 position, float3 playerPosition);
+         <summary>
+        /// Gestisce l'uscita da uno stato
+        /// </summary>
+
+        private void ExitState(Entity entity, AIState state, SystemState systemState, EntityCommandBuffer ecb);
+         <summary>
+        /// Gestisce l'entrata in un nuovo stato
+        /// </summary>
+
+        private void EnterState(Entity entity, AIState state, SystemState systemState, EntityCommandBuffer ecb, float3 targetPosition);
+         <summary>
+        /// Aggiorna il comportamento in base allo stato corrente
+        /// </summary>
+
+        private void UpdateState(Entity entity, EnemyAIComponent ai, float3 position, PhysicsComponent physics, float3 targetPosition, float distanceToTarget, float deltaTime, SystemState systemState, EntityCommandBuffer ecb);
+    }
+     <summary>
+    /// Stati possibili dell'IA nemica
+    /// </summary>
+
+    public enum AIState
+    {
+        Idle = 0,
+        Patrolling = 1,
+        Pursuing = 2,
+        Attacking = 3,
+        Fleeing = 4,
+        Stunned = 5
+    }
+     <summary>
+    /// Componente che contiene i dati di IA per un nemico
+    /// </summary>
+
+    public struct EnemyAIComponent : IComponentData
+    {
+        public AIState CurrentState;
+        public float StateEnterTime;
+        public float DetectionRange;
+        public float AttackRange;
+        public float MovementSpeed;
+        public bool CanPatrol;
+        public bool CanFlee;
+        public float AbilityCooldown;
+        public int AttackPattern;
+        public float Health;
+        public float FleeHealthThreshold;
+        public float WaitTimer;
+        public float LoseTargetTimer;
+        public float StunTime;
+    }
+     <summary>
+    /// Evento generato quando un nemico esce da uno stato AI
+    /// </summary>
+
+    public struct AIStateExitEvent : IComponentData
+    {
+        public Entity EntityID;
+        public AIState PreviousState;
+    }
+     <summary>
+    /// Evento generato quando un nemico entra in un nuovo stato AI
+    /// </summary>
+
+    public struct AIStateEnterEvent : IComponentData
+    {
+        public Entity EntityID;
+        public AIState NewState;
+        public float3 TargetPosition;
+    }
+     <summary>
+    /// Evento generato quando un nemico esegue un attacco
+    /// </summary>
+
+    public struct EnemyAttackEvent : IComponentData
+    {
+        public Entity AttackerEntity;
+        public float3 TargetPosition;
+        public byte AttackType;
     }
 }
 
@@ -7100,13 +8418,129 @@ namespace RunawayHeroes.ECS.Systems.AI
 namespace RunawayHeroes.ECS.Systems.AI
 {
      <summary>
-    /// 
+    /// Sistema che gestisce le fasi dei boss e mid-boss.
+    /// Coordina i cambiamenti di fase basati sulla salute,
+    /// gestisce gli stati di rabbia/enrage, e attiva comportamenti
+    /// specifici per ogni fase del combattimento.
     /// </summary>
 
-    public partial class BossPhasesSystem : SystemBase
+    public partial struct BossPhasesSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _bossQuery;
+        private EntityQuery _midBossQuery;
+        private EntityQuery _playerQuery;
+        public float DeltaTime;
+        public NativeArray<float3> PlayerPositions;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public NativeArray<float3> PlayerPositions;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di fasi dei boss
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna le fasi e stati dei boss
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int sortKey, BossComponent boss, HealthComponent health, TransformComponent transform);
+         void Execute(Entity entity, int sortKey, MidBossComponent midBoss, HealthComponent health, TransformComponent transform);
+    }
+     <summary>
+        /// Job che gestisce i cambiamenti di fase dei boss
+        /// </summary>
+
+    private partial struct BossPhaseManagementJob : IJobEntity
+    {
+        public float DeltaTime;
+        public NativeArray<float3> PlayerPositions;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, BossComponent boss, HealthComponent health, TransformComponent transform);
+    }
+     <summary>
+        /// Job che gestisce gli stati dei mid-boss
+        /// </summary>
+
+    private partial struct MidBossStateManagementJob : IJobEntity
+    {
+        public float DeltaTime;
+        public NativeArray<float3> PlayerPositions;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, MidBossComponent midBoss, HealthComponent health, TransformComponent transform);
+    }
+     <summary>
+    /// Evento generato quando un boss viene attivato
+    /// </summary>
+
+    public struct BossActivationEvent : IComponentData
+    {
+        public Entity BossEntity;
+        public byte BossType;
+        public float3 Position;
+    }
+     <summary>
+    /// Evento generato quando un boss inizia la transizione di fase
+    /// </summary>
+
+    public struct BossPhaseTransitionStartEvent : IComponentData
+    {
+        public Entity BossEntity;
+        public int PhaseIndex;
+    }
+     <summary>
+    /// Evento generato quando un boss completa la transizione di fase
+    /// </summary>
+
+    public struct BossPhaseTransitionEndEvent : IComponentData
+    {
+        public Entity BossEntity;
+        public int PhaseIndex;
+    }
+     <summary>
+    /// Evento generato quando un attacco speciale del boss è pronto
+    /// </summary>
+
+    public struct BossSpecialAttackReadyEvent : IComponentData
+    {
+        public Entity BossEntity;
+        public byte BossType;
+        public int PhaseIndex;
+    }
+     <summary>
+    /// Evento generato quando un mid-boss viene attivato
+    /// </summary>
+
+    public struct MidBossActivationEvent : IComponentData
+    {
+        public Entity MidBossEntity;
+        public byte MidBossType;
+        public float3 Position;
+    }
+     <summary>
+    /// Evento generato quando un mid-boss entra nello stato infuriato
+    /// </summary>
+
+    public struct MidBossEnrageEvent : IComponentData
+    {
+        public Entity MidBossEntity;
+        public byte MidBossType;
+    }
+     <summary>
+    /// Evento generato quando un'abilità speciale del mid-boss è pronta
+    /// </summary>
+
+    public struct MidBossSpecialAbilityReadyEvent : IComponentData
+    {
+        public Entity MidBossEntity;
+        public byte MidBossType;
+        public byte AbilityType;
     }
 }
 
@@ -7116,13 +8550,55 @@ namespace RunawayHeroes.ECS.Systems.AI
 namespace RunawayHeroes.ECS.Systems.AI
 {
      <summary>
-    /// 
+    /// Sistema che gestisce l'inseguimento di bersagli da parte dei nemici.
+    /// Implementa il comportamento di inseguimento degli agenti nemici,
+    /// calcolando percorsi, evitando ostacoli e adattando le velocità.
     /// </summary>
 
-    public partial class PursuitSystem : SystemBase
+    public partial struct PursuitSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _pursuitQuery;
+        private EntityQuery _targetQuery;
+        public float DeltaTime;
+        public NativeArray<float3> TargetPositions;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di inseguimento
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna il comportamento di inseguimento di tutti i nemici
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+         void Execute(Entity entity, int sortKey, TransformComponent transform, PhysicsComponent physics, EnemyAIComponent ai);
+         <summary>
+            /// Trova la posizione del target più vicino
+            /// </summary>
+
+        private float3 FindNearestTarget(float3 currentPosition);
+    }
+     <summary>
+        /// Job che gestisce il comportamento di inseguimento
+        /// </summary>
+
+    private partial struct PursuitJob : IJobEntity
+    {
+        public float DeltaTime;
+        public NativeArray<float3> TargetPositions;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         void Execute(Entity entity, int sortKey, TransformComponent transform, PhysicsComponent physics, EnemyAIComponent ai);
+         <summary>
+            /// Trova la posizione del target più vicino
+            /// </summary>
+
+        private float3 FindNearestTarget(float3 currentPosition);
     }
 }
 
@@ -7136,7 +8612,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Si occupa dell'apprendimento delle meccaniche di base e dello sblocco sequenziale dei tutorial.
     /// </summary>
 
-    public partial class TutorialProgressionSystem : SystemBase
+    public partial struct TutorialProgressionSystem : ISystem
     {
         private EntityQuery _tutorialLevelQuery;
         private EntityQuery _tutorialProgressQuery;
@@ -7150,32 +8626,29 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Inizializza il sistema
         /// </summary>
 
-        protected override void OnCreate();
-         <summary>
-        /// Cerca e crea riferimenti a runtime
-        /// </summary>
-
-        protected override void OnStartRunning();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnStartRunning(SystemState state);
          <summary>
         /// Aggiorna il sistema di progressione tutorial
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
          <summary>
         /// Verifica se il giocatore ha completato un tutorial percorrendo la distanza necessaria
         /// </summary>
 
-        private void CheckTutorialCompletionByDistance();
+        private void CheckTutorialCompletionByDistance(SystemState state);
          <summary>
         /// Inizializza i dati di progressione se non esistono già
         /// </summary>
 
-        private void InitializeProgressionData();
+        private void InitializeProgressionData(SystemState state);
          <summary>
         /// Ottiene o crea l'entità di progressione tutorial
         /// </summary>
 
-        private Entity GetOrCreateTutorialProgressionEntity();
+        private Entity GetOrCreateTutorialProgressionEntity(SystemState state);
          <summary>
         /// Crea un messaggio UI per il completamento tutorial
         /// </summary>
@@ -7219,7 +8692,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Si occupa dello sblocco dei mondi, della raccolta dei frammenti e della progressione narrativa.
     /// </summary>
 
-    public partial class WorldProgressionSystem : SystemBase
+    public partial struct WorldProgressionSystem : ISystem
     {
         private EntityQuery _playerProgressionQuery;
         private EntityQuery _worldProgressionQuery;
@@ -7232,12 +8705,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Inizializza il sistema
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna il sistema di progressione dei mondi
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
          <summary>
         /// Processa eventi di completamento tutorial per sbloccare il primo mondo
         /// </summary>
@@ -7349,7 +8823,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Reimposta i contatori per una nuova sessione di gioco
         /// </summary>
 
-        private void ResetSessionCounters();
+        private void ResetSessionCounters(SystemState state);
          <summary>
         /// Identifica il livello attualmente attivo
         /// </summary>
@@ -7464,7 +8938,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Si occupa di propagare eventi tra i diversi livelli di progressione (tutorial, mondo, livello).
     /// </summary>
 
-    public partial class ProgressionEventSystem : SystemBase
+    public partial struct ProgressionEventSystem : ISystem
     {
         private EntityQuery _playerProgressionQuery;
         private EntityQuery _progressionEventsQuery;
@@ -7474,27 +8948,28 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Inizializza il sistema
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
          <summary>
         /// Cerca e ottiene riferimenti
         /// </summary>
 
-        protected override void OnStartRunning();
+        public void OnStartRunning(SystemState state);
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna il sistema di eventi progressione
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
          <summary>
         /// Processa eventi di avanzamento progressione
         /// </summary>
 
-        private void ProcessProgressionAdvancementEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessProgressionAdvancementEvents(SystemState state, EntityCommandBuffer commandBuffer);
          <summary>
         /// Processa eventi di sblocco
         /// </summary>
 
-        private void ProcessUnlockEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessUnlockEvents(SystemState state, EntityCommandBuffer commandBuffer);
          <summary>
         /// Notifica avanzamento tutorial al sistema mondo
         /// </summary>
@@ -7568,7 +9043,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Monitora il completamento degli obiettivi e trigger eventi di progressione.
     /// </summary>
 
-    public partial class ProgressionSystem : SystemBase
+    public partial struct ProgressionSystem : ISystem
     {
         private EntityQuery _tutorialLevelQuery;
         private EntityQuery _tutorialProgressQuery;
@@ -7578,32 +9053,33 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Inizializza il sistema
         /// </summary>
 
-        protected override void OnCreate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
          <summary>
         /// Aggiorna il sistema di progressione
         /// </summary>
 
-        protected override void OnUpdate();
+        public void OnUpdate(SystemState state);
          <summary>
         /// Verifica il raggiungimento degli obiettivi tutorial
         /// </summary>
 
-        private void CheckTutorialObjectives();
+        private void CheckTutorialObjectives(SystemState state);
          <summary>
         /// Aggiorna i timer per gli scenari attivati
         /// </summary>
 
-        private void UpdateScenarioTimers();
+        private void UpdateScenarioTimers(SystemState state);
          <summary>
         /// Inizializza i dati di progressione se non esistono già
         /// </summary>
 
-        private void InitializeProgressionData();
+        private void InitializeProgressionData(SystemState state);
          <summary>
         /// Ottiene o crea l'entità di progressione
         /// </summary>
 
-        private Entity GetOrCreateProgressionEntity();
+        private Entity GetOrCreateProgressionEntity(SystemState state);
          <summary>
         /// Crea un messaggio UI per il completamento
         /// </summary>
@@ -7614,10 +9090,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Sistema per la gestione degli obiettivi specifici
     /// </summary>
 
-    public partial class ObjectiveSystem : SystemBase
+    public partial struct ObjectiveSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
          <summary>
         /// Coroutine per avanzare al prossimo tutorial dopo un ritardo
         /// </summary>
@@ -7781,15 +9258,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 
     public struct TriggeredTag : IComponentData
     {
-    }
-     <summary>
-    /// Tag per identificare i livelli tutorial
-    /// </summary>
-
-    public struct TutorialLevelTag : IComponentData
-    {
-        public int CurrentSequence;
-        public bool Completed;
     }
 }
 
