@@ -10,6 +10,7 @@ using UnityEngine;
 using Random = Unity.Mathematics.Random;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
+using RunawayHeroes.ECS.Components.UI;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
@@ -96,14 +97,29 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         // Mostra messaggio di istruzione
                         if (!string.IsNullOrEmpty(scenario.InstructionMessage))
                         {
-                            // Qui andrebbe implementata la logica per mostrare il messaggio UI
-                            // Es. entityCommandBuffer.AddComponent(entityInQueryIndex, uiEntity, 
-                            //     new UIMessageComponent { 
-                            //         Message = scenario.InstructionMessage,
-                            //         Duration = scenario.MessageDuration 
-                            //     });
+                            // Crea un'entità per il messaggio UI
+                            Entity messageEntity = commandBuffer.CreateEntity(entityInQueryIndex);
                             
-                            UnityEngine.Debug.Log($"[Tutorial] Messaggio: {scenario.InstructionMessage}");
+                            // Aggiungi il componente di messaggio UI
+                            commandBuffer.AddComponent(entityInQueryIndex, messageEntity, 
+                                new RunawayHeroes.ECS.Components.UI.UIMessageComponent 
+                                { 
+                                    Message = scenario.InstructionMessage,
+                                    Duration = scenario.MessageDuration,
+                                    RemainingTime = scenario.MessageDuration,
+                                    MessageType = 0, // Tipo tutorial
+                                    IsPersistent = false,
+                                    MessageId = entity.Index // Usa l'indice dell'entità scenario come ID
+                                });
+                                
+                            // Aggiungi il tag per accodare il messaggio
+                            commandBuffer.AddComponent(entityInQueryIndex, messageEntity,
+                                new RunawayHeroes.ECS.Components.UI.QueuedMessageTag
+                                {
+                                    QueuePosition = 0
+                                });
+                            
+                            UnityEngine.Debug.Log($"[Tutorial] Messaggio creato: {scenario.InstructionMessage}");
                         }
                         
                         // Genera gli ostacoli per questo scenario
