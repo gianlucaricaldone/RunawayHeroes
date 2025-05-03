@@ -15,12 +15,14 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// Mostra gli obiettivi correnti, aggiorna l'interfaccia e fornisce feedback al completamento.
     /// </summary>
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    public partial class ObjectiveFeedbackSystem : SystemBase
+    public partial struct ObjectiveFeedbackSystem : ISystem
     {
+        #region Private Fields
+        
         // Riferimenti UI
         private GameObject _objectivesPanel;
         private RectTransform _objectivesContainer;
-        private Dictionary<int, GameObject> _activeObjectiveItems = new Dictionary<int, GameObject>();
+        private Dictionary<int, GameObject> _activeObjectiveItems;
         
         // Prefab
         private GameObject _objectiveItemPrefab;
@@ -28,37 +30,66 @@ namespace RunawayHeroes.ECS.Systems.UI
         // Riferimenti sistema
         private EntityQuery _activeObjectivesQuery;
         
-        protected override void OnCreate()
+        #endregion
+        
+        #region Initialization
+        
+        public void OnCreate(ref SystemState state)
         {
-            _activeObjectivesQuery = GetEntityQuery(
+            _activeObjectivesQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<ObjectiveComponent>(),
                 ComponentType.ReadOnly<ActiveObjectiveTag>()
             );
             
             // Richiedi singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Richiedi aggiornamento solo se ci sono obiettivi attivi
-            RequireForUpdate(_activeObjectivesQuery);
+            state.RequireForUpdate(_activeObjectivesQuery);
+            
+            // Inizializza il dizionario
+            _activeObjectiveItems = new Dictionary<int, GameObject>();
         }
         
-        protected override void OnStartRunning()
+        public void OnStartRunning(ref SystemState state)
         {
             // Inizializza riferimenti UI
             InitializeUIReferences();
         }
         
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state)
+        {
+            // Pulisci le risorse
+            foreach (var item in _activeObjectiveItems.Values)
+            {
+                if (item != null)
+                {
+                    GameObject.Destroy(item);
+                }
+            }
+            
+            _activeObjectiveItems.Clear();
+        }
+        
+        #endregion
+        
+        #region System Lifecycle
+        
+        public void OnUpdate(ref SystemState state)
         {
             // Aggiorna il pannello obiettivi
-            UpdateObjectivesPanel();
+            UpdateObjectivesPanel(ref state);
             
             // Gestisce eventi di completamento obiettivi
-            ProcessObjectiveCompletionEvents();
+            ProcessObjectiveCompletionEvents(ref state);
             
             // Gestisce eventi di progresso obiettivi
-            ProcessObjectiveProgressEvents();
+            ProcessObjectiveProgressEvents(ref state);
         }
+        
+        #endregion
+        
+        #region UI Management
         
         /// <summary>
         /// Inizializza i riferimenti all'interfaccia utente
@@ -209,10 +240,14 @@ namespace RunawayHeroes.ECS.Systems.UI
             return prefab;
         }
         
+        #endregion
+        
+        #region Objective Panel Update
+        
         /// <summary>
         /// Aggiorna il pannello degli obiettivi
         /// </summary>
-        private void UpdateObjectivesPanel()
+        private void UpdateObjectivesPanel(ref SystemState state)
         {
             // Se non ci sono obiettivi attivi, nasconde il pannello
             if (_activeObjectivesQuery.IsEmpty)
@@ -233,15 +268,21 @@ namespace RunawayHeroes.ECS.Systems.UI
             // Tiene traccia degli obiettivi ancora attivi
             HashSet<int> currentActiveObjectives = new HashSet<int>();
             
+            // Ottiene l'EntityManager
+            var entityManager = state.EntityManager;
+            
             // Aggiorna o crea gli item per gli obiettivi attivi
-            Entities
-                .WithoutBurst()
-                .WithAll<ObjectiveComponent>()
-                .WithAll<ActiveObjectiveTag>()
-                .ForEach((Entity entity, in ObjectiveComponent objective, in ObjectiveProgressComponent progress) =>
+            foreach (var entity in _activeObjectivesQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                int objectiveId = entity.Index;
+                currentActiveObjectives.Add(objectiveId);
+                
+                // Assicurati che l'entità abbia i componenti necessari
+                if (entityManager.HasComponent<ObjectiveComponent>(entity) && 
+                    entityManager.HasComponent<ObjectiveProgressComponent>(entity))
                 {
-                    int objectiveId = entity.Index;
-                    currentActiveObjectives.Add(objectiveId);
+                    var objective = entityManager.GetComponentData<ObjectiveComponent>(entity);
+                    var progress = entityManager.GetComponentData<ObjectiveProgressComponent>(entity);
                     
                     // Se l'obiettivo ha già un item UI, aggiorna i dati
                     if (_activeObjectiveItems.TryGetValue(objectiveId, out GameObject itemObj))
@@ -257,8 +298,9 @@ namespace RunawayHeroes.ECS.Systems.UI
                             _activeObjectiveItems[objectiveId] = newItem;
                         }
                     }
-                }).Run();
-                
+                }
+            }
+            
             // Rimuovi gli item per obiettivi non più attivi
             List<int> objectivesToRemove = new List<int>();
             foreach (var kvp in _activeObjectiveItems)
@@ -268,7 +310,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                     // Distruggi l'item UI
                     if (kvp.Value != null)
                     {
-                        UnityEngine.Object.Destroy(kvp.Value);
+                        GameObject.Destroy(kvp.Value);
                     }
                     objectivesToRemove.Add(kvp.Key);
                 }
@@ -289,7 +331,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                 return null;
                 
             // Istanzia l'item dal prefab
-            GameObject itemObj = UnityEngine.Object.Instantiate(_objectiveItemPrefab, _objectivesContainer);
+            GameObject itemObj = GameObject.Instantiate(_objectiveItemPrefab, _objectivesContainer);
             
             // Inizializza i dati
             UpdateObjectiveItem(itemObj, objective, progress);
@@ -391,114 +433,131 @@ namespace RunawayHeroes.ECS.Systems.UI
             }
         }
         
+        #endregion
+        
+        #region Event Processing
+        
         /// <summary>
         /// Processa eventi di completamento obiettivi
         /// </summary>
-        private void ProcessObjectiveCompletionEvents()
+        private void ProcessObjectiveCompletionEvents(ref SystemState state)
         {
             // Crea un buffer per i comandi
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in ObjectiveCompletedEvent completionEvent) =>
+            // Ottieni EntityManager
+            var entityManager = state.EntityManager;
+            
+            // Query per eventi di completamento
+            var completionEventQuery = state.GetEntityQuery(ComponentType.ReadOnly<ObjectiveCompletedEvent>());
+            
+            // Itera sugli eventi di completamento
+            foreach (var entity in completionEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                var completionEvent = entityManager.GetComponentData<ObjectiveCompletedEvent>(entity);
+                
+                // Ottieni dati sull'obiettivo completato
+                if (entityManager.Exists(completionEvent.ObjectiveEntity) && 
+                    entityManager.HasComponent<ObjectiveComponent>(completionEvent.ObjectiveEntity))
                 {
-                    // Ottieni dati sull'obiettivo completato
-                    if (EntityManager.Exists(completionEvent.ObjectiveEntity) && 
-                        EntityManager.HasComponent<ObjectiveComponent>(completionEvent.ObjectiveEntity))
-                    {
-                        var objective = EntityManager.GetComponentData<ObjectiveComponent>(completionEvent.ObjectiveEntity);
-                        
-                        // Crea un messaggio UI per il completamento
-                        Entity messageEntity = commandBuffer.CreateEntity();
-                        
-                        string message = objective.IsOptional ?
-                            $"Obiettivo Bonus Completato! {objective.Description}" :
-                            $"Obiettivo Completato! {objective.Description}";
-                            
-                        byte messageType = objective.IsOptional ? (byte)1 : (byte)0; // Verde per bonus, Blu per normale
-                        
-                        commandBuffer.AddComponent(messageEntity, new UIMessageComponent
-                        {
-                            Message = new Unity.Collections.FixedString128Bytes(message),
-                            Duration = 4.0f,
-                            RemainingTime = 4.0f,
-                            MessageType = messageType,
-                            IsPersistent = false,
-                            MessageId = 500 + UnityEngine.Random.Range(0, 500)
-                        });
-                        
-                        commandBuffer.AddComponent(messageEntity, new QueuedMessageTag
-                        {
-                            QueuePosition = 0
-                        });
-                        
-                        // Riproduci effetto audio di completamento (in un'implementazione completa)
-                        if (RunawayHeroes.Runtime.Managers.AudioManager.Instance != null)
-                        {
-                            string soundName = objective.IsOptional ? "ObjectiveBonusComplete" : "ObjectiveComplete";
-                            RunawayHeroes.Runtime.Managers.AudioManager.Instance.PlaySFX(soundName);
-                        }
-                    }
+                    var objective = entityManager.GetComponentData<ObjectiveComponent>(completionEvent.ObjectiveEntity);
                     
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                    // Crea un messaggio UI per il completamento
+                    Entity messageEntity = commandBuffer.CreateEntity();
+                    
+                    string message = objective.IsOptional ?
+                        $"Obiettivo Bonus Completato! {objective.Description}" :
+                        $"Obiettivo Completato! {objective.Description}";
+                        
+                    byte messageType = objective.IsOptional ? (byte)1 : (byte)0; // Verde per bonus, Blu per normale
+                    
+                    commandBuffer.AddComponent(messageEntity, new UIMessageComponent
+                    {
+                        Message = new Unity.Collections.FixedString128Bytes(message),
+                        Duration = 4.0f,
+                        RemainingTime = 4.0f,
+                        MessageType = messageType,
+                        IsPersistent = false,
+                        MessageId = 500 + UnityEngine.Random.Range(0, 500)
+                    });
+                    
+                    commandBuffer.AddComponent(messageEntity, new QueuedMessageTag
+                    {
+                        QueuePosition = 0
+                    });
+                    
+                    // Riproduci effetto audio di completamento (in un'implementazione completa)
+                    if (RunawayHeroes.Runtime.Managers.AudioManager.Instance != null)
+                    {
+                        string soundName = objective.IsOptional ? "ObjectiveBonusComplete" : "ObjectiveComplete";
+                        RunawayHeroes.Runtime.Managers.AudioManager.Instance.PlaySFX(soundName);
+                    }
+                }
+                
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
         }
         
         /// <summary>
         /// Processa eventi di progresso obiettivi
         /// </summary>
-        private void ProcessObjectiveProgressEvents()
+        private void ProcessObjectiveProgressEvents(ref SystemState state)
         {
-            // Processa eventi di progresso
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in ObjectiveProgressEvent progressEvent) =>
+            // Ottieni EntityManager
+            var entityManager = state.EntityManager;
+            
+            // Query per eventi di progresso
+            var progressEventQuery = state.GetEntityQuery(ComponentType.ReadOnly<ObjectiveProgressEvent>());
+            
+            // Itera sugli eventi di progresso
+            foreach (var entity in progressEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                var progressEvent = entityManager.GetComponentData<ObjectiveProgressEvent>(entity);
+                
+                // Solo se c'è un cambio significativo (o il primo punto di progresso)
+                if (progressEvent.NewValue > progressEvent.PreviousValue && 
+                    (progressEvent.PreviousValue == 0 || 
+                     progressEvent.NewValue == progressEvent.RequiredValue ||
+                     (progressEvent.NewValue - progressEvent.PreviousValue) >= (progressEvent.RequiredValue / 4)))
                 {
-                    // Solo se c'è un cambio significativo (o il primo punto di progresso)
-                    if (progressEvent.NewValue > progressEvent.PreviousValue && 
-                        (progressEvent.PreviousValue == 0 || 
-                         progressEvent.NewValue == progressEvent.RequiredValue ||
-                         (progressEvent.NewValue - progressEvent.PreviousValue) >= (progressEvent.RequiredValue / 4)))
+                    // Riproduci effetto audio di progresso
+                    if (RunawayHeroes.Runtime.Managers.AudioManager.Instance != null)
                     {
-                        // Riproduci effetto audio di progresso
-                        if (RunawayHeroes.Runtime.Managers.AudioManager.Instance != null)
-                        {
-                            RunawayHeroes.Runtime.Managers.AudioManager.Instance.PlaySFX("ObjectiveProgress");
-                        }
-                        
-                        // Se l'obiettivo è completato
-                        if (progressEvent.NewValue >= progressEvent.RequiredValue)
-                        {
-                            // Aggiorna lo stato dell'obiettivo
-                            if (EntityManager.Exists(progressEvent.ObjectiveEntity) && 
-                                EntityManager.HasComponent<ObjectiveComponent>(progressEvent.ObjectiveEntity))
-                            {
-                                var objective = EntityManager.GetComponentData<ObjectiveComponent>(progressEvent.ObjectiveEntity);
-                                objective.IsCompleted = true;
-                                objective.CurrentProgress = progressEvent.NewValue;
-                                EntityManager.SetComponentData(progressEvent.ObjectiveEntity, objective);
-                                
-                                // Crea un evento di completamento
-                                Entity completionEvent = EntityManager.CreateEntity();
-                                EntityManager.AddComponentData(completionEvent, new ObjectiveCompletedEvent
-                                {
-                                    ObjectiveEntity = progressEvent.ObjectiveEntity,
-                                    ObjectiveType = objective.ObjectiveType,
-                                    ScenarioId = objective.ScenarioId,
-                                    WasRequired = !objective.IsOptional
-                                });
-                            }
-                        }
+                        RunawayHeroes.Runtime.Managers.AudioManager.Instance.PlaySFX("ObjectiveProgress");
                     }
                     
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                    // Se l'obiettivo è completato
+                    if (progressEvent.NewValue >= progressEvent.RequiredValue)
+                    {
+                        // Aggiorna lo stato dell'obiettivo
+                        if (entityManager.Exists(progressEvent.ObjectiveEntity) && 
+                            entityManager.HasComponent<ObjectiveComponent>(progressEvent.ObjectiveEntity))
+                        {
+                            var objective = entityManager.GetComponentData<ObjectiveComponent>(progressEvent.ObjectiveEntity);
+                            objective.IsCompleted = true;
+                            objective.CurrentProgress = progressEvent.NewValue;
+                            entityManager.SetComponentData(progressEvent.ObjectiveEntity, objective);
+                            
+                            // Crea un evento di completamento
+                            Entity completionEvent = entityManager.CreateEntity();
+                            entityManager.AddComponentData(completionEvent, new ObjectiveCompletedEvent
+                            {
+                                ObjectiveEntity = progressEvent.ObjectiveEntity,
+                                ObjectiveType = objective.ObjectiveType,
+                                ScenarioId = objective.ScenarioId,
+                                WasRequired = !objective.IsOptional
+                            });
+                        }
+                    }
+                }
+                
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
         }
+        
+        #endregion
     }
 }

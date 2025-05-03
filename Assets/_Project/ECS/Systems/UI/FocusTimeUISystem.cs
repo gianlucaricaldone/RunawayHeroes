@@ -12,8 +12,11 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// Sistema che gestisce l'interfaccia utente per il Focus Time,
     /// visualizzando la barra di energia, il cooldown e l'interfaccia radiale per gli oggetti.
     /// </summary>
-    public partial class FocusTimeUISystem : SystemBase
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    public partial struct FocusTimeUISystem : ISystem
     {
+        #region Private Fields
+        
         // Riferimenti UI
         private RectTransform _focusTimeEnergyBar;
         private RectTransform _focusTimeCooldownIndicator;
@@ -26,24 +29,36 @@ namespace RunawayHeroes.ECS.Systems.UI
         private const float PULSE_SPEED = 2.0f;
         private const float PULSE_AMPLITUDE = 0.2f;
         
-        // References
+        // Queries
         private EntityQuery _playerFocusTimeQuery;
         
-        protected override void OnCreate()
+        #endregion
+        
+        #region Initialization
+        
+        public void OnCreate(ref SystemState state)
         {
             // Query per il focus time del giocatore
-            _playerFocusTimeQuery = GetEntityQuery(
+            _playerFocusTimeQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<FocusTimeComponent>()
             );
             
-            RequireForUpdate(_playerFocusTimeQuery);
+            state.RequireForUpdate(_playerFocusTimeQuery);
         }
         
-        protected override void OnStartRunning()
+        public void OnStartRunning(ref SystemState state)
         {
-            base.OnStartRunning();
-            
             // Cerca e inizializza i riferimenti UI
+            InitializeUIReferences();
+        }
+        
+        public void OnDestroy(ref SystemState state)
+        {
+            // Pulizia risorse se necessario
+        }
+        
+        private void InitializeUIReferences()
+        {
             GameObject energyBarObj = GameObject.Find("FocusTimeEnergyBar");
             if (energyBarObj != null)
                 _focusTimeEnergyBar = energyBarObj.GetComponent<RectTransform>();
@@ -74,11 +89,30 @@ namespace RunawayHeroes.ECS.Systems.UI
                 _timeScaleEffect.SetActive(false);
         }
         
-        protected override void OnUpdate()
+        #endregion
+        
+        #region System Lifecycle
+        
+        public void OnUpdate(ref SystemState state)
+        {
+            UpdateFocusTimeUI(ref state);
+            ProcessFocusTimeEvents(ref state);
+        }
+        
+        #endregion
+        
+        #region UI Updates
+        
+        /// <summary>
+        /// Aggiorna gli elementi dell'interfaccia del Focus Time in base allo stato attuale
+        /// </summary>
+        private void UpdateFocusTimeUI(ref SystemState state)
         {
             if (!_playerFocusTimeQuery.IsEmpty)
             {
-                var focusTimeComponent = _playerFocusTimeQuery.GetSingleton<FocusTimeComponent>();
+                var focusTimeComponent = state.EntityManager.GetComponentData<FocusTimeComponent>(
+                    _playerFocusTimeQuery.ToEntityArray(Unity.Collections.Allocator.Temp)[0]
+                );
                 
                 // Aggiorna la barra di energia
                 if (_focusTimeEnergyBar != null)
@@ -146,56 +180,66 @@ namespace RunawayHeroes.ECS.Systems.UI
                     _timeScaleEffect.SetActive(focusTimeComponent.IsActive);
                 }
             }
+        }
+        
+        #endregion
+        
+        #region Event Handling
+        
+        /// <summary>
+        /// Processa gli eventi relativi al Focus Time e applica i feedback visivi corrispondenti
+        /// </summary>
+        private void ProcessFocusTimeEvents(ref SystemState state)
+        {
+            var entityManager = state.EntityManager;
             
             // Gestisci eventi di Focus Time per feedback visivi/audio
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in FocusTimeActivatedEvent activatedEvent) =>
-                {
-                    // Riproduci effetti audio/visivi di attivazione
-                    PlayFocusTimeActivationEffects();
-                    
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+            var activatedEventQuery = state.GetEntityQuery(ComponentType.ReadOnly<FocusTimeActivatedEvent>());
+            foreach (var entity in activatedEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                // Riproduci effetti audio/visivi di attivazione
+                PlayFocusTimeActivationEffects();
                 
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in FocusTimeDeactivatedEvent deactivatedEvent) =>
-                {
-                    // Riproduci effetti audio/visivi di disattivazione
-                    PlayFocusTimeDeactivationEffects();
-                    
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
+            
+            var deactivatedEventQuery = state.GetEntityQuery(ComponentType.ReadOnly<FocusTimeDeactivatedEvent>());
+            foreach (var entity in deactivatedEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                // Riproduci effetti audio/visivi di disattivazione
+                PlayFocusTimeDeactivationEffects();
                 
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in FocusTimeReadyEvent readyEvent) =>
-                {
-                    // Effetto visivo/audio di disponibilità
-                    PlayFocusTimeReadyEffects();
-                    
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
+            
+            var readyEventQuery = state.GetEntityQuery(ComponentType.ReadOnly<FocusTimeReadyEvent>());
+            foreach (var entity in readyEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                // Effetto visivo/audio di disponibilità
+                PlayFocusTimeReadyEffects();
                 
-            Entities
-                .WithoutBurst()
-                .WithStructuralChanges()
-                .ForEach((Entity entity, in ItemUsedEvent itemUsedEvent) =>
-                {
-                    // Effetto visivo/audio di utilizzo oggetto
-                    PlayItemUsedEffects(itemUsedEvent.SlotIndex);
-                    
-                    // Rimuovi l'evento dopo l'elaborazione
-                    EntityManager.DestroyEntity(entity);
-                }).Run();
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
+            
+            var itemUsedEventQuery = state.GetEntityQuery(ComponentType.ReadOnly<ItemUsedEvent>());
+            foreach (var entity in itemUsedEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                var itemUsedEvent = entityManager.GetComponentData<ItemUsedEvent>(entity);
+                
+                // Effetto visivo/audio di utilizzo oggetto
+                PlayItemUsedEffects(itemUsedEvent.SlotIndex);
+                
+                // Rimuovi l'evento dopo l'elaborazione
+                entityManager.DestroyEntity(entity);
+            }
         }
+        
+        #endregion
+        
+        #region Visual Effects
         
         // Metodi per riprodurre effetti visivi e audio
         
@@ -268,5 +312,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                 _itemSlots[slotIndex].localScale = Vector3.one;
             }
         }
+        
+        #endregion
     }
 }

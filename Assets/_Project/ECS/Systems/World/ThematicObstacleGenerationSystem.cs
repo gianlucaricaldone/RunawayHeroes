@@ -11,77 +11,104 @@ namespace RunawayHeroes.ECS.Systems.World
     /// <summary>
     /// Sistema responsabile della generazione di ostacoli tematici nei segmenti di percorso
     /// </summary>
-    public partial class ThematicObstacleGenerationSystem : SystemBase
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    public partial struct ThematicObstacleGenerationSystem : ISystem
     {
+        #region Private Fields
+        
         private Unity.Mathematics.Random _random;
         private uint _seed;
+        private EntityQuery _segmentsRequiringContentQuery;
         
-        protected override void OnCreate()
+        #endregion
+        
+        #region Initialization
+        
+        public void OnCreate(ref SystemState state)
         {
-            // Richiedi il singleton per il command buffer
-            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
-            
             // Inizializza il generatore di numeri casuali
             _seed = (uint)DateTime.Now.Ticks;
             _random = Unity.Mathematics.Random.CreateFromIndex(_seed);
             
+            // Configura la query per segmenti che richiedono generazione
+            _segmentsRequiringContentQuery = state.GetEntityQuery(
+                ComponentType.ReadOnly<RequiresContentGenerationTag>(),
+                ComponentType.ReadWrite<PathSegmentComponent>(),
+                ComponentType.ReadWrite<DynamicBuffer<SegmentContentBuffer>>()
+            );
+            
+            // Richiedi il singleton per il command buffer
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            
             // Richiedi che il sistema venga eseguito solo quando ci sono segmenti che richiedono generazione
-            RequireForUpdate<RequiresContentGenerationTag>();
+            state.RequireForUpdate<RequiresContentGenerationTag>();
         }
-
-        protected override void OnUpdate()
+        
+        public void OnDestroy(ref SystemState state)
+        {
+            // Nessuna risorsa specifica da pulire
+        }
+        
+        #endregion
+        
+        #region System Lifecycle
+        
+        public void OnUpdate(ref SystemState state)
         {
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged).AsParallelWriter();
-            var random = _random;
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
             // Ottieni le configurazioni di spawn dal livello
             var obstacleConfig = SystemAPI.GetSingleton<ObstacleSpawnConfigComponent>();
             
-            // Creiamo una copia locale delle variabili di istanza
+            // Utilizza il random locale per questa iterazione
+            var random = _random;
             var seed = _seed;
             
-            // Genera ostacoli per i segmenti che lo richiedono
-            Entities
-                .WithName("GenerateThematicObstacles")
-                .WithAll<RequiresContentGenerationTag>()
-                .WithoutBurst()
-                .Run((Entity segmentEntity, int entityInQueryIndex,
-                      ref PathSegmentComponent segment,
-                      ref DynamicBuffer<SegmentContentBuffer> contentBuffer) =>
-                {
-                    // Inizializza un generatore casuale deterministico per questo segmento specifico
-                    Unity.Mathematics.Random segRandom = Unity.Mathematics.Random.CreateFromIndex(
-                        (uint)(segment.SegmentIndex + seed));
-                    
-                    // Salta la generazione per segmenti speciali come checkpoint
-                    if (segment.Type == SegmentType.Checkpoint)
-                        return;
-                    
-                    // Genera ostacoli tematici specifici per il mondo
-                    GenerateThematicObstacles(
-                        entityInQueryIndex,
-                        segmentEntity,
-                        ref segment,
-                        contentBuffer,
-                        obstacleConfig,
-                        ref commandBuffer,
-                        segRandom);
-                });
+            // Ottieni tutti i segmenti che richiedono generazione di contenuto
+            var segmentsEntities = _segmentsRequiringContentQuery.ToEntityArray(Allocator.Temp);
             
-            // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
+            // Genera ostacoli per i segmenti che lo richiedono
+            foreach (var segmentEntity in segmentsEntities)
+            {
+                var segment = state.EntityManager.GetComponentData<PathSegmentComponent>(segmentEntity);
+                var contentBuffer = state.EntityManager.GetBuffer<SegmentContentBuffer>(segmentEntity);
+                
+                // Salta la generazione per segmenti speciali come checkpoint
+                if (segment.Type == SegmentType.Checkpoint)
+                    continue;
+                
+                // Inizializza un generatore casuale deterministico per questo segmento specifico
+                Unity.Mathematics.Random segRandom = Unity.Mathematics.Random.CreateFromIndex(
+                    (uint)(segment.SegmentIndex + seed));
+                
+                // Genera ostacoli tematici specifici per il mondo
+                GenerateThematicObstacles(
+                    segmentEntity,
+                    ref segment,
+                    contentBuffer,
+                    obstacleConfig,
+                    commandBuffer,
+                    segRandom);
+            }
+            
+            // Assicurati di rilasciare la memoria dell'array temporaneo
+            segmentsEntities.Dispose();
         }
+        
+        #endregion
+        
+        #region Obstacle Generation
         
         /// <summary>
         /// Genera ostacoli tematici per un segmento di percorso
         /// </summary>
         private void GenerateThematicObstacles(
-            int entityInQueryIndex,
             Entity segmentEntity,
             ref PathSegmentComponent segment,
             DynamicBuffer<SegmentContentBuffer> contentBuffer,
             ObstacleSpawnConfigComponent config,
-            ref EntityCommandBuffer.ParallelWriter commandBuffer,
+            EntityCommandBuffer commandBuffer,
             Unity.Mathematics.Random random)
         {
             // Determina se è un tutorial (primi 10 segmenti)
@@ -149,7 +176,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 
                 // Crea l'ostacolo
                 Entity obstacleEntity = ObstacleFactory.CreateObstacle(
-                    commandBuffer.AsParallelWriter(), 
+                    commandBuffer, 
                     obstacleCode, 
                     obstaclePos, 
                     rotation, 
@@ -163,6 +190,10 @@ namespace RunawayHeroes.ECS.Systems.World
                 });
             }
         }
+        
+        #endregion
+        
+        #region Obstacle Selection
         
         /// <summary>
         /// Seleziona un codice di ostacolo appropriato per il tema e la difficoltà
@@ -293,5 +324,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     return SegmentContentType.SmallObstacle;
             }
         }
+        
+        #endregion
     }
 }
