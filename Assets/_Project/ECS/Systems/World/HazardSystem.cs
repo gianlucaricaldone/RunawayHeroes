@@ -7,6 +7,7 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 using RunawayHeroes.ECS.Events;
+using RunawayHeroes.ECS.Core;
 
 namespace RunawayHeroes.ECS.Systems.World
 {

@@ -3,6 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using RunawayHeroes.ECS.Core;
 using RunawayHeroes.ECS.Systems.Core;
 using RunawayHeroes.ECS.Systems.Movement;
 using RunawayHeroes.ECS.Systems.Movement.Group;
@@ -75,9 +76,12 @@ namespace RunawayHeroes.Runtime.Bootstrap
                 // Otteniamo i gruppi di sistema esistenti
                 var simulationSystemGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
                 
-                // Crea il MovementSystemGroup
+                // Crea i gruppi di sistema necessari
+                var transformSystemGroup = _world.CreateSystemManaged<TransformSystemGroup>();
+                simulationSystemGroup.AddSystemToUpdateList(transformSystemGroup);
+                
                 var movementSystemGroup = _world.CreateSystemManaged<MovementSystemGroup>();
-                simulationSystemGroup.AddSystemToUpdateList(movementSystemGroup);
+                transformSystemGroup.AddSystemToUpdateList(movementSystemGroup);
                 
                 // Metodo sicuro per aggiungere i sistemi
                 AddSystemsSafely(systems, simulationSystemGroup);
@@ -109,22 +113,35 @@ namespace RunawayHeroes.Runtime.Bootstrap
                     // Crea il sistema
                     ComponentSystemBase system = _world.GetOrCreateSystemManaged(systemType);
                     
-                    // Verifica se deve essere aggiunto al MovementSystemGroup
-                    bool isMovementSystem = false;
+                    // Verifica a quale gruppo appartiene il sistema
+                    bool isInCustomGroup = false;
                     var attributes = systemType.GetCustomAttributes(typeof(UpdateInGroupAttribute), true);
                     
                     foreach (var attr in attributes)
                     {
-                        if (attr is UpdateInGroupAttribute updateInGroup && 
-                            updateInGroup.GroupType == typeof(MovementSystemGroup))
+                        if (attr is UpdateInGroupAttribute updateInGroup)
                         {
-                            isMovementSystem = true;
-                            break;
+                            Type groupType = updateInGroup.GroupType;
+                            
+                            if (groupType == typeof(MovementSystemGroup))
+                            {
+                                var movementGroup = _world.GetExistingSystemManaged<MovementSystemGroup>();
+                                movementGroup.AddSystemToUpdateList(system);
+                                isInCustomGroup = true;
+                                break;
+                            }
+                            else if (groupType == typeof(TransformSystemGroup))
+                            {
+                                var transformGroup = _world.GetExistingSystemManaged<TransformSystemGroup>();
+                                transformGroup.AddSystemToUpdateList(system);
+                                isInCustomGroup = true;
+                                break;
+                            }
                         }
                     }
                     
-                    // Aggiunge il sistema al gruppo appropriato
-                    if (!isMovementSystem)
+                    // Aggiunge il sistema al gruppo di simulazione di default se non è in nessun gruppo personalizzato
+                    if (!isInCustomGroup)
                     {
                         simulationSystemGroup.AddSystemToUpdateList(system);
                     }

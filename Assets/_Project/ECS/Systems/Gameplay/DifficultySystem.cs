@@ -7,6 +7,8 @@ using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Enemies;
 using RunawayHeroes.ECS.Components.Core;
+using RunawayHeroes.ECS.Components.Combat;
+using RunawayHeroes.ECS.Systems.World;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
@@ -16,7 +18,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// al progresso del giocatore e al tema del mondo corrente.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(TransformSystemGroup))]
+    [UpdateBefore(typeof(RunawayHeroes.ECS.Core.TransformSystemGroup))]
     [BurstCompile]
     public partial struct DifficultySystem : ISystem
     {
@@ -109,7 +111,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 state.Dependency = new ApplyDifficultyToEnemiesJob
                 {
                     DifficultyConfig = difficultyConfig,
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    PathSegments = SystemAPI.GetComponentLookup<PathSegmentComponent>(true)
                 }.ScheduleParallel(enemiesQuery, state.Dependency);
             }
             
@@ -123,7 +126,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 state.Dependency = new ApplyDifficultyToMidBossesJob
                 {
                     DifficultyConfig = difficultyConfig,
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    PathSegments = SystemAPI.GetComponentLookup<PathSegmentComponent>(true)
                 }.ScheduleParallel(midBossQuery, state.Dependency);
             }
             
@@ -137,7 +141,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 state.Dependency = new ApplyDifficultyToBossesJob
                 {
                     DifficultyConfig = difficultyConfig,
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    PathSegments = SystemAPI.GetComponentLookup<PathSegmentComponent>(true)
                 }.ScheduleParallel(bossQuery, state.Dependency);
             }
             
@@ -147,7 +152,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 state.Dependency = new ApplyDifficultyToObstaclesJob
                 {
                     DifficultyConfig = difficultyConfig,
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    PathSegments = SystemAPI.GetComponentLookup<PathSegmentComponent>(true)
                 }.ScheduleParallel(_obstaclesQuery, state.Dependency);
             }
         }
@@ -229,6 +235,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             [ReadOnly] public WorldDifficultyConfigComponent DifficultyConfig;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PathSegmentComponent> PathSegments;
             
             [BurstCompile]
             private void Execute(
@@ -237,15 +244,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 ref EnemyComponent enemy,
                 in SegmentReferenceComponent segmentRef)
             {
-                // Ottieni il livello di difficoltà dal segmento di riferimento
-                if (!SystemAPI.Exists(segmentRef.SegmentEntity))
+                // Verifica che l'entità esista e abbia il componente necessario
+                if (!PathSegments.HasComponent(segmentRef.SegmentEntity))
                     return;
                     
-                // Ottieni il componente segmento
-                if (!SystemAPI.HasComponent<PathSegmentComponent>(segmentRef.SegmentEntity))
-                    return;
-                    
-                var segment = SystemAPI.GetComponent<PathSegmentComponent>(segmentRef.SegmentEntity);
+                var segment = PathSegments[segmentRef.SegmentEntity];
                 int difficultyLevel = segment.DifficultyLevel;
                 
                 // Ora possiamo applicare modificatori in base al livello di difficoltà
@@ -261,10 +264,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Scala la salute
                 float healthScale = 1.0f + (difficultyLevel - 1) * 0.1f; // +10% per livello
                 
-                // Aggiungi o aggiorna il componente HealthComponent
-                if (SystemAPI.HasComponent<HealthComponent>(entity))
+                // Aggiungi o aggiorna il componente HealthComponent usando CommandBuffer
+                var healthLookup = SystemAPI.GetComponentLookup<HealthComponent>();
+                
+                if (healthLookup.HasComponent(entity))
                 {
-                    var health = SystemAPI.GetComponent<HealthComponent>(entity);
+                    var health = healthLookup[entity];
                     float originalMaxHealth = health.MaxHealth;
                     health.MaxHealth = math.max(1, originalMaxHealth * healthScale);
                     
@@ -279,7 +284,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         health.CurrentHealth = health.MaxHealth;
                     }
                     
-                    SystemAPI.SetComponent(entity, health);
+                    ECB.SetComponent(sortKey, entity, health);
                 }
                 
                 // Se è un nemico d'élite, aggiungi ulteriori modificatori
@@ -290,8 +295,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     // Aggiungi resistenze speciali se il livello di difficoltà è alto
                     if (difficultyLevel >= 8)
                     {
+                        var defenseLookup = SystemAPI.GetComponentLookup<DefenseComponent>();
+                        
                         // Aggiungi il componente di resistenza se non esiste già
-                        if (!SystemAPI.HasComponent<DefenseComponent>(entity))
+                        if (!defenseLookup.HasComponent(entity))
                         {
                             ECB.AddComponent(sortKey, entity, new DefenseComponent
                             {
@@ -302,10 +309,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         }
                         else
                         {
-                            var defense = SystemAPI.GetComponent<DefenseComponent>(entity);
+                            var defense = defenseLookup[entity];
                             defense.PhysicalResistance += 5;
                             defense.ElementalResistance += 5;
-                            SystemAPI.SetComponent(entity, defense);
+                            ECB.SetComponent(sortKey, entity, defense);
                         }
                     }
                 }
@@ -320,6 +327,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             [ReadOnly] public WorldDifficultyConfigComponent DifficultyConfig;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PathSegmentComponent> PathSegments;
             
             [BurstCompile]
             private void Execute(
@@ -329,13 +337,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in SegmentReferenceComponent segmentRef)
             {
                 // Ottieni il livello di difficoltà dal segmento di riferimento
-                if (!SystemAPI.Exists(segmentRef.SegmentEntity))
+                if (!PathSegments.HasComponent(segmentRef.SegmentEntity))
                     return;
                     
-                if (!SystemAPI.HasComponent<PathSegmentComponent>(segmentRef.SegmentEntity))
-                    return;
-                    
-                var segment = SystemAPI.GetComponent<PathSegmentComponent>(segmentRef.SegmentEntity);
+                var segment = PathSegments[segmentRef.SegmentEntity];
                 int difficultyLevel = segment.DifficultyLevel;
                 
                 // I mid-boss hanno modificatori di difficoltà più leggeri ma comunque significativi
@@ -343,9 +348,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Scala la salute solo del 5% per livello
                 float healthScale = 1.0f + (difficultyLevel - 1) * 0.05f;
                 
-                if (SystemAPI.HasComponent<HealthComponent>(entity))
+                var healthLookup = SystemAPI.GetComponentLookup<HealthComponent>();
+                if (healthLookup.HasComponent(entity))
                 {
-                    var health = SystemAPI.GetComponent<HealthComponent>(entity);
+                    var health = healthLookup[entity];
                     float originalMaxHealth = health.MaxHealth;
                     health.MaxHealth = math.max(1, originalMaxHealth * healthScale);
                     
@@ -360,7 +366,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         health.CurrentHealth = health.MaxHealth;
                     }
                     
-                    SystemAPI.SetComponent(entity, health);
+                    ECB.SetComponent(sortKey, entity, health);
                 }
                 
                 // Aumenta il danno solo del 3% per livello di difficoltà
@@ -384,6 +390,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             [ReadOnly] public WorldDifficultyConfigComponent DifficultyConfig;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PathSegmentComponent> PathSegments;
             
             [BurstCompile]
             private void Execute(
@@ -396,13 +403,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // e calibrati per essere una sfida significativa
                 
                 // Ottieni il livello di difficoltà dal segmento di riferimento
-                if (!SystemAPI.Exists(segmentRef.SegmentEntity))
+                if (!PathSegments.HasComponent(segmentRef.SegmentEntity))
                     return;
                     
-                if (!SystemAPI.HasComponent<PathSegmentComponent>(segmentRef.SegmentEntity))
-                    return;
-                    
-                var segment = SystemAPI.GetComponent<PathSegmentComponent>(segmentRef.SegmentEntity);
+                var segment = PathSegments[segmentRef.SegmentEntity];
                 int difficultyLevel = segment.DifficultyLevel;
                 
                 // Scala solo il danno di base e non la salute
@@ -414,12 +418,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 {
                     boss.AttackPatternComplexity++;
                     
-                    if (SystemAPI.HasComponent<DefenseComponent>(entity))
+                    var defenseLookup = SystemAPI.GetComponentLookup<DefenseComponent>();
+                    if (defenseLookup.HasComponent(entity))
                     {
-                        var defense = SystemAPI.GetComponent<DefenseComponent>(entity);
+                        var defense = defenseLookup[entity];
                         defense.PhysicalResistance += 2; // Incremento leggero
                         defense.ElementalResistance += 2;
-                        SystemAPI.SetComponent(entity, defense);
+                        ECB.SetComponent(sortKey, entity, defense);
                     }
                 }
             }
@@ -433,6 +438,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             [ReadOnly] public WorldDifficultyConfigComponent DifficultyConfig;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PathSegmentComponent> PathSegments;
             
             [BurstCompile]
             private void Execute(
@@ -442,13 +448,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in SegmentReferenceComponent segmentRef)
             {
                 // Ottieni il livello di difficoltà dal segmento di riferimento
-                if (!SystemAPI.Exists(segmentRef.SegmentEntity))
+                if (!PathSegments.HasComponent(segmentRef.SegmentEntity))
                     return;
                     
-                if (!SystemAPI.HasComponent<PathSegmentComponent>(segmentRef.SegmentEntity))
-                    return;
-                    
-                var segment = SystemAPI.GetComponent<PathSegmentComponent>(segmentRef.SegmentEntity);
+                var segment = PathSegments[segmentRef.SegmentEntity];
                 int difficultyLevel = segment.DifficultyLevel;
                 
                 // Modifica parametri degli ostacoli in base alla difficoltà
@@ -461,23 +464,25 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 }
                 
                 // Scala la velocità degli ostacoli mobili
-                if (obstacle.IsMoving && SystemAPI.HasComponent<PhysicsComponent>(entity))
+                var physicsLookup = SystemAPI.GetComponentLookup<PhysicsComponent>();
+                if (obstacle.IsMoving && physicsLookup.HasComponent(entity))
                 {
-                    var physics = SystemAPI.GetComponent<PhysicsComponent>(entity);
+                    var physics = physicsLookup[entity];
                     float speedScale = 1.0f + (difficultyLevel - 1) * 0.04f; // +4% per livello
                     
                     // Applica solo se la velocità è significativa
                     if (math.lengthsq(physics.Velocity) > 0.01f)
                     {
                         physics.Velocity *= speedScale;
-                        SystemAPI.SetComponent(entity, physics);
+                        ECB.SetComponent(sortKey, entity, physics);
                     }
                 }
                 
                 // Per ostacoli distruttibili, scala la resistenza
-                if (obstacle.IsDestructible && SystemAPI.HasComponent<DamagedStateComponent>(entity))
+                var damagedStateLookup = SystemAPI.GetComponentLookup<DamagedStateComponent>();
+                if (obstacle.IsDestructible && damagedStateLookup.HasComponent(entity))
                 {
-                    var damagedState = SystemAPI.GetComponent<DamagedStateComponent>(entity);
+                    var damagedState = damagedStateLookup[entity];
                     float resistanceScale = 1.0f + (difficultyLevel - 1) * 0.08f; // +8% per livello
                     
                     damagedState.MaxIntegrity = math.max(1, damagedState.MaxIntegrity * resistanceScale);
@@ -488,13 +493,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         damagedState.CurrentIntegrity = damagedState.MaxIntegrity;
                     }
                     
-                    SystemAPI.SetComponent(entity, damagedState);
+                    ECB.SetComponent(sortKey, entity, damagedState);
                 }
                 
                 // Per ostacoli temporanei, modifica la durata in base al livello di difficoltà
-                if (SystemAPI.HasComponent<TemporaryObstacleComponent>(entity))
+                var temporaryLookup = SystemAPI.GetComponentLookup<TemporaryObstacleComponent>();
+                if (temporaryLookup.HasComponent(entity))
                 {
-                    var temporary = SystemAPI.GetComponent<TemporaryObstacleComponent>(entity);
+                    var temporary = temporaryLookup[entity];
                     
                     // Riduci il tempo di vita se la difficoltà è alta
                     if (difficultyLevel >= 7 && temporary.TotalLifetime > 1.5f)
@@ -506,7 +512,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         temporary.TotalLifetime = newTotal;
                         temporary.RemainingLifetime = newRemaining;
                         
-                        SystemAPI.SetComponent(entity, temporary);
+                        ECB.SetComponent(sortKey, entity, temporary);
                     }
                 }
             }

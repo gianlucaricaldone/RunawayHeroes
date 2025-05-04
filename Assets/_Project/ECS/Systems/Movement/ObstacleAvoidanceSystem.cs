@@ -6,6 +6,7 @@ using Unity.Collections;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.World;
+using RunawayHeroes.ECS.Systems.Core;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {

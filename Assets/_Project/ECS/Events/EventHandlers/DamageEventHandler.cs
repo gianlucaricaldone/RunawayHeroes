@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Characters;
+using RunawayHeroes.ECS.Components.Combat;
 
 namespace RunawayHeroes.ECS.Events.Handlers
 {

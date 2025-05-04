@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 03/05/2025 23:54:32
+# Generato il: 04/05/2025 12:11:01
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -218,6 +218,7 @@ public struct MarinaComponent
 public struct AlexComponent
 public struct NeoComponent
 public struct EnemyComponent
+public enum EnemyType
 public struct DroneComponent
 public struct MidBossComponent
 public enum MidBossType
@@ -230,10 +231,83 @@ public enum StatusEffectType
 public struct PatrolComponent
 public struct BossComponent
 public enum BossType
-public partial class GameplayEventHandler
-public partial class DamageEventHandler
-public partial class CollisionEventHandler
-public partial class UIEventHandler
+public partial struct GameplayEventHandler
+private partial struct ProcessObjectiveCompletedEventsJob
+private partial struct ProcessObjectiveFailedEventsJob
+private partial struct ProcessObjectiveUpdatedEventsJob
+private partial struct ProcessLevelStartEventsJob
+private partial struct ProcessLevelCompletedEventsJob
+private partial struct ProcessLevelFailedEventsJob
+private partial struct ProcessFragmentCollectedEventsJob
+private partial struct ProcessFragmentResonanceEventsJob
+private partial struct ProcessCheckpointEventsJob
+public struct LevelUIUpdateEvent
+public struct FragmentResonanceUIEvent
+public struct CheckpointUIEvent
+public struct ObjectiveCompletedEvent
+public struct ObjectiveFailedEvent
+public struct ObjectiveUpdatedEvent
+public struct MissionCompletedEvent
+public struct MissionFailedEvent
+public struct LevelStartEvent
+public struct LevelCompletedEvent
+public struct LevelFailedEvent
+public struct FragmentCollectedEvent
+public struct FragmentResonanceEvent
+public struct CheckpointActivatedEvent
+public partial struct DamageEventHandler
+private partial struct ProcessDamageEventsJob
+public struct DamageFeedbackEvent
+public struct DeathEvent
+public partial struct CollisionEventHandler
+private partial struct ProcessCollisionEventsJob
+public partial struct UIEventHandler
+private partial struct ProcessUIVisibilityEventsJob
+private partial struct ProcessUIGenericEventsJob
+private partial struct ProcessScoreUIEventsJob
+private partial struct ProcessFinalScoreUIEventsJob
+private partial struct ProcessHealthUIEventsJob
+private partial struct ProcessHealthChangeAnimationEventsJob
+private partial struct ProcessObjectiveUIEventsJob
+private partial struct ProcessMissionUIEventsJob
+private partial struct ProcessCollectibleFeedbackEventsJob
+private partial struct ProcessFragmentUIEventsJob
+private partial struct ProcessNotificationEventsJob
+private partial struct ProcessTooltipEventsJob
+public enum UIAnimationType
+public enum UIActionType
+public struct UIVisibilityEvent
+public struct UIGenericEvent
+public struct UIAnimationEvent
+public struct UIScoreAnimationEvent
+public struct UIHealthAnimationEvent
+public struct ShowCollectiblePopupEvent
+public struct UIFragmentCollectionAnimEvent
+public struct ShowFinalScoreScreenEvent
+public struct NotificationEvent
+public struct TooltipEvent
+public struct HealthChangeAnimationEvent
+public struct MissionUIUpdateEvent
+public struct ScoreUIUpdateEvent
+public struct FinalScoreUIEvent
+public struct HealthUIUpdateEvent
+public struct ObjectiveUIUpdateEvent
+public struct CollectibleFeedbackEvent
+public struct FragmentUIUpdateEvent
+public struct UIVisibilityComponent
+public struct UIHighlightComponent
+public struct UIInteractableComponent
+public struct UIScoreDisplayComponent
+public struct UIScoreInfoComponent
+public struct UIHealthDisplayComponent
+public struct UIHealthInfoComponent
+public struct UIObjectiveInfoComponent
+public struct UIMissionInfoComponent
+public struct UIFragmentInventoryComponent
+public struct UINotificationManagerComponent
+public struct UINotificationComponent
+public struct UITooltipManagerComponent
+public struct UITooltipComponent
 public struct LevelCompletedEvent
 public struct CollisionEvent
 public struct LavaWalkingEvent
@@ -265,9 +339,9 @@ public struct AbilityActivatedEvent
 public struct EnemyDefeatedEvent
 public struct CheckpointReachedEvent
 public struct DamageEvent
-public partial class FocusTimeUISystem
+public partial struct FocusTimeUISystem
 public partial struct UIMessageSystem
-public partial class ObjectiveFeedbackSystem
+public partial struct ObjectiveFeedbackSystem
 public partial struct ResonanceUISystem
 public class ResonanceUISystemGroup
 public partial struct RenderSystem
@@ -336,20 +410,19 @@ public partial struct RandomLevelGenerationSystem
 public partial struct ProcessRandomLevelConfigsJob
 public partial struct LevelGenerationSystem
 public partial struct ProcessLevelGenerationRequestsJob
-public partial class CheckpointSystem
-public partial class ThematicObstacleGenerationSystem
+public partial struct CheckpointSystem
+public partial struct ThematicObstacleGenerationSystem
 public class ObstacleSystemGroup
-public partial class EnvironmentalEffectSystem
+public partial struct EnvironmentalEffectSystem
 public partial struct SegmentContentGenerationSystem
 public partial struct GenerateSegmentContentsJob
-public partial class RoomConnectionSystem
+public partial struct RoomConnectionSystem
 public struct RequiresConnectionTag
 public partial struct HazardSystem
 private partial struct ProcessHazardZonesJob
 private partial struct UpdateHazardVisualsJob
 public struct StatusEffectComponent
 public struct InvulnerableTag
-public struct DamageEvent
 public struct HazardVisualEffectEvent
 public partial struct RoomPopulationSystem
 public partial struct PopulateRoomsJob
@@ -429,7 +502,6 @@ private partial struct UpdateAttackCooldownsJob
 private partial struct ProcessActiveAttacksJob
 public struct AttackingStateComponent
 public enum AttackPhase
-public struct DamageEvent
 public partial struct EnemyAISystem
 public enum AIState
 public struct EnemyAIComponent
@@ -452,13 +524,53 @@ public partial struct TutorialProgressionSystem
 public partial struct FocusTimeItemDetectionSystem
 public partial struct WorldProgressionSystem
 public partial struct LevelProgressionSystem
-public partial class ScoreSystem
+public partial struct ScoreSystem
+private partial struct ProcessScoreUpdatesJob
+private partial struct ProcessLevelCompletionJob
+public struct ScoreComponent
+public struct ComboState
+public struct ScoreUIUpdateEvent
+public struct ComboMilestoneEvent
+public struct ComboEndedEvent
+public struct FinalScoreUIEvent
+public struct HighScoreAchievedEvent
 public partial struct ProgressionEventSystem
 public partial struct ProgressionSystem
 public partial struct ObjectiveSystem
-public partial class DifficultySystem
-public partial class PowerupSystem
-public partial class CollectibleSystem
+public partial struct DifficultySystem
+private partial struct ApplyDifficultyToSegmentsJob
+private partial struct ApplyDifficultyToEnemiesJob
+private partial struct ApplyDifficultyToMidBossesJob
+private partial struct ApplyDifficultyToBossesJob
+private partial struct ApplyDifficultyToObstaclesJob
+public partial struct PowerupSystem
+private partial struct UpdateWorldPowerupsJob
+private partial struct ProcessPowerupCollectionsJob
+private partial struct UpdateActivePowerupsJob
+public enum PowerupType
+public struct PowerupComponent
+public struct ActivePowerupComponent
+public struct PowerupCollectedEvent
+public struct PowerupFeedbackEvent
+public struct PowerupExpiringWarningEvent
+public struct PowerupExpiredEvent
+public partial struct CollectibleSystem
+private partial struct UpdateCollectiblesAnimationJob
+private partial struct UpdateMagnetEffectsJob
+private partial struct MoveMagnetizedCollectiblesJob
+private partial struct ProcessCollectionEventsJob
+public enum CollectibleType
+public struct CollectibleComponent
+public struct MagnetizedTag
+public struct MagnetizationMovementData
+public struct MagnetSourceComponent
+public struct CollectibleCollectedEvent
+public struct CollectibleFeedbackEvent
+public struct ScoreUpdatedEvent
+public struct HealthUpdatedEvent
+public struct KeyCollectedEvent
+public struct FragmentInventoryComponent
+public struct KeyInventoryComponent
 public partial struct TutorialGuidanceSystem
 public partial struct CheckScenarioTriggerJob
 public struct TutorialScenarioComponent

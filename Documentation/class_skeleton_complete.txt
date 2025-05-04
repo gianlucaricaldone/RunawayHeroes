@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 03/05/2025 23:54:32
+# Generato il: 04/05/2025 12:11:01
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -3970,6 +3970,9 @@ namespace RunawayHeroes.ECS.Components.Gameplay
         public float CollisionRadius;
         public float Strength;
         public float DamageValue;
+        public float DamageAmount;
+        public bool DealsDamage;
+        public bool IsMoving;
         public bool IsDestructible;
          <summary>
         /// Crea un nuovo ObstacleComponent con valori predefiniti per un ostacolo piccolo
@@ -4643,11 +4646,38 @@ namespace RunawayHeroes.ECS.Components.Characters
 namespace RunawayHeroes.ECS.Components.Enemies
 {
      <summary>
-    /// 
+    /// Componente principale per tutte le entità nemiche.
+    /// Contiene proprietà base come velocità, danno e stato.
     /// </summary>
 
     public struct EnemyComponent : IComponentData
     {
+        public EnemyType Type;
+        public int Tier;
+        public bool IsElite;
+        public float BaseSpeed;
+        public float DetectionRange;
+        public int AttackDamage;
+        public float AttackRange;
+        public float AttackSpeed;
+        public bool IsAggressive;
+        public bool IsStunned;
+    }
+     <summary>
+    /// Tipi di nemici disponibili nel gioco
+    /// </summary>
+
+    public enum EnemyType
+    {
+        Drone = 0,
+        SecurityGuard = 1,
+        Turret = 2,
+        Sniper = 10,
+        Bruiser = 11,
+        Speeder = 12,
+        EliteDrone = 20,
+        EliteGuard = 21,
+        CommandUnit = 22
     }
 }
 
@@ -4680,6 +4710,7 @@ namespace RunawayHeroes.ECS.Components.Enemies
     {
         public MidBossType Type;
         public int Tier;
+        public int AttackDamage;
         public bool HasEnragedState;
         public float EnrageThreshold;
         public float EnragedDamageMultiplier;
@@ -4687,6 +4718,8 @@ namespace RunawayHeroes.ECS.Components.Enemies
         public SpecialAbilityType SpecialAbility;
         public float SpecialAbilityCooldown;
         public float CurrentSpecialCooldown;
+        public bool HasSpecialAttacks;
+        public float SpecialAttackCooldown;
         public bool IsEnraged;
         public bool IsActivated;
     }
@@ -4872,6 +4905,8 @@ namespace RunawayHeroes.ECS.Components.Enemies
         public BossType Type;
         public int CurrentPhase;
         public int TotalPhases;
+        public int BaseDamage;
+        public int AttackPatternComplexity;
         public float[] PhaseThresholds;
         public float PhaseTransitionTimer;
         public float SpecialAttackCooldown;
@@ -4915,13 +4950,274 @@ namespace RunawayHeroes.ECS.Components.Enemies
 namespace RunawayHeroes.ECS.Events.Handlers
 {
      <summary>
-    /// 
+    /// Sistema che gestisce eventi generali di gameplay come completamento obiettivi,
+    /// avanzamento di livello, e altri eventi di gioco
     /// </summary>
 
-    public partial class GameplayEventHandler : SystemBase
+    public partial struct GameplayEventHandler : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _objectiveCompletedEventsQuery;
+        private EntityQuery _objectiveFailedEventsQuery;
+        private EntityQuery _objectiveUpdatedEventsQuery;
+        private EntityQuery _levelStartEventsQuery;
+        private EntityQuery _levelCompletedEventsQuery;
+        private EntityQuery _levelFailedEventsQuery;
+        private EntityQuery _fragmentCollectedEventsQuery;
+        private EntityQuery _fragmentResonanceEventsQuery;
+        private EntityQuery _checkpointEventsQuery;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema e configura le query per i vari tipi di eventi
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulizia risorse
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Gestisce tutti gli eventi di gameplay nel frame corrente
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(int sortKey, Entity entity, ObjectiveCompletedEvent evt);
+        private void Execute(int sortKey, Entity entity, ObjectiveFailedEvent evt);
+        private void Execute(int sortKey, Entity entity, ObjectiveUpdatedEvent evt);
+        private void Execute(int sortKey, Entity entity, LevelStartEvent evt);
+        private void Execute(int sortKey, Entity entity, LevelCompletedEvent evt);
+        private void Execute(int sortKey, Entity entity, LevelFailedEvent evt);
+        private void Execute(int sortKey, Entity entity, FragmentCollectedEvent evt);
+        private void Execute(int sortKey, Entity entity, FragmentResonanceEvent evt);
+        private void Execute(int sortKey, Entity entity, CheckpointActivatedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di completamento obiettivi
+        /// </summary>
+
+    private partial struct ProcessObjectiveCompletedEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, ObjectiveCompletedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di fallimento obiettivi
+        /// </summary>
+
+    private partial struct ProcessObjectiveFailedEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, ObjectiveFailedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di aggiornamento obiettivi
+        /// </summary>
+
+    private partial struct ProcessObjectiveUpdatedEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, ObjectiveUpdatedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di inizio livello
+        /// </summary>
+
+    private partial struct ProcessLevelStartEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, LevelStartEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di completamento livello
+        /// </summary>
+
+    private partial struct ProcessLevelCompletedEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, LevelCompletedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di fallimento livello
+        /// </summary>
+
+    private partial struct ProcessLevelFailedEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, LevelFailedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di raccolta frammenti
+        /// </summary>
+
+    private partial struct ProcessFragmentCollectedEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, FragmentCollectedEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi di risonanza frammenti
+        /// </summary>
+
+    private partial struct ProcessFragmentResonanceEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, FragmentResonanceEvent evt);
+    }
+     <summary>
+        /// Job che elabora gli eventi relativi ai checkpoint
+        /// </summary>
+
+    private partial struct ProcessCheckpointEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, CheckpointActivatedEvent evt);
+    }
+     <summary>
+    /// Evento UI per aggiornamenti livello
+    /// </summary>
+
+    public struct LevelUIUpdateEvent : IComponentData
+    {
+        public int LevelID;
+        public byte EventType;
+        public float Score;
+        public float TimeElapsed;
+        public byte FragmentsCollected;
+        public byte FailReason;
+    }
+     <summary>
+    /// Evento UI per risonanza frammenti
+    /// </summary>
+
+    public struct FragmentResonanceUIEvent : IComponentData
+    {
+        public Entity ActivatorEntity;
+        public byte ResonatingFragmentType;
+        public byte CharacterType;
+    }
+     <summary>
+    /// Evento UI per attivazione checkpoint
+    /// </summary>
+
+    public struct CheckpointUIEvent : IComponentData
+    {
+        public int CheckpointID;
+        public FixedString64Bytes CheckpointName;
+    }
+     <summary>
+    /// Evento per obiettivo completato
+    /// </summary>
+
+    public struct ObjectiveCompletedEvent : IComponentData
+    {
+        public int ObjectiveID;
+        public Entity MissionEntity;
+    }
+     <summary>
+    /// Evento per obiettivo fallito
+    /// </summary>
+
+    public struct ObjectiveFailedEvent : IComponentData
+    {
+        public int ObjectiveID;
+        public Entity MissionEntity;
+        public byte FailReason;
+        public bool IsCritical;
+        public float Progress;
+    }
+     <summary>
+    /// Evento per obiettivo aggiornato
+    /// </summary>
+
+    public struct ObjectiveUpdatedEvent : IComponentData
+    {
+        public int ObjectiveID;
+        public float Progress;
+    }
+     <summary>
+    /// Evento per missione completata
+    /// </summary>
+
+    public struct MissionCompletedEvent : IComponentData
+    {
+        public Entity MissionEntity;
+        public int MissionID;
+    }
+     <summary>
+    /// Evento per missione fallita
+    /// </summary>
+
+    public struct MissionFailedEvent : IComponentData
+    {
+        public Entity MissionEntity;
+        public int MissionID;
+        public byte FailReason;
+    }
+     <summary>
+    /// Evento per inizio livello
+    /// </summary>
+
+    public struct LevelStartEvent : IComponentData
+    {
+        public int LevelID;
+    }
+     <summary>
+    /// Evento per completamento livello
+    /// </summary>
+
+    public struct LevelCompletedEvent : IComponentData
+    {
+        public int LevelID;
+        public float FinalScore;
+        public float TimeElapsed;
+        public byte FragmentsCollected;
+    }
+     <summary>
+    /// Evento per fallimento livello
+    /// </summary>
+
+    public struct LevelFailedEvent : IComponentData
+    {
+        public int LevelID;
+        public byte FailReason;
+    }
+     <summary>
+    /// Evento per frammento raccolto
+    /// </summary>
+
+    public struct FragmentCollectedEvent : IComponentData
+    {
+        public int FragmentID;
+        public byte FragmentType;
+        public Entity CollectorEntity;
+    }
+     <summary>
+    /// Evento per risonanza frammenti
+    /// </summary>
+
+    public struct FragmentResonanceEvent : IComponentData
+    {
+        public Entity ActivatorEntity;
+        public byte FragmentType;
+        public byte CharacterType;
+    }
+     <summary>
+    /// Evento per checkpoint attivato
+    /// </summary>
+
+    public struct CheckpointActivatedEvent : IComponentData
+    {
+        public int CheckpointID;
+        public FixedString64Bytes CheckpointName;
+        public Entity ActivatorEntity;
     }
 }
 
@@ -4931,13 +5227,69 @@ namespace RunawayHeroes.ECS.Events.Handlers
 namespace RunawayHeroes.ECS.Events.Handlers
 {
      <summary>
-    /// 
+    /// Sistema che gestisce gli eventi di danno inflitti tra entità
     /// </summary>
 
-    public partial class DamageEventHandler : SystemBase
+    public partial struct DamageEventHandler : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _damageEventsQuery;
+        public EntityCommandBuffer ECB;
+         <summary>
+        /// Inizializza il sistema e definisce le query necessarie
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Esegue la pulizia delle risorse allocate
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Elabora tutti gli eventi di danno presenti nel frame corrente
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(Entity entity, int sortKey, DamageEvent damageEvent);
+         <summary>
+            /// Calcola il danno effettivo considerando le resistenze della difesa
+            /// </summary>
+
+        private float CalculateDamageWithDefense(float rawDamage, byte damageType, DefenseComponent defense);
+    }
+     <summary>
+        /// Job che elabora gli eventi di danno
+        /// </summary>
+
+    private partial struct ProcessDamageEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer ECB;
+        private void Execute(Entity entity, int sortKey, DamageEvent damageEvent);
+         <summary>
+            /// Calcola il danno effettivo considerando le resistenze della difesa
+            /// </summary>
+
+        private float CalculateDamageWithDefense(float rawDamage, byte damageType, DefenseComponent defense);
+    }
+     <summary>
+    /// Evento di feedback visivo per il danno
+    /// </summary>
+
+    public struct DamageFeedbackEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public float DamageAmount;
+        public byte DamageType;
+        public bool IsCritical;
+        public float3 HitPoint;
+    }
+     <summary>
+    /// Evento di morte di un'entità
+    /// </summary>
+
+    public struct DeathEvent : IComponentData
+    {
+        public Entity DeadEntity;
+        public Entity KillerEntity;
     }
 }
 
@@ -4947,13 +5299,38 @@ namespace RunawayHeroes.ECS.Events.Handlers
 namespace RunawayHeroes.ECS.Events.Handlers
 {
      <summary>
-    /// 
+    /// Sistema che gestisce gli eventi di collisione tra entità
     /// </summary>
 
-    public partial class CollisionEventHandler : SystemBase
+    public partial struct CollisionEventHandler : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _collisionEventsQuery;
+        public EntityCommandBuffer ECB;
+         <summary>
+        /// Inizializza il sistema e definisce le query necessarie
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Esegue la pulizia delle risorse allocate
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Elabora tutti gli eventi di collisione presenti nel frame corrente
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(Entity entity, CollisionEvent collisionEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di collisione
+        /// </summary>
+
+    private partial struct ProcessCollisionEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer ECB;
+        private void Execute(Entity entity, CollisionEvent collisionEvent);
     }
 }
 
@@ -4963,13 +5340,557 @@ namespace RunawayHeroes.ECS.Events.Handlers
 namespace RunawayHeroes.ECS.Events.Handlers
 {
      <summary>
-    /// 
+    /// Sistema che gestisce gli eventi relativi all'interfaccia utente, 
+    /// instradandoli verso i componenti UI appropriati.
     /// </summary>
 
-    public partial class UIEventHandler : SystemBase
+    public partial struct UIEventHandler : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _uiVisibilityEventsQuery;
+        private EntityQuery _uiGenericEventsQuery;
+        private EntityQuery _scoreUIEventsQuery;
+        private EntityQuery _finalScoreUIEventsQuery;
+        private EntityQuery _healthUIEventsQuery;
+        private EntityQuery _healthChangeAnimationEventsQuery;
+        private EntityQuery _objectiveUIEventsQuery;
+        private EntityQuery _missionUIEventsQuery;
+        private EntityQuery _collectibleFeedbackEventsQuery;
+        private EntityQuery _fragmentUIEventsQuery;
+        private EntityQuery _notificationEventsQuery;
+        private EntityQuery _tooltipEventsQuery;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema e configura le query per i diversi tipi di eventi UI
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse allocate
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Elabora i vari tipi di eventi UI e li invia ai componenti UI appropriati
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(Entity entity, int sortKey, UIVisibilityEvent visibilityEvent);
+        private void Execute(Entity entity, int sortKey, UIGenericEvent genericEvent);
+        private void Execute(Entity entity, int sortKey, ScoreUIUpdateEvent scoreEvent);
+        private void Execute(Entity entity, int sortKey, FinalScoreUIEvent finalScoreEvent);
+        private void Execute(Entity entity, int sortKey, HealthUIUpdateEvent healthEvent);
+        private void Execute(Entity entity, int sortKey, HealthChangeAnimationEvent animEvent);
+        private void Execute(Entity entity, int sortKey, ObjectiveUIUpdateEvent objectiveEvent);
+        private Entity FindObjectiveUIEntity(int objectiveID);
+        private void Execute(Entity entity, int sortKey, MissionUIUpdateEvent missionEvent);
+        private Entity FindMissionUIEntity(int missionID);
+        private void Execute(Entity entity, int sortKey, CollectibleFeedbackEvent feedbackEvent);
+        private void Execute(Entity entity, int sortKey, FragmentUIUpdateEvent fragmentEvent);
+        private void Execute(Entity entity, int sortKey, NotificationEvent notificationEvent);
+        private Entity FindNotificationManager();
+        private void Execute(Entity entity, int sortKey, TooltipEvent tooltipEvent);
+        private Entity FindTooltipManager();
+    }
+     <summary>
+        /// Job che elabora gli eventi di visibilità UI
+        /// </summary>
+
+    private partial struct ProcessUIVisibilityEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, UIVisibilityEvent visibilityEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi generici UI
+        /// </summary>
+
+    private partial struct ProcessUIGenericEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, UIGenericEvent genericEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di aggiornamento punteggio
+        /// </summary>
+
+    private partial struct ProcessScoreUIEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, ScoreUIUpdateEvent scoreEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di punteggio finale
+        /// </summary>
+
+    private partial struct ProcessFinalScoreUIEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, FinalScoreUIEvent finalScoreEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di aggiornamento salute
+        /// </summary>
+
+    private partial struct ProcessHealthUIEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, HealthUIUpdateEvent healthEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di animazione cambio salute
+        /// </summary>
+
+    private partial struct ProcessHealthChangeAnimationEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, HealthChangeAnimationEvent animEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di aggiornamento obiettivi
+        /// </summary>
+
+    private partial struct ProcessObjectiveUIEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, ObjectiveUIUpdateEvent objectiveEvent);
+        private Entity FindObjectiveUIEntity(int objectiveID);
+    }
+     <summary>
+        /// Job che elabora gli eventi di aggiornamento missione
+        /// </summary>
+
+    private partial struct ProcessMissionUIEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, MissionUIUpdateEvent missionEvent);
+        private Entity FindMissionUIEntity(int missionID);
+    }
+     <summary>
+        /// Job che elabora gli eventi di feedback collezionabili
+        /// </summary>
+
+    private partial struct ProcessCollectibleFeedbackEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, CollectibleFeedbackEvent feedbackEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi UI per frammenti
+        /// </summary>
+
+    private partial struct ProcessFragmentUIEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, FragmentUIUpdateEvent fragmentEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di notifica
+        /// </summary>
+
+    private partial struct ProcessNotificationEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, NotificationEvent notificationEvent);
+        private Entity FindNotificationManager();
+    }
+     <summary>
+        /// Job che elabora gli eventi tooltip
+        /// </summary>
+
+    private partial struct ProcessTooltipEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, TooltipEvent tooltipEvent);
+        private Entity FindTooltipManager();
+    }
+     <summary>
+    /// Tipi di animazione UI
+    /// </summary>
+
+    public enum UIAnimationType
+    {
+        None = 0,
+        FadeIn = 1,
+        FadeOut = 2,
+        Shake = 3,
+        Pulse = 4,
+        Progress = 5,
+        Complete = 6,
+        Fail = 7
+    }
+     <summary>
+    /// Tipi di azioni UI
+    /// </summary>
+
+    public enum UIActionType
+    {
+        None = 0,
+        Show = 1,
+        Hide = 2,
+        Highlight = 3,
+        Shake = 4,
+        Pulse = 5,
+        Enable = 6,
+        Disable = 7
+    }
+     <summary>
+    /// Evento per la visibilità di elementi UI
+    /// </summary>
+
+    public struct UIVisibilityEvent : IComponentData
+    {
+        public Entity UIEntityTarget;
+        public bool ShouldBeVisible;
+        public bool ShouldAnimate;
+        public float FadeTime;
+        public float Delay;
+    }
+     <summary>
+    /// Evento generico per azioni UI
+    /// </summary>
+
+    public struct UIGenericEvent : IComponentData
+    {
+        public Entity UIEntityTarget;
+        public UIActionType ActionType;
+        public float4 Color;
+        public float Duration;
+        public float Intensity;
+    }
+     <summary>
+    /// Evento per animazioni UI
+    /// </summary>
+
+    public struct UIAnimationEvent : IComponentData
+    {
+        public Entity UIEntityTarget;
+        public UIAnimationType AnimationType;
+        public float Duration;
+        public float Delay;
+        public float Intensity;
+        public float4 Color;
+    }
+     <summary>
+    /// Evento per animazioni punteggio
+    /// </summary>
+
+    public struct UIScoreAnimationEvent : IComponentData
+    {
+        public Entity UIScoreEntity;
+        public float Amount;
+        public byte SourceType;
+    }
+     <summary>
+    /// Evento per animazioni salute
+    /// </summary>
+
+    public struct UIHealthAnimationEvent : IComponentData
+    {
+        public Entity UIHealthEntity;
+        public float Amount;
+        public bool IsCritical;
+    }
+     <summary>
+    /// Evento per popup collezione
+    /// </summary>
+
+    public struct ShowCollectiblePopupEvent : IComponentData
+    {
+        public Entity CollectorEntity;
+        public byte CollectibleType;
+        public float Value;
+        public float3 WorldPosition;
+    }
+     <summary>
+    /// Evento per animazione frammento
+    /// </summary>
+
+    public struct UIFragmentCollectionAnimEvent : IComponentData
+    {
+        public byte FragmentType;
+        public Entity UIInventoryEntity;
+    }
+     <summary>
+    /// Evento per schermata punteggio finale
+    /// </summary>
+
+    public struct ShowFinalScoreScreenEvent : IComponentData
+    {
+        public int LevelID;
+        public Entity PlayerEntity;
+        public float FinalScore;
+        public bool IsHighScore;
+        public int TotalCollectibles;
+        public int TotalEnemiesDefeated;
+        public float TimeBonus;
+    }
+     <summary>
+    /// Evento notifica
+    /// </summary>
+
+    public struct NotificationEvent : IComponentData
+    {
+        public byte NotificationType;
+        public byte Priority;
+        public float Duration;
+        public int TextID;
+    }
+     <summary>
+    /// Evento tooltip
+    /// </summary>
+
+    public struct TooltipEvent : IComponentData
+    {
+        public Entity TargetUIElement;
+        public bool Show;
+        public int TextID;
+        public float2 Position;
+        public float Width;
+    }
+     <summary>
+    /// Evento cambio salute animazione
+    /// </summary>
+
+    public struct HealthChangeAnimationEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public float HealthChange;
+        public bool IsCritical;
+        public float3 WorldPosition;
+    }
+     <summary>
+    /// Evento aggiornamento missione UI
+    /// </summary>
+
+    public struct MissionUIUpdateEvent : IComponentData
+    {
+        public int MissionID;
+        public byte CompletedObjectives;
+        public byte TotalObjectives;
+        public bool IsCompleted;
+        public bool IsFailed;
+    }
+     <summary>
+    /// Evento aggiornamento punteggio UI
+    /// </summary>
+
+    public struct ScoreUIUpdateEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public float NewScore;
+        public float ScoreIncrement;
+        public byte ScoreSource;
+    }
+     <summary>
+    /// Evento punteggio finale
+    /// </summary>
+
+    public struct FinalScoreUIEvent : IComponentData
+    {
+        public int LevelID;
+        public Entity PlayerEntity;
+        public float FinalScore;
+        public bool IsHighScore;
+        public int TotalCollectibles;
+        public int TotalEnemiesDefeated;
+        public float TimeBonus;
+    }
+     <summary>
+    /// Evento aggiornamento salute UI
+    /// </summary>
+
+    public struct HealthUIUpdateEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public float NewHealth;
+        public float MaxHealth;
+        public float HealthChange;
+        public bool IsCritical;
+    }
+     <summary>
+    /// Evento aggiornamento obiettivo UI
+    /// </summary>
+
+    public struct ObjectiveUIUpdateEvent : IComponentData
+    {
+        public int ObjectiveID;
+        public float Progress;
+        public bool IsCompleted;
+        public bool IsFailed;
+    }
+     <summary>
+    /// Evento di feedback collezionabile
+    /// </summary>
+
+    public struct CollectibleFeedbackEvent : IComponentData
+    {
+        public Entity CollectorEntity;
+        public byte CollectibleType;
+        public float Value;
+        public float3 CollectionPoint;
+    }
+     <summary>
+    /// Evento di aggiornamento frammento
+    /// </summary>
+
+    public struct FragmentUIUpdateEvent : IComponentData
+    {
+        public int FragmentID;
+        public byte FragmentType;
+        public Entity CollectorEntity;
+    }
+     <summary>
+    /// Componente per la visibilità UI
+    /// </summary>
+
+    public struct UIVisibilityComponent : IComponentData
+    {
+        public bool IsVisible;
+        public float FadeTime;
+    }
+     <summary>
+    /// Componente per highlight UI
+    /// </summary>
+
+    public struct UIHighlightComponent : IComponentData
+    {
+        public bool IsHighlighted;
+        public float4 HighlightColor;
+        public float Duration;
+        public float PulseIntensity;
+    }
+     <summary>
+    /// Componente per interagibilità UI
+    /// </summary>
+
+    public struct UIInteractableComponent : IComponentData
+    {
+        public bool IsEnabled;
+        public bool IsHovered;
+        public bool IsPressed;
+    }
+     <summary>
+    /// Componente per display punteggio
+    /// </summary>
+
+    public struct UIScoreDisplayComponent : IComponentData
+    {
+        public Entity UIScoreEntity;
+    }
+     <summary>
+    /// Componente per info punteggio UI
+    /// </summary>
+
+    public struct UIScoreInfoComponent : IComponentData
+    {
+        public float CurrentScore;
+        public float LastScoreIncrement;
+        public byte LastScoreSource;
+        public double LastUpdateTime;
+    }
+     <summary>
+    /// Componente per display salute
+    /// </summary>
+
+    public struct UIHealthDisplayComponent : IComponentData
+    {
+        public Entity UIHealthEntity;
+    }
+     <summary>
+    /// Componente per info salute UI
+    /// </summary>
+
+    public struct UIHealthInfoComponent : IComponentData
+    {
+        public float CurrentHealth;
+        public float MaxHealth;
+        public float LastHealthChange;
+        public double LastUpdateTime;
+    }
+     <summary>
+    /// Componente per info obiettivo UI
+    /// </summary>
+
+    public struct UIObjectiveInfoComponent : IComponentData
+    {
+        public int ObjectiveID;
+        public float Progress;
+        public bool IsCompleted;
+        public bool IsFailed;
+        public double LastUpdateTime;
+    }
+     <summary>
+    /// Componente per info missione UI
+    /// </summary>
+
+    public struct UIMissionInfoComponent : IComponentData
+    {
+        public int MissionID;
+        public byte CompletedObjectives;
+        public byte TotalObjectives;
+        public bool IsCompleted;
+        public bool IsFailed;
+    }
+     <summary>
+    /// Componente per display inventario frammenti
+    /// </summary>
+
+    public struct UIFragmentInventoryComponent : IComponentData
+    {
+        public Entity UIInventoryEntity;
+    }
+     <summary>
+    /// Componente per gestione notifiche
+    /// </summary>
+
+    public struct UINotificationManagerComponent : IComponentData
+    {
+        public byte MaxNotifications;
+        public byte ActiveNotificationsCount;
+        public float DefaultDuration;
+    }
+     <summary>
+    /// Componente per notifica
+    /// </summary>
+
+    public struct UINotificationComponent : IComponentData
+    {
+        public byte Type;
+        public byte Priority;
+        public float Duration;
+        public int TextID;
+        public double CreationTime;
+    }
+     <summary>
+    /// Componente per gestione tooltip
+    /// </summary>
+
+    public struct UITooltipManagerComponent : IComponentData
+    {
+        public Entity CurrentTooltipEntity;
+    }
+     <summary>
+    /// Componente per tooltip
+    /// </summary>
+
+    public struct UITooltipComponent : IComponentData
+    {
+        public Entity TargetUIElement;
+        public int TextID;
+        public float2 Position;
+        public float Width;
+        public double CreationTime;
     }
 }
 
@@ -5345,11 +6266,21 @@ namespace RunawayHeroes.ECS.Events
 namespace RunawayHeroes.ECS.Events
 {
      <summary>
-    /// 
+    /// Evento generato quando un'entità subisce danno.
+    /// Questo evento viene processato da DamageEventHandler per applicare
+    /// il danno effettivo alle entità, considerando difese e resistenze.
     /// </summary>
 
     public struct DamageEvent : IComponentData
     {
+        public Entity TargetEntity;
+        public Entity SourceEntity;
+        public float DamageAmount;
+        public byte DamageType;
+        public bool IsCritical;
+        public float3 HitPoint;
+        public byte StatusEffectType;
+        public float StatusEffectDuration;
     }
 }
 
@@ -5363,7 +6294,7 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// visualizzando la barra di energia, il cooldown e l'interfaccia radiale per gli oggetti.
     /// </summary>
 
-    public partial class FocusTimeUISystem : SystemBase
+    public partial struct FocusTimeUISystem : ISystem
     {
         private RectTransform _focusTimeEnergyBar;
         private RectTransform _focusTimeCooldownIndicator;
@@ -5374,9 +6305,21 @@ namespace RunawayHeroes.ECS.Systems.UI
         private const float PULSE_SPEED;
         private const float PULSE_AMPLITUDE;
         private EntityQuery _playerFocusTimeQuery;
-        protected override void OnCreate();
-        protected override void OnStartRunning();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnStartRunning(SystemState state);
+        public void OnDestroy(SystemState state);
+        private void InitializeUIReferences();
+        public void OnUpdate(SystemState state);
+         <summary>
+        /// Aggiorna gli elementi dell'interfaccia del Focus Time in base allo stato attuale
+        /// </summary>
+
+        private void UpdateFocusTimeUI(SystemState state);
+         <summary>
+        /// Processa gli eventi relativi al Focus Time e applica i feedback visivi corrispondenti
+        /// </summary>
+
+        private void ProcessFocusTimeEvents(SystemState state);
         private void PlayFocusTimeActivationEffects();
         private void PlayFocusTimeDeactivationEffects();
         private void PlayFocusTimeReadyEffects();
@@ -5463,16 +6406,17 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// Mostra gli obiettivi correnti, aggiorna l'interfaccia e fornisce feedback al completamento.
     /// </summary>
 
-    public partial class ObjectiveFeedbackSystem : SystemBase
+    public partial struct ObjectiveFeedbackSystem : ISystem
     {
         private GameObject _objectivesPanel;
         private RectTransform _objectivesContainer;
         private Dictionary<int, GameObject> _activeObjectiveItems;
         private GameObject _objectiveItemPrefab;
         private EntityQuery _activeObjectivesQuery;
-        protected override void OnCreate();
-        protected override void OnStartRunning();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnStartRunning(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
          <summary>
         /// Inizializza i riferimenti all'interfaccia utente
         /// </summary>
@@ -5492,7 +6436,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// Aggiorna il pannello degli obiettivi
         /// </summary>
 
-        private void UpdateObjectivesPanel();
+        private void UpdateObjectivesPanel(SystemState state);
          <summary>
         /// Crea un nuovo elemento UI per un obiettivo
         /// </summary>
@@ -5507,12 +6451,12 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// Processa eventi di completamento obiettivi
         /// </summary>
 
-        private void ProcessObjectiveCompletionEvents();
+        private void ProcessObjectiveCompletionEvents(SystemState state);
          <summary>
         /// Processa eventi di progresso obiettivi
         /// </summary>
 
-        private void ProcessObjectiveProgressEvents();
+        private void ProcessObjectiveProgressEvents(SystemState state);
     }
 }
 
@@ -6714,13 +7658,15 @@ namespace RunawayHeroes.ECS.Systems.World
 namespace RunawayHeroes.ECS.Systems.World
 {
      <summary>
-    /// 
+    /// Sistema responsabile della gestione dei checkpoint nei livelli,
+    /// inclusa l'attivazione, il salvataggio dello stato del giocatore e il respawn
     /// </summary>
 
-    public partial class CheckpointSystem : SystemBase
+    public partial struct CheckpointSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
 }
 
@@ -6733,17 +7679,19 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema responsabile della generazione di ostacoli tematici nei segmenti di percorso
     /// </summary>
 
-    public partial class ThematicObstacleGenerationSystem : SystemBase
+    public partial struct ThematicObstacleGenerationSystem : ISystem
     {
         private Unity.Mathematics.Random _random;
         private uint _seed;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _segmentsRequiringContentQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
          <summary>
         /// Genera ostacoli tematici per un segmento di percorso
         /// </summary>
 
-        private void GenerateThematicObstacles(int entityInQueryIndex, Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, ObstacleSpawnConfigComponent config, EntityCommandBuffer.ParallelWriter commandBuffer, Unity.Mathematics.Random random);
+        private void GenerateThematicObstacles(Entity segmentEntity, PathSegmentComponent segment, DynamicBuffer<SegmentContentBuffer> contentBuffer, ObstacleSpawnConfigComponent config, EntityCommandBuffer commandBuffer, Unity.Mathematics.Random random);
          <summary>
         /// Seleziona un codice di ostacolo appropriato per il tema e la difficoltà
         /// </summary>
@@ -6778,13 +7726,15 @@ namespace RunawayHeroes.ECS.Systems.World
 namespace RunawayHeroes.ECS.Systems.World
 {
      <summary>
-    /// 
+    /// Sistema responsabile per la gestione degli effetti ambientali nel mondo di gioco,
+    /// come particelle, suoni ambientali, e condizioni meteorologiche
     /// </summary>
 
-    public partial class EnvironmentalEffectSystem : SystemBase
+    public partial struct EnvironmentalEffectSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
     }
 }
 
@@ -6853,15 +7803,28 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema che gestisce la creazione e il collegamento di doorway tra le stanze
     /// </summary>
 
-    public partial class RoomConnectionSystem : SystemBase
+    public partial struct RoomConnectionSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _roomsQuery;
+        private EntityQuery _unconnectedRoomsQuery;
+        public void OnCreate(SystemState state);
+        public void OnDestroy(SystemState state);
+        public void OnUpdate(SystemState state);
+         <summary>
+        /// Identifica le stanze che non hanno connessioni e le marca per la connessione
+        /// </summary>
+
+        private void FindUnconnectedRooms(SystemState state, EntityCommandBuffer commandBuffer);
+         <summary>
+        /// Collega le stanze che richiedono una connessione
+        /// </summary>
+
+        private void ConnectRooms(SystemState state, EntityCommandBuffer commandBuffer);
          <summary>
         /// Crea una nuova doorway per una stanza nella direzione specificata
         /// </summary>
 
-        private void CreateDoorway(int entityInQueryIndex, Entity roomEntity, DynamicBuffer<RoomDoorwayBuffer> doorways, DoorwayDirection direction, EntityCommandBuffer.ParallelWriter commandBuffer);
+        private void CreateDoorway(Entity roomEntity, DynamicBuffer<RoomDoorwayBuffer> doorways, DoorwayDirection direction, EntityCommandBuffer commandBuffer);
     }
      <summary>
     /// Tag component per identificare le stanze che richiedono una connessione
@@ -6956,17 +7919,6 @@ namespace RunawayHeroes.ECS.Systems.World
 
     public struct InvulnerableTag : IComponentData
     {
-    }
-     <summary>
-    /// Evento generato quando un'entità subisce danno
-    /// </summary>
-
-    public struct DamageEvent : IComponentData
-    {
-        public Entity Target;
-        public float Amount;
-        public Entity Source;
-        public byte DamageType;
     }
      <summary>
     /// Evento generato per gli effetti visivi delle zone pericolose
@@ -7985,7 +8937,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         /// Calcola un percorso utilizzando il NavMesh di Unity
         /// </summary>
 
-        private void CalculatePath(NavigatorComponent navigator, float3 startPosition);
+        private static void CalculatePath(SystemState state, NavigatorComponent navigator, float3 startPosition);
     }
      <summary>
     /// Componente che rappresenta un'entità navigante
@@ -8274,20 +9226,6 @@ namespace RunawayHeroes.ECS.Systems.AI
         Startup = 0,
         Active = 1,
         Recovery = 2
-    }
-     <summary>
-    /// Evento di danno generato dagli attacchi
-    /// </summary>
-
-    public struct DamageEvent : IComponentData
-    {
-        public Entity SourceEntity;
-        public float3 TargetPosition;
-        public float Damage;
-        public float DamageRadius;
-        public byte ElementType;
-        public byte StatusEffectType;
-        public float StatusEffectDuration;
     }
 }
 
@@ -8698,8 +9636,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _worldProgressionQuery;
         private EntityQuery _activeWorldQuery;
         private bool _initializationComplete;
-        private readonly int[] _worldCharacterMapping;
-        private readonly string[] _worldNames;
+        private int[] _worldCharacterMapping;
+        private string[] _worldNames;
         private const int TOTAL_WORLDS;
          <summary>
         /// Inizializza il sistema
@@ -8716,27 +9654,27 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Processa eventi di completamento tutorial per sbloccare il primo mondo
         /// </summary>
 
-        private void ProcessTutorialCompletionEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessTutorialCompletionEvents(EntityCommandBuffer commandBuffer, SystemState state);
          <summary>
         /// Processa eventi di completamento mondo
         /// </summary>
 
-        private void ProcessWorldCompletionEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessWorldCompletionEvents(EntityCommandBuffer commandBuffer, SystemState state);
          <summary>
         /// Processa eventi di raccolta frammenti
         /// </summary>
 
-        private void ProcessFragmentCollectionEvents(EntityCommandBuffer commandBuffer);
+        private void ProcessFragmentCollectionEvents(EntityCommandBuffer commandBuffer, SystemState state);
          <summary>
         /// Aggiorna lo stato globale di progressione
         /// </summary>
 
-        private void UpdateGlobalProgressionState();
+        private void UpdateGlobalProgressionState(SystemState state);
          <summary>
         /// Inizializza i dati di progressione dei mondi se non esistono già
         /// </summary>
 
-        private void InitializeWorldProgressionData();
+        private void InitializeWorldProgressionData(SystemState state);
          <summary>
         /// Ottiene o crea un'entità di progressione per un mondo specifico
         /// </summary>
@@ -8746,17 +9684,17 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Crea un messaggio UI per lo sblocco di un mondo
         /// </summary>
 
-        private void CreateWorldUnlockMessage(EntityCommandBuffer commandBuffer, int worldIndex);
+        private void CreateWorldUnlockMessage(EntityCommandBuffer commandBuffer, int worldIndex, SystemState state);
          <summary>
         /// Crea un messaggio UI per la raccolta di un frammento
         /// </summary>
 
-        private void CreateFragmentCollectionMessage(EntityCommandBuffer commandBuffer, int fragmentIndex);
+        private void CreateFragmentCollectionMessage(EntityCommandBuffer commandBuffer, int fragmentIndex, SystemState state);
          <summary>
         /// Crea un messaggio UI per lo sblocco di un personaggio
         /// </summary>
 
-        private void CreateCharacterUnlockMessage(EntityCommandBuffer commandBuffer, int characterIndex);
+        private void CreateCharacterUnlockMessage(EntityCommandBuffer commandBuffer, int characterIndex, SystemState state);
          <summary>
         /// Ottiene il numero totale di stelle disponibili in un mondo
         /// </summary>
@@ -8918,13 +9856,138 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
      <summary>
-    /// 
+    /// Sistema che gestisce il conteggio del punteggio, i moltiplicatori di punteggio,
+    /// le combo e il tracciamento dei punteggi più alti.
     /// </summary>
 
-    public partial class ScoreSystem : SystemBase
+    public partial struct ScoreSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _scoreEntitiesQuery;
+        private EntityQuery _scoreUpdateEventsQuery;
+        private EntityQuery _levelCompletionEventsQuery;
+        private NativeHashMap<Entity, ComboState> _playerCombos;
+        public NativeHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema e le sue strutture dati
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse allocate
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna il punteggio e le statistiche correlate
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(Entity entity, int sortKey, ScoreUpdatedEvent scoreEvent);
+        private void Execute(Entity entity, int sortKey, LevelCompletedEvent completionEvent);
+    }
+     <summary>
+        /// Job che elabora gli aggiornamenti di punteggio
+        /// </summary>
+
+    private partial struct ProcessScoreUpdatesJob : IJobEntity
+    {
+        public NativeHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, ScoreUpdatedEvent scoreEvent);
+    }
+     <summary>
+        /// Job che elabora gli eventi di completamento livello
+        /// </summary>
+
+    private partial struct ProcessLevelCompletionJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, LevelCompletedEvent completionEvent);
+    }
+     <summary>
+    /// Componente per il punteggio di un'entità
+    /// </summary>
+
+    public struct ScoreComponent : IComponentData
+    {
+        public float CurrentScore;
+        public float HighScore;
+        public float PreviousHighScore;
+        public double HighScoreDate;
+        public int TotalCollectibles;
+        public int TotalEnemiesDefeated;
+        public float TimeBonus;
+        public float ScoreMultiplier;
+    }
+     <summary>
+    /// Stato di una combo mantenuto nel sistema
+    /// </summary>
+
+    public struct ComboState
+    {
+        public int CurrentCombo;
+        public float ComboMultiplier;
+        public float ComboTimeRemaining;
+        public float ScoreFromCurrentCombo;
+    }
+     <summary>
+    /// Evento per aggiornamenti UI del punteggio
+    /// </summary>
+
+    public struct ScoreUIUpdateEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public float NewScore;
+        public float ScoreIncrement;
+        public byte ScoreSource;
+    }
+     <summary>
+    /// Evento quando una combo raggiunge una milestone
+    /// </summary>
+
+    public struct ComboMilestoneEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public int ComboCount;
+        public float ComboMultiplier;
+    }
+     <summary>
+    /// Evento quando una combo termina
+    /// </summary>
+
+    public struct ComboEndedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public int FinalComboCount;
+        public float FinalMultiplier;
+        public float TotalScoreFromCombo;
+    }
+     <summary>
+    /// Evento per il punteggio finale del livello
+    /// </summary>
+
+    public struct FinalScoreUIEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public int LevelID;
+        public float FinalScore;
+        public bool IsHighScore;
+        public int TotalCollectibles;
+        public int TotalEnemiesDefeated;
+        public float TimeBonus;
+    }
+     <summary>
+    /// Evento quando si ottiene un nuovo punteggio più alto
+    /// </summary>
+
+    public struct HighScoreAchievedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public int LevelID;
+        public float NewHighScore;
+        public float PreviousHighScore;
     }
 }
 
@@ -9114,28 +10177,96 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// al progresso del giocatore e al tema del mondo corrente.
     /// </summary>
 
-    public partial class DifficultySystem : SystemBase
+    public partial struct DifficultySystem : ISystem
     {
         private EntityQuery _worldConfigQuery;
+        private EntityQuery _segmentsQuery;
+        private EntityQuery _obstaclesQuery;
         private const float DEFAULT_DIFFICULTY_UPDATE_INTERVAL;
         private float _timeSinceLastUpdate;
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di gestione difficoltà
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna i parametri di difficoltà di segmenti, nemici e ostacoli
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
          <summary>
         /// Crea una configurazione di difficoltà predefinita nel mondo
         /// </summary>
 
-        private void CreateDefaultWorldDifficultyConfig();
-         <summary>
-        /// Applica modificatori di difficoltà a tutti i nemici in base alla difficoltà del segmento
+        private void CreateDefaultWorldDifficultyConfig(SystemState state);
+        private void Execute(PathSegmentComponent segment, LocalTransform transform);
+        private void Execute(Entity entity, int sortKey, EnemyComponent enemy, SegmentReferenceComponent segmentRef);
+        private void Execute(Entity entity, int sortKey, MidBossComponent midBoss, SegmentReferenceComponent segmentRef);
+        private void Execute(Entity entity, int sortKey, BossComponent boss, SegmentReferenceComponent segmentRef);
+        private void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, SegmentReferenceComponent segmentRef);
+    }
+     <summary>
+        /// Job che applica la difficoltà ai segmenti di percorso
         /// </summary>
 
-        private void ApplyDifficultyToEnemies();
-         <summary>
-        /// Applica modificatori di difficoltà a tutti gli ostacoli in base alla difficoltà del segmento
+    private partial struct ApplyDifficultyToSegmentsJob : IJobEntity
+    {
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        private void Execute(PathSegmentComponent segment, LocalTransform transform);
+    }
+     <summary>
+        /// Job che applica la difficoltà ai nemici normali
         /// </summary>
 
-        private void ApplyDifficultyToObstacles();
+    private partial struct ApplyDifficultyToEnemiesJob : IJobEntity
+    {
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, EnemyComponent enemy, SegmentReferenceComponent segmentRef);
+    }
+     <summary>
+        /// Job che applica la difficoltà ai mid-boss
+        /// </summary>
+
+    private partial struct ApplyDifficultyToMidBossesJob : IJobEntity
+    {
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, MidBossComponent midBoss, SegmentReferenceComponent segmentRef);
+    }
+     <summary>
+        /// Job che applica la difficoltà ai boss
+        /// </summary>
+
+    private partial struct ApplyDifficultyToBossesJob : IJobEntity
+    {
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, BossComponent boss, SegmentReferenceComponent segmentRef);
+    }
+     <summary>
+        /// Job che applica la difficoltà agli ostacoli
+        /// </summary>
+
+    private partial struct ApplyDifficultyToObstaclesJob : IJobEntity
+    {
+        public WorldDifficultyConfigComponent DifficultyConfig;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, SegmentReferenceComponent segmentRef);
     }
 }
 
@@ -9145,13 +10276,165 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
      <summary>
-    /// 
+    /// Sistema che gestisce i powerup nel gioco, inclusa la loro attivazione,
+    /// effetti temporanei, e durata nel tempo.
     /// </summary>
 
-    public partial class PowerupSystem : SystemBase
+    public partial struct PowerupSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _powerupEntitiesQuery;
+        private EntityQuery _activePowerupEffectsQuery;
+        private EntityQuery _powerupCollisionsQuery;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema e configura le query necessarie
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Gestisce gli aggiornamenti di powerup, controllando collisioni, 
+        /// applicando effetti e aggiornando durate
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(TransformComponent transform, PowerupComponent powerup);
+        private void Execute(Entity entity, int sortKey, PowerupCollectedEvent collectionEvent);
+        private void ApplyPowerupEffects(Entity characterEntity, PowerupComponent powerup, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
+        private void Execute(Entity entity, int sortKey, ActivePowerupComponent activePowerup);
+        private void RevertPowerupEffects(Entity characterEntity, ActivePowerupComponent activePowerup, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
+    }
+     <summary>
+        /// Job che aggiorna l'aspetto visivo dei powerup nel mondo
+        /// </summary>
+
+    private partial struct UpdateWorldPowerupsJob : IJobEntity
+    {
+        public float DeltaTime;
+        private void Execute(TransformComponent transform, PowerupComponent powerup);
+    }
+     <summary>
+        /// Job che processa le collisioni con powerup
+        /// </summary>
+
+    private partial struct ProcessPowerupCollectionsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, PowerupCollectedEvent collectionEvent);
+        private void ApplyPowerupEffects(Entity characterEntity, PowerupComponent powerup, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
+    }
+     <summary>
+        /// Job che aggiorna i powerup attivi e rimuove quelli scaduti
+        /// </summary>
+
+    private partial struct UpdateActivePowerupsJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, ActivePowerupComponent activePowerup);
+        private void RevertPowerupEffects(Entity characterEntity, ActivePowerupComponent activePowerup, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
+    }
+     <summary>
+    /// Tipi di powerup disponibili
+    /// </summary>
+
+    public enum PowerupType
+    {
+        SpeedBoost = 0,
+        DamageBoost = 1,
+        DefenseBoost = 2,
+        Invulnerability = 3,
+        HealthRestore = 4,
+        ManaRestore = 5,
+        ScoreMultiplier = 6,
+        ExtraLife = 7
+    }
+     <summary>
+    /// Componente che definisce un powerup
+    /// </summary>
+
+    public struct PowerupComponent : IComponentData
+    {
+        public PowerupType PowerupType;
+        public float Duration;
+        public float StrengthMultiplier;
+        public float SpeedMultiplier;
+        public float DefenseMultiplier;
+        public byte SpecialEffect;
+        public float RotationSpeed;
+        public bool HasVerticalBob;
+        public float BobAmplitude;
+        public float BobFrequency;
+        public float OriginalHeight;
+        public bool HasPulsation;
+        public float PulseAmplitude;
+        public float PulseFrequency;
+        public float3 OriginalScale;
+        public float AnimationTime;
+        public float PulsationTime;
+    }
+     <summary>
+    /// Componente per powerup attivi su un'entità
+    /// </summary>
+
+    public struct ActivePowerupComponent : IComponentData
+    {
+        public PowerupType PowerupType;
+        public float Duration;
+        public float RemainingTime;
+        public float OriginalSpeed;
+        public float OriginalDamage;
+        public float OriginalDefense;
+        public float StrengthMultiplier;
+        public float SpeedMultiplier;
+        public float DefenseMultiplier;
+        public byte SpecialEffect;
+        public bool WarningTriggered;
+    }
+     <summary>
+    /// Evento generato quando viene raccolto un powerup
+    /// </summary>
+
+    public struct PowerupCollectedEvent : IComponentData
+    {
+        public Entity PowerupEntity;
+        public Entity CollectorEntity;
+    }
+     <summary>
+    /// Evento per l'effetto visivo/audio di raccolta powerup
+    /// </summary>
+
+    public struct PowerupFeedbackEvent : IComponentData
+    {
+        public PowerupType PowerupType;
+        public Entity CollectorEntity;
+        public float3 CollectionPoint;
+    }
+     <summary>
+    /// Evento generato quando un powerup sta per scadere
+    /// </summary>
+
+    public struct PowerupExpiringWarningEvent : IComponentData
+    {
+        public Entity CharacterEntity;
+        public PowerupType PowerupType;
+        public float RemainingTime;
+    }
+     <summary>
+    /// Evento generato quando un powerup è scaduto
+    /// </summary>
+
+    public struct PowerupExpiredEvent : IComponentData
+    {
+        public Entity CharacterEntity;
+        public PowerupType PowerupType;
     }
 }
 
@@ -9161,13 +10444,230 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
      <summary>
-    /// 
+    /// Sistema che gestisce i collezionabili nel gioco, inclusa la generazione,
+    /// raccolta, e il conteggio dei collezionabili per i vari tipi.
     /// </summary>
 
-    public partial class CollectibleSystem : SystemBase
+    public partial struct CollectibleSystem : ISystem
     {
-        protected override void OnCreate();
-        protected override void OnUpdate();
+        private EntityQuery _collectiblesQuery;
+        private EntityQuery _magnetizedCollectiblesQuery;
+        private EntityQuery _collectibleEventsQuery;
+        private EntityQuery _magnetSourcesQuery;
+        public float DeltaTime;
+        public float DeltaTime;
+        public NativeArray<Entity> MagnetSources;
+        public NativeArray<TransformComponent> MagnetPositions;
+        public NativeArray<MagnetSourceComponent> MagnetProperties;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema e configura le query necessarie
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna i collezionabili, gestisce le raccolte e magnetizzazioni
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(TransformComponent transform, CollectibleComponent collectible);
+        private void Execute(Entity entity, int sortKey, TransformComponent transform, CollectibleComponent collectible);
+        private void Execute(TransformComponent transform, MagnetizationMovementData magnetData);
+        private void Execute(Entity entity, int sortKey, CollectibleCollectedEvent collectionEvent);
+        private void ApplyCollectibleEffects(Entity collectibleEntity, Entity collectorEntity, CollectibleComponent collectible, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
+    }
+     <summary>
+        /// Job che aggiorna l'animazione dei collezionabili
+        /// </summary>
+
+    private partial struct UpdateCollectiblesAnimationJob : IJobEntity
+    {
+        public float DeltaTime;
+        private void Execute(TransformComponent transform, CollectibleComponent collectible);
+    }
+     <summary>
+        /// Job che aggiorna i collezionabili in risposta agli attrattori magnetici
+        /// </summary>
+
+    private partial struct UpdateMagnetEffectsJob : IJobEntity
+    {
+        public float DeltaTime;
+        public NativeArray<Entity> MagnetSources;
+        public NativeArray<TransformComponent> MagnetPositions;
+        public NativeArray<MagnetSourceComponent> MagnetProperties;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, TransformComponent transform, CollectibleComponent collectible);
+    }
+     <summary>
+        /// Job che muove i collezionabili magnetizzati verso i loro attrattori
+        /// </summary>
+
+    private partial struct MoveMagnetizedCollectiblesJob : IJobEntity
+    {
+        public float DeltaTime;
+        private void Execute(TransformComponent transform, MagnetizationMovementData magnetData);
+    }
+     <summary>
+        /// Job che processa gli eventi di raccolta dei collezionabili
+        /// </summary>
+
+    private partial struct ProcessCollectionEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(Entity entity, int sortKey, CollectibleCollectedEvent collectionEvent);
+        private void ApplyCollectibleEffects(Entity collectibleEntity, Entity collectorEntity, CollectibleComponent collectible, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
+    }
+     <summary>
+    /// Tipi di collezionabili
+    /// </summary>
+
+    public enum CollectibleType
+    {
+        Coin = 0,
+        Gem = 1,
+        HealthPickup = 2,
+        Fragment = 3,
+        Key = 4,
+        PowerupPickup = 5
+    }
+     <summary>
+    /// Componente che definisce un collezionabile
+    /// </summary>
+
+    public struct CollectibleComponent : IComponentData
+    {
+        public CollectibleType CollectibleType;
+        public int ItemID;
+        public float Value;
+        public byte Rarity;
+        public byte FragmentType;
+        public byte KeyType;
+        public bool HasRotation;
+        public float3 RotationAxis;
+        public float RotationSpeed;
+        public bool HasFloating;
+        public float FloatAmplitude;
+        public float FloatFrequency;
+        public float OriginalHeight;
+        public bool HasPulsation;
+        public float PulseAmplitude;
+        public float PulseFrequency;
+        public float3 OriginalScale;
+        public bool HasGlow;
+        public float GlowFrequency;
+        public float GlowIntensity;
+        public bool IsMagnetizable;
+        public bool HasCollision;
+        public float AnimationTime;
+        public bool IsPlaced;
+    }
+     <summary>
+    /// Tag per collezionabili magnetizzati
+    /// </summary>
+
+    public struct MagnetizedTag : IComponentData
+    {
+    }
+     <summary>
+    /// Dati di movimento per collezionabili magnetizzati
+    /// </summary>
+
+    public struct MagnetizationMovementData : IComponentData
+    {
+        public Entity TargetEntity;
+        public float3 TargetPosition;
+        public float MoveSpeed;
+        public float AccelerationRate;
+    }
+     <summary>
+    /// Componente che definisce una sorgente magnetica
+    /// </summary>
+
+    public struct MagnetSourceComponent : IComponentData
+    {
+        public float Radius;
+        public float PullSpeed;
+        public float AccelerationRate;
+        public bool IsActive;
+        public float Duration;
+        public float RemainingTime;
+    }
+     <summary>
+    /// Evento generato quando viene raccolto un collezionabile
+    /// </summary>
+
+    public struct CollectibleCollectedEvent : IComponentData
+    {
+        public Entity CollectibleEntity;
+        public Entity CollectorEntity;
+    }
+     <summary>
+    /// Evento per effetti visivi/audio di raccolta collezionabile
+    /// </summary>
+
+    public struct CollectibleFeedbackEvent : IComponentData
+    {
+        public CollectibleType CollectibleType;
+        public Entity CollectorEntity;
+        public float3 CollectionPoint;
+        public float Value;
+    }
+     <summary>
+    /// Eventi specifici per tipo di collezionabile
+    /// </summary>
+
+    public struct ScoreUpdatedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public float NewScore;
+        public float ScoreIncrement;
+        public byte ScoreSource;
+    }
+    public struct HealthUpdatedEvent : IComponentData
+    {
+        public Entity PlayerEntity;
+        public float NewHealth;
+        public float HealthIncrement;
+        public bool IsFullHeal;
+    }
+    public struct KeyCollectedEvent : IComponentData
+    {
+        public int KeyID;
+        public byte KeyType;
+        public Entity CollectorEntity;
+    }
+     <summary>
+    /// Componente per inventario frammenti
+    /// </summary>
+
+    public struct FragmentInventoryComponent : IComponentData
+    {
+        public byte UrbanFragments;
+        public byte ForestFragments;
+        public byte TundraFragments;
+        public byte VolcanoFragments;
+        public byte AbyssFragments;
+        public byte VirtualFragments;
+        public byte GetFragmentCount(byte fragmentType);
+    }
+     <summary>
+    /// Componente per inventario chiavi
+    /// </summary>
+
+    public struct KeyInventoryComponent : IComponentData
+    {
+        public byte CommonKeys;
+        public byte RareKeys;
+        public byte EpicKeys;
+        public byte LegendaryKeys;
+        public byte GetKeyCount(byte keyType);
     }
 }
 
