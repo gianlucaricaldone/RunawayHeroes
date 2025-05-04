@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Burst;
 using Unity.Collections;
+using RunawayHeroes.ECS.Core;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.World.Obstacles;
