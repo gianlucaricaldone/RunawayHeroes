@@ -73,7 +73,10 @@ namespace RunawayHeroes.ECS.Systems.Combat
             {
                 state.Dependency = new ProcessStunEventsJob
                 {
-                    ECB = commandBuffer.AsParallelWriter()
+                    ECB = commandBuffer.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    StunnedTagLookup = SystemAPI.GetComponentLookup<StunnedTag>(true),
+                    StunDurationLookup = SystemAPI.GetComponentLookup<StunDurationComponent>(true)
                 }.ScheduleParallel(_stunEventQuery, state.Dependency);
             }
             
@@ -97,6 +100,9 @@ namespace RunawayHeroes.ECS.Systems.Combat
         private partial struct ProcessStunEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<StunnedTag> StunnedTagLookup;
+            [ReadOnly] public ComponentLookup<StunDurationComponent> StunDurationLookup;
             
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, 
@@ -104,18 +110,18 @@ namespace RunawayHeroes.ECS.Systems.Combat
                                  in StunEvent stunEvent)
             {
                 // Verifica se l'entità target esiste
-                if (SystemAPI.Exists(stunEvent.TargetEntity))
+                if (EntityLookup.Exists(stunEvent.TargetEntity))
                 {
                     // Aggiungi il tag di stordimento
-                    if (!SystemAPI.HasComponent<StunnedTag>(stunEvent.TargetEntity))
+                    if (!StunnedTagLookup.HasComponent(stunEvent.TargetEntity))
                     {
                         ECB.AddComponent<StunnedTag>(sortKey, stunEvent.TargetEntity);
                     }
                     
                     // Aggiungi o aggiorna il componente durata stordimento
-                    if (SystemAPI.HasComponent<StunDurationComponent>(stunEvent.TargetEntity))
+                    if (StunDurationLookup.HasComponent(stunEvent.TargetEntity))
                     {
-                        var duration = SystemAPI.GetComponent<StunDurationComponent>(stunEvent.TargetEntity);
+                        var duration = StunDurationLookup[stunEvent.TargetEntity];
                         
                         // Prendi la durata maggiore tra quella corrente e quella nuova
                         if (stunEvent.Duration > duration.RemainingTime)

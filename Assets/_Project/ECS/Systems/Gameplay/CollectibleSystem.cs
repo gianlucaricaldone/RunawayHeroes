@@ -336,7 +336,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 Entity collectibleEntity = collectionEvent.CollectibleEntity;
                 Entity collectorEntity = collectionEvent.CollectorEntity;
                 
-                if (!EntityLookupTable.Exists(collectibleEntity, out _) || !EntityLookupTable.Exists(collectorEntity, out _))
+                if (!EntityLookupTable.Exists(collectibleEntity) || !EntityLookupTable.Exists(collectorEntity))
                 {
                     // Entità invalide, distruggi l'evento e termina
                     ECB.DestroyEntity(sortKey, entity);

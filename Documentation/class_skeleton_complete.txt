@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 06/05/2025 22:33:53
+# Generato il: 06/05/2025 23:18:09
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -2368,6 +2368,7 @@ namespace RunawayHeroes.ECS.Components.Core
     public struct PhysicsComponent : IComponentData
     {
         public float3 Velocity;
+        public float3 AngularVelocity;
         public float3 Acceleration;
         public float Mass;
         public float Gravity;
@@ -2401,6 +2402,10 @@ namespace RunawayHeroes.ECS.Components.Core
 
     public struct RenderComponent : IComponentData
     {
+        public byte ModelVariant;
+        public bool IsVisible;
+        public float4 Color;
+        public float Scale;
     }
 }
 
@@ -5582,6 +5587,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
         public ComponentLookup<UIObjectiveInfoComponent> ObjectiveInfoLookup;
         public double ElapsedTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIMissionInfoComponent> MissionInfoLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<UIFragmentInventoryComponent> FragmentInventoryLookup;
@@ -5713,6 +5720,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessMissionUIEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIMissionInfoComponent> MissionInfoLookup;
         private void Execute(Entity entity, int sortKey, MissionUIUpdateEvent missionEvent);
         private Entity FindMissionUIEntity(int missionID);
     }
@@ -7402,6 +7411,9 @@ namespace RunawayHeroes.ECS.Systems.Combat
         private EntityQuery _stunnedEntitiesQuery;
         private EntityQuery _stunEventQuery;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<StunnedTag> StunnedTagLookup;
+        public ComponentLookup<StunDurationComponent> StunDurationLookup;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
          <summary>
@@ -7429,6 +7441,9 @@ namespace RunawayHeroes.ECS.Systems.Combat
     private partial struct ProcessStunEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<StunnedTag> StunnedTagLookup;
+        public ComponentLookup<StunDurationComponent> StunDurationLookup;
         private void Execute(int sortKey, Entity entity, StunEvent stunEvent);
     }
      <summary>
@@ -9990,6 +10005,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _worldProgressionQuery;
         private EntityQuery _activeWorldQuery;
         private bool _initializationComplete;
+        private Unity.Entities.World _world;
         private int[] _worldCharacterMapping;
         private string[] _worldNames;
         private const int TOTAL_WORLDS;
@@ -10033,7 +10049,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Ottiene o crea un'entità di progressione per un mondo specifico
         /// </summary>
 
-        private Entity GetOrCreateWorldProgressionEntity(int worldIndex);
+        private Entity GetOrCreateWorldProgressionEntity(int worldIndex, SystemState state);
          <summary>
         /// Crea un messaggio UI per lo sblocco di un mondo
         /// </summary>

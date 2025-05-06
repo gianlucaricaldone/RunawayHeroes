@@ -93,11 +93,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void ProcessProgressionAdvancementEvents(ref SystemState state, EntityCommandBuffer commandBuffer)
         {
-            foreach (var (entity, progressionEvent) in 
-                SystemAPI.Query<RefRO<ProgressionAdvancementEvent>>()
-                    .WithEntityAccess())
+            // Query entities with ProgressionAdvancementEvent
+            var progressionEventQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ProgressionAdvancementEvent>());
+            using var entities = progressionEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in entities)
             {
-                var eventData = progressionEvent.ValueRO;
+                var eventData = state.EntityManager.GetComponentData<ProgressionAdvancementEvent>(entity);
                 
                 // Propaga l'evento di avanzamento tra diversi sistemi
                 switch (eventData.ProgressionType)
@@ -143,11 +144,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void ProcessUnlockEvents(ref SystemState state, EntityCommandBuffer commandBuffer)
         {
-            foreach (var (entity, unlockEventRef) in 
-                SystemAPI.Query<RefRO<UnlockEvent>>()
-                    .WithEntityAccess())
+            // Query entities with UnlockEvent
+            var unlockEventQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<UnlockEvent>());
+            using var entities = unlockEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in entities)
             {
-                var unlockData = unlockEventRef.ValueRO;
+                var unlockData = state.EntityManager.GetComponentData<UnlockEvent>(entity);
                 
                 // Gestisci sblocchi in base al tipo
                 switch (unlockData.UnlockType)

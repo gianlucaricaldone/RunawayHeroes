@@ -111,10 +111,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
                     ECB.SetComponent(sortKey, damageEvent.TargetEntity, health);
                     
                     // Se l'entità ha raggiunto 0 salute, crea un evento di morte
-                    if (health.CurrentHealth <= 0 && !health.IsDead)
+                    if (health.CurrentHealth <= 0)
                     {
-                        health.IsDead = true;
-                        ECB.SetComponent(sortKey, damageEvent.TargetEntity, health);
+                        // Non possiamo assegnare a IsDead perché è una proprietà di sola lettura
+                        // ma comunque il valore sarà impostato correttamente poiché dipende da CurrentHealth
                         
                         // Crea un evento di morte
                         Entity deathEvent = ECB.CreateEntity(sortKey);

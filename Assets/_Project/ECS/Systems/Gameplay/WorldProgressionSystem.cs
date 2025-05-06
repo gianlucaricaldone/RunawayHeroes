@@ -133,12 +133,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Poiché questo sistema ha bisogno di accedere a EntityManager e altre variabili di sistema,
             // e stiamo usando WithStructuralChanges, manteniamo questa logica nel main thread
             // invece di convertirla in IJobEntity
-            var tutorialCompletionQuery = SystemAPI.QueryBuilder(ref state).WithAll<TutorialCompletionEvent>().Build();
-            foreach (var (entity, completionEvent) in 
-                SystemAPI.Query<RefRW<Entity>, RefRO<TutorialCompletionEvent>>(tutorialCompletionQuery))
+            // Process all entities with TutorialCompletionEvent
+            var completionEvents = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<TutorialCompletionEvent>());
+            using var entities = completionEvents.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in entities)
             {
+                var completionEvent = state.EntityManager.GetComponentData<TutorialCompletionEvent>(entity);
                 // Se tutti i tutorial sono completati, sblocca il primo mondo
-                if (completionEvent.ValueRO.AllTutorialsCompleted)
+                if (completionEvent.AllTutorialsCompleted)
                 {
                     Debug.Log("Tutti i tutorial completati! Sblocco del Mondo 1: Città in Caos");
                     
@@ -185,11 +187,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private void ProcessWorldCompletionEvents(EntityCommandBuffer commandBuffer, ref SystemState state)
         {
             // Anche qui manteniamo l'implementazione nel main thread per l'accesso a EntityManager e altre variabili
-            var worldCompletionQuery = SystemAPI.QueryBuilder(ref state).WithAll<WorldCompletionEvent>().Build();
-            foreach (var (entity, completionEvent) in 
-                SystemAPI.Query<RefRW<Entity>, RefRO<WorldCompletionEvent>>(worldCompletionQuery))
+            // Process all entities with WorldCompletionEvent
+            var worldCompletionQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldCompletionEvent>());
+            using var worldCompletionEntities = worldCompletionQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in worldCompletionEntities)
             {
-                int worldIndex = completionEvent.ValueRO.WorldIndex;
+                var completionEvent = state.EntityManager.GetComponentData<WorldCompletionEvent>(entity);
+                int worldIndex = completionEvent.WorldIndex;
                 int nextWorldIndex = worldIndex + 1;
                 
                 Debug.Log($"Mondo {worldIndex} ({_worldNames[worldIndex]}) completato!");
@@ -211,14 +215,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     playerProgress.WorldsCompleted |= (byte)(1 << worldIndex);
                     
                     // Aggiorna i frammenti raccolti se necessario
-                    if (completionEvent.ValueRO.FragmentIndex >= 0 && !worldProgress.IsFragmentCollected)
+                    if (completionEvent.FragmentIndex >= 0 && !worldProgress.IsFragmentCollected)
                     {
                         worldProgress.IsFragmentCollected = true;
                         playerProgress.TotalFragmentsCollected++;
-                        playerProgress.FragmentsCollectedMask |= (byte)(1 << completionEvent.ValueRO.FragmentIndex);
+                        playerProgress.FragmentsCollectedMask |= (byte)(1 << completionEvent.FragmentIndex);
                         
                         // Crea messaggio per la raccolta del frammento
-                        CreateFragmentCollectionMessage(commandBuffer, completionEvent.ValueRO.FragmentIndex, ref state);
+                        CreateFragmentCollectionMessage(commandBuffer, completionEvent.FragmentIndex, ref state);
                     }
                     
                     // Sblocca il prossimo mondo se esiste e non è già sbloccato
@@ -314,17 +318,19 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             int totalStars = 0;
             int totalLevelsCompleted = 0;
             
-            // Utilizziamo SystemAPI.Query per iterare sui componenti
-            var wpQuery = SystemAPI.QueryBuilder(ref state).WithAll<WorldProgressionComponent>().Build();
-            foreach (var worldProgress in SystemAPI.Query<RefRO<WorldProgressionComponent>>(wpQuery))
+            // Utilizziamo EntityManager per iterare sui componenti
+            var wpQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldProgressionComponent>());
+            using var wpEntities = wpQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in wpEntities)
             {
-                if (worldProgress.ValueRO.IsFragmentCollected)
+                var worldProgress = state.EntityManager.GetComponentData<WorldProgressionComponent>(entity);
+                if (worldProgress.IsFragmentCollected)
                     totalFragments++;
                     
-                totalStars += worldProgress.ValueRO.StarsCollected;
+                totalStars += worldProgress.StarsCollected;
                 
                 // Conta livelli completati (conta bit a 1 nel bitmap)
-                byte completedLevels = worldProgress.ValueRO.CompletedLevelsBitmap;
+                byte completedLevels = worldProgress.CompletedLevelsBitmap;
                 while (completedLevels > 0)
                 {
                     if ((completedLevels & 1) == 1)
@@ -398,11 +404,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Verifica se esiste già una progressione per questo mondo
                 bool worldProgressionExists = false;
                 
-                // Usa SystemAPI.Query per verificare l'esistenza di un mondo
-                var worldExistsQuery = SystemAPI.QueryBuilder(ref state).WithAll<WorldProgressionComponent>().Build();
-                foreach (var worldProgress in SystemAPI.Query<RefRO<WorldProgressionComponent>>(worldExistsQuery))
+                // Usa EntityManager per verificare l'esistenza di un mondo
+                var worldExistsQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldProgressionComponent>());
+                using var worldExistsEntities = worldExistsQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+                foreach (var entity in worldExistsEntities)
                 {
-                    if (worldProgress.ValueRO.WorldIndex == i)
+                    var worldProgress = state.EntityManager.GetComponentData<WorldProgressionComponent>(entity);
+                    if (worldProgress.WorldIndex == i)
                     {
                         worldProgressionExists = true;
                         break;
@@ -444,12 +452,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             // Cerca l'entità esistente
             Entity worldEntity = Entity.Null;
             
-            // Utilizza SystemAPI.Query per cercare il mondo
-            var worldProgressQuery = SystemAPI.QueryBuilder(ref state).WithAll<WorldProgressionComponent>().Build();
-            foreach (var (entity, worldProgress) in 
-                SystemAPI.Query<RefRW<Entity>, RefRO<WorldProgressionComponent>>(worldProgressQuery))
+            // Utilizza EntityManager per cercare il mondo
+            var worldProgressQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldProgressionComponent>());
+            using var worldProgressEntities = worldProgressQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in worldProgressEntities)
             {
-                if (worldProgress.ValueRO.WorldIndex == worldIndex)
+                var worldProgress = state.EntityManager.GetComponentData<WorldProgressionComponent>(entity);
+                if (worldProgress.WorldIndex == worldIndex)
                 {
                     worldEntity = entity;
                     break;
@@ -463,11 +472,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 InitializeWorldProgressionData(ref systemState);
                 
                 // Cerca di nuovo dopo l'inizializzazione
-                var worldProgressQuery2 = SystemAPI.QueryBuilder(ref systemState).WithAll<WorldProgressionComponent>().Build();
-                foreach (var (entity, worldProgress) in 
-                    SystemAPI.Query<RefRW<Entity>, RefRO<WorldProgressionComponent>>(worldProgressQuery2))
+                var worldProgressQuery2 = systemState.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldProgressionComponent>());
+                using var worldProgressEntities2 = worldProgressQuery2.ToEntityArray(Unity.Collections.Allocator.Temp);
+                foreach (var entity in worldProgressEntities2)
                 {
-                    if (worldProgress.ValueRO.WorldIndex == worldIndex)
+                    var worldProgress = systemState.EntityManager.GetComponentData<WorldProgressionComponent>(entity);
+                    if (worldProgress.WorldIndex == worldIndex)
                     {
                         worldEntity = entity;
                         break;

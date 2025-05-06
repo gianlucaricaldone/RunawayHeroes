@@ -155,7 +155,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 {
                     powerup.PulsationTime += DeltaTime;
                     float pulseFactor = 1.0f + math.sin(powerup.PulsationTime * powerup.PulseFrequency) * powerup.PulseAmplitude;
-                    transform.Scale = powerup.OriginalScale * pulseFactor;
+                    transform.Scale = new float3(powerup.OriginalScale * pulseFactor);
                 }
             }
         }
@@ -185,7 +185,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 Entity powerupEntity = collectionEvent.PowerupEntity;
                 Entity characterEntity = collectionEvent.CollectorEntity;
                 
-                if (!EntityStorageInfoLookup.Exists(powerupEntity, out _) || !EntityStorageInfoLookup.Exists(characterEntity, out _))
+                if (!EntityStorageInfoLookup.Exists(powerupEntity) || !EntityStorageInfoLookup.Exists(characterEntity))
                 {
                     // Entità invalide, distruggi l'evento e termina
                     ECB.DestroyEntity(sortKey, entity);

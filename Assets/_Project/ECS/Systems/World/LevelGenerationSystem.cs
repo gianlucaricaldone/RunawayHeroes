@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Burst;
+using Unity.Collections;
 using RunawayHeroes.ECS.Components.World;
 
 namespace RunawayHeroes.ECS.Systems.World

@@ -9,6 +9,16 @@ namespace RunawayHeroes.ECS.Components.Combat
     public struct DefenseComponent : IComponentData
     {
         /// <summary>
+        /// Valore base di difesa
+        /// </summary>
+        public float BaseDefense;
+        
+        /// <summary>
+        /// Valore corrente di difesa (può essere aumentato da powerup)
+        /// </summary>
+        public float CurrentDefense;
+        
+        /// <summary>
         /// Resistenza ai danni fisici (colpi, cadute, armi corpo a corpo, proiettili, ecc.)
         /// Valore percentuale (0-100)
         /// </summary>
@@ -33,6 +43,8 @@ namespace RunawayHeroes.ECS.Components.Combat
         {
             return new DefenseComponent
             {
+                BaseDefense = 10,
+                CurrentDefense = 10,
                 PhysicalResistance = 0,
                 ElementalResistance = 0,
                 EnergyResistance = 0
@@ -46,6 +58,8 @@ namespace RunawayHeroes.ECS.Components.Combat
         {
             return new DefenseComponent
             {
+                BaseDefense = 20,
+                CurrentDefense = 20,
                 PhysicalResistance = 10,
                 ElementalResistance = 10,
                 EnergyResistance = 10

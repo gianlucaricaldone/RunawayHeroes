@@ -86,10 +86,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 var tutorialLevel = SystemAPI.GetComponent<TutorialLevelTag>(tutorialEntity);
                 
                 // Controlla se il tutorial è completato
-                foreach (var (entity, completedTag) in 
-                    SystemAPI.Query<RefRO<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>>()
-                        .WithEntityAccess()
-                        .WithAll<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>())
+                // Query entities with TutorialCompletedTag
+                var completedTagQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>());
+                using var completedEntities = completedTagQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+                foreach (var entity in completedEntities)
                 {
                     // Aggiorna lo stato di progressione
                     var progressEntity = GetOrCreateProgressionEntity(ref state);
@@ -192,16 +192,18 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void UpdateScenarioTimers(ref SystemState state)
         {
-            foreach (var (entity, activationTag) in 
-                SystemAPI.Query<RefRW<ScenarioActivationTag>>()
-                    .WithEntityAccess()
-                    .WithAll<ScenarioActivationTag>())
+            // Query per entità con ScenarioActivationTag
+            var scenarioQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<ScenarioActivationTag>());
+            using var scenarioEntities = scenarioQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in scenarioEntities)
             {
                 // Decrementa il timer
-                activationTag.ValueRW.ActivationTime -= SystemAPI.Time.DeltaTime;
+                var tag = state.EntityManager.GetComponentData<ScenarioActivationTag>(entity);
+                tag.ActivationTime -= SystemAPI.Time.DeltaTime;
+                state.EntityManager.SetComponentData(entity, tag);
                 
                 // Se il timer è scaduto, rimuovi il tag
-                if (activationTag.ValueRW.ActivationTime <= 0)
+                if (tag.ActivationTime <= 0)
                 {
                     state.EntityManager.RemoveComponent<ScenarioActivationTag>(entity);
                 }
@@ -293,12 +295,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public void OnUpdate(ref SystemState state)
         {
             // Processa eventi di completamento tutorial
-            foreach (var (entity, completionEvent) in 
-                SystemAPI.Query<RefRO<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent>>()
-                    .WithEntityAccess())
+            var completionEventQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent>());
+            using var completionEntities = completionEventQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in completionEntities)
             {
                 // Aggiorna lo stato del gioco in base al completamento
-                if (completionEvent.ValueRO.AllTutorialsCompleted)
+                var completionEvent = state.EntityManager.GetComponentData<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletionEvent>(entity);
+                if (completionEvent.AllTutorialsCompleted)
                 {
                     Debug.Log("Tutti i tutorial completati! Sblocca il World 1...");
                     
@@ -310,8 +313,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 else
                 {
                     // Sblocca il prossimo tutorial
-                    int nextTutorial = completionEvent.ValueRO.CompletedTutorialIndex + 1;
-                    Debug.Log($"Tutorial {completionEvent.ValueRO.CompletedTutorialIndex} completato! Sbloccato tutorial {nextTutorial}");
+                    int nextTutorial = completionEvent.CompletedTutorialIndex + 1;
+                    Debug.Log($"Tutorial {completionEvent.CompletedTutorialIndex} completato! Sbloccato tutorial {nextTutorial}");
                     
                     // Salva lo stato di sblocco
                     PlayerPrefs.SetInt($"Tutorial_{nextTutorial}_Unlocked", 1);

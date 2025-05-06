@@ -108,7 +108,7 @@ namespace RunawayHeroes.ECS.Systems.World
             // quindi dobbiamo verificare la presenza del componente prima dell'esecuzione del job
             // Per semplicità, controlliamo se esiste almeno un'entità con questo componente
             var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
-            if (difficultyQuery.HasAnyEntities())
+            if (difficultyQuery.CalculateEntityCount() > 0)
             {
                 // Otteniamo il primo componente che troviamo (dovrebbe essere un singleton)
                 var entity = difficultyQuery.GetSingletonEntity();
@@ -203,7 +203,7 @@ namespace RunawayHeroes.ECS.Systems.World
             
             // Cerca la configurazione di difficoltà nel mondo
             var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
-            if (difficultyQuery.HasAnyEntities())
+            if (difficultyQuery.CalculateEntityCount() > 0)
             {
                 // Otteniamo il primo componente che troviamo (dovrebbe essere un singleton)
                 var entity = difficultyQuery.GetSingletonEntity();

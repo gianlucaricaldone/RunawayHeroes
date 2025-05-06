@@ -185,7 +185,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     // Se abbiamo raggiunto il punto corrente, passiamo al successivo
                     if (distanceToTarget < 0.2f)
                     {
-                        patrol.CurrentPointIndex = (patrol.CurrentPointIndex + 1) % patrol.TotalPoints;
+                        patrol.CurrentPointIndex = (byte)((patrol.CurrentPointIndex + 1) % patrol.TotalPoints);
                         patrol.CurrentPoint = patrol.GetPoint(patrol.CurrentPointIndex);
                         ECB.SetComponent(sortKey, entity, patrol);
                     }
@@ -299,7 +299,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 // Se la fase corrente è completata, passa alla successiva
                 if (sequence.CurrentPhaseTimer >= sequence.GetPhaseDuration(sequence.CurrentPhase))
                 {
-                    sequence.CurrentPhase = (sequence.CurrentPhase + 1) % sequence.TotalPhases;
+                    sequence.CurrentPhase = (byte)((sequence.CurrentPhase + 1) % sequence.TotalPhases);
                     sequence.CurrentPhaseTimer = 0;
                     
                     // Crea un evento di cambio fase

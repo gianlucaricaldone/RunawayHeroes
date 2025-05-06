@@ -108,7 +108,7 @@ namespace RunawayHeroes.ECS.Systems.AI
                             if (patrol.IsCircular)
                             {
                                 // Se circolare, riparti dall'inizio
-                                patrol.CurrentWaypointIndex = patrol.IsReversing ? 1 : 0;
+                                patrol.CurrentWaypointIndex = (byte)(patrol.IsReversing ? 1 : 0);
                             }
                             else
                             {

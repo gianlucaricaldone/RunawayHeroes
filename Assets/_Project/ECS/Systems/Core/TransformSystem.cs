@@ -65,8 +65,8 @@ namespace RunawayHeroes.ECS.Systems.Core
             // Sincronizza posizione
             localTransform.Position = transformComponent.Position;
             
-            // Sincronizza rotazione usando quaternion
-            localTransform.Rotation = quaternion.Euler(transformComponent.Rotation);
+            // Sincronizza rotazione
+            localTransform.Rotation = transformComponent.Rotation;
             
             // Sincronizza scala (notare che LocalTransform gestisce solo scala uniforme)
             localTransform.Scale = transformComponent.Scale;

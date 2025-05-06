@@ -280,7 +280,7 @@ namespace RunawayHeroes.Runtime.Characters
         {
             // Verifica se l'entità del giocatore esiste già
             var playerQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<PlayerTag>());
-            if (playerQuery.HasAnyEntities())
+            if (playerQuery.CalculateEntityCount() > 0)
             {
                 _playerEntity = playerQuery.GetSingletonEntity();
                 return;
@@ -345,7 +345,7 @@ namespace RunawayHeroes.Runtime.Characters
                 
             // Cerca entità con tag TutorialLevelTag
             var tutorialQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TutorialLevelTag>());
-            return tutorialQuery.HasAnyEntities();
+            return tutorialQuery.CalculateEntityCount() > 0;
         }
         
         /// <summary>

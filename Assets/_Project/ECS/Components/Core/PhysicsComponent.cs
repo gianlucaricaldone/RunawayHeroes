@@ -17,6 +17,11 @@ namespace RunawayHeroes.ECS.Components.Core
         public float3 Velocity;
         
         /// <summary>
+        /// Velocità di rotazione dell'entità
+        /// </summary>
+        public float3 AngularVelocity;
+        
+        /// <summary>
         /// Accelerazione corrente dell'entità
         /// </summary>
         public float3 Acceleration;
@@ -55,6 +60,7 @@ namespace RunawayHeroes.ECS.Components.Core
             return new PhysicsComponent
             {
                 Velocity = float3.zero,
+                AngularVelocity = float3.zero,
                 Acceleration = float3.zero,
                 Mass = 1.0f,
                 Gravity = 9.81f,
