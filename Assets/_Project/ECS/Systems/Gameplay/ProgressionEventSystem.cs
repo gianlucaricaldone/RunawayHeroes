@@ -226,7 +226,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             if (!_playerProgressionQuery.IsEmpty)
             {
                 var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                var playerProgress = SystemAPI.GetComponent<PlayerProgressionComponent>(playerProgressEntity);
+                var playerProgress = state.EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
                 
                 if (playerProgress.TutorialsCompleted && playerProgress.HighestUnlockedWorld < 1)
                 {
@@ -280,7 +280,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 if (!_playerProgressionQuery.IsEmpty)
                 {
                     var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                    var playerProgress = SystemAPI.GetComponent<PlayerProgressionComponent>(playerProgressEntity);
+                    var playerProgress = state.EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
                     
                     isWorldAlreadyCompleted = (playerProgress.WorldsCompleted & (1 << worldIndex)) != 0;
                 }

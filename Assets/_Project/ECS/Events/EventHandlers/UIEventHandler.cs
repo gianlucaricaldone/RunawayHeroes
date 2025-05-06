@@ -182,7 +182,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessMissionUIEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    MissionInfoLookup = SystemAPI.GetComponentLookup<UIMissionInfoComponent>(true)
                 }.ScheduleParallel(_missionUIEventsQuery, state.Dependency);
             }
             
@@ -252,7 +254,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 in UIVisibilityEvent visibilityEvent)
             {
                 // Cerca l'entità UI di destinazione
-                if (EntityLookup.Exists(visibilityEvent.UIEntityTarget, out _))
+                if (EntityLookup.Exists(visibilityEvent.UIEntityTarget))
                 {
                     // Se l'entità ha un componente di visibilità UI, aggiornalo
                     if (VisibilityLookup.HasComponent(visibilityEvent.UIEntityTarget))
@@ -305,7 +307,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 switch (genericEvent.ActionType)
                 {
                     case UIActionType.Highlight:
-                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _) && 
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget) && 
                             HighlightLookup.HasComponent(genericEvent.UIEntityTarget))
                         {
                             var highlight = HighlightLookup[genericEvent.UIEntityTarget];
@@ -318,7 +320,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         break;
                         
                     case UIActionType.Shake:
-                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget))
                         {
                             // Crea un evento di animazione UI per shake
                             Entity animEvent = ECB.CreateEntity(sortKey);
@@ -333,7 +335,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         break;
                         
                     case UIActionType.Pulse:
-                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget))
                         {
                             // Crea un evento di animazione UI per pulse
                             Entity animEvent = ECB.CreateEntity(sortKey);
@@ -349,7 +351,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         break;
                         
                     case UIActionType.Enable:
-                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _) && 
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget) && 
                             InteractableLookup.HasComponent(genericEvent.UIEntityTarget))
                         {
                             var interactable = InteractableLookup[genericEvent.UIEntityTarget];
@@ -359,7 +361,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         break;
                         
                     case UIActionType.Disable:
-                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _) && 
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget) && 
                             InteractableLookup.HasComponent(genericEvent.UIEntityTarget))
                         {
                             var interactable = InteractableLookup[genericEvent.UIEntityTarget];
@@ -402,7 +404,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                     var scoreDisplay = ScoreDisplayLookup[scoreEvent.PlayerEntity];
                     
                     // Controlla se l'entità UI esiste ancora
-                    if (EntityLookup.Exists(scoreDisplay.UIScoreEntity, out _))
+                    if (EntityLookup.Exists(scoreDisplay.UIScoreEntity))
                     {
                         // Aggiorna l'informazione sul punteggio nell'entità UI
                         if (ScoreInfoLookup.HasComponent(scoreDisplay.UIScoreEntity))
@@ -494,7 +496,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                     var healthDisplay = HealthDisplayLookup[healthEvent.PlayerEntity];
                     
                     // Controlla se l'entità UI esiste ancora
-                    if (EntityLookup.Exists(healthDisplay.UIHealthEntity, out _))
+                    if (EntityLookup.Exists(healthDisplay.UIHealthEntity))
                     {
                         // Aggiorna l'informazione sulla salute nell'entità UI
                         if (HealthInfoLookup.HasComponent(healthDisplay.UIHealthEntity))
@@ -571,7 +573,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca l'entità UI per questo obiettivo
                 Entity objectiveUIEntity = FindObjectiveUIEntity(objectiveEvent.ObjectiveID);
                 
-                if (EntityLookup.Exists(objectiveUIEntity, out _))
+                if (EntityLookup.Exists(objectiveUIEntity))
                 {
                     // Aggiorna l'informazione sull'obiettivo nell'entità UI
                     if (ObjectiveInfoLookup.HasComponent(objectiveUIEntity))
@@ -622,6 +624,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessMissionUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UIMissionInfoComponent> MissionInfoLookup;
             
             [BurstCompile]
             private void Execute(
@@ -632,17 +636,17 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca l'entità UI per questa missione
                 Entity missionUIEntity = FindMissionUIEntity(missionEvent.MissionID);
                 
-                if (SystemAPI.Exists(missionUIEntity))
+                if (EntityLookup.Exists(missionUIEntity))
                 {
                     // Aggiorna l'informazione sulla missione nell'entità UI
-                    if (SystemAPI.HasComponent<UIMissionInfoComponent>(missionUIEntity))
+                    if (MissionInfoLookup.HasComponent(missionUIEntity))
                     {
-                        var missionInfo = SystemAPI.GetComponent<UIMissionInfoComponent>(missionUIEntity);
+                        var missionInfo = MissionInfoLookup[missionUIEntity];
                         missionInfo.CompletedObjectives = missionEvent.CompletedObjectives;
                         missionInfo.TotalObjectives = missionEvent.TotalObjectives;
                         missionInfo.IsCompleted = missionEvent.IsCompleted;
                         missionInfo.IsFailed = missionEvent.IsFailed;
-                        SystemAPI.SetComponent(missionUIEntity, missionInfo);
+                        ECB.SetComponent(sortKey, missionUIEntity, missionInfo);
                     }
                     
                     // Crea evento di animazione in base allo stato
@@ -728,7 +732,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 {
                     var inventoryDisplay = FragmentInventoryLookup[fragmentEvent.CollectorEntity];
                     
-                    if (EntityLookup.Exists(inventoryDisplay.UIInventoryEntity, out _))
+                    if (EntityLookup.Exists(inventoryDisplay.UIInventoryEntity))
                     {
                         // Aggiorna UI inventario frammenti
                         // (implementazione specifica dipendente dalla struttura UI)
@@ -772,7 +776,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca il gestore delle notifiche UI
                 Entity notificationManager = FindNotificationManager();
                 
-                if (EntityLookup.Exists(notificationManager, out _))
+                if (EntityLookup.Exists(notificationManager))
                 {
                     // Crea un'entità per la notifica
                     Entity newNotification = ECB.CreateEntity(sortKey);
@@ -829,7 +833,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca il gestore dei tooltip UI
                 Entity tooltipManager = FindTooltipManager();
                 
-                if (EntityLookup.Exists(tooltipManager, out _))
+                if (EntityLookup.Exists(tooltipManager))
                 {
                     // Se è una richiesta di mostrare un tooltip
                     if (tooltipEvent.Show)
@@ -857,7 +861,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                     else if (TooltipManagerLookup.HasComponent(tooltipManager))
                     {
                         var manager = TooltipManagerLookup[tooltipManager];
-                        if (EntityLookup.Exists(manager.CurrentTooltipEntity, out _))
+                        if (EntityLookup.Exists(manager.CurrentTooltipEntity))
                         {
                             ECB.DestroyEntity(sortKey, manager.CurrentTooltipEntity);
                         }
