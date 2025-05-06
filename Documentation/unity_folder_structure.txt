@@ -1,5 +1,5 @@
 Alberatura delle directory, file .cs, .png e .fbx a partire da: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets
-Generato il: Tue May  6 21:21:56 CEST 2025
+Generato il: Tue May  6 22:33:51 CEST 2025
 ----------------------------------------
             📁 Assets
               📁 Adaptive Performance
@@ -149,6 +149,7 @@ Generato il: Tue May  6 21:21:56 CEST 2025
                       📄 NeoComponent.cs
                       📄 PlayerDataComponent.cs
                     📁 Combat
+                      📄 CombatComponent.cs
                       📄 DefenseComponent.cs
                     📁 Core
                       📄 CommonTags.cs
@@ -172,6 +173,7 @@ Generato il: Tue May  6 21:21:56 CEST 2025
                       📄 FocusTimeComponent.cs
                       📄 FragmentResonanceComponent.cs
                       📄 HealthComponent.cs
+                      📄 MissionComponent.cs
                       📄 MovementComponent.cs
                       📄 ObjectiveComponents.cs
                       📄 ObstacleComponent.cs

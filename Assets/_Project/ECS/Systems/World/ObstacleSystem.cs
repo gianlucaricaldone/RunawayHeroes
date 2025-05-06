@@ -100,7 +100,10 @@ namespace RunawayHeroes.ECS.Systems.World
                 state.Dependency = new UpdateMovingObstaclesJob
                 {
                     DeltaTime = deltaTime,
-                    ECB = commandBuffer.AsParallelWriter()
+                    ECB = commandBuffer.AsParallelWriter(),
+                    PatrolLookup = SystemAPI.GetComponentLookup<PatrolPathComponent>(true),
+                    OscillatingLookup = SystemAPI.GetComponentLookup<OscillatingObstacleComponent>(true),
+                    RotatingLookup = SystemAPI.GetComponentLookup<RotatingObstacleComponent>(true)
                 }.ScheduleParallel(_movingObstaclesQuery, state.Dependency);
             }
             
@@ -110,7 +113,8 @@ namespace RunawayHeroes.ECS.Systems.World
                 state.Dependency = new UpdateTemporaryObstaclesJob
                 {
                     DeltaTime = deltaTime,
-                    ECB = commandBuffer.AsParallelWriter()
+                    ECB = commandBuffer.AsParallelWriter(),
+                    RenderLookup = SystemAPI.GetComponentLookup<RenderComponent>(true)
                 }.ScheduleParallel(_temporaryObstaclesQuery, state.Dependency);
             }
             
@@ -120,7 +124,8 @@ namespace RunawayHeroes.ECS.Systems.World
                 state.Dependency = new UpdateSequencedObstaclesJob
                 {
                     DeltaTime = deltaTime,
-                    ECB = commandBuffer.AsParallelWriter()
+                    ECB = commandBuffer.AsParallelWriter(),
+                    PhysicsLookup = SystemAPI.GetComponentLookup<PhysicsComponent>(true)
                 }.ScheduleParallel(_sequencedObstaclesQuery, state.Dependency);
             }
             
@@ -130,7 +135,8 @@ namespace RunawayHeroes.ECS.Systems.World
                 state.Dependency = new UpdateDamagedObstaclesJob
                 {
                     DeltaTime = deltaTime,
-                    ECB = commandBuffer.AsParallelWriter()
+                    ECB = commandBuffer.AsParallelWriter(),
+                    RenderLookup = SystemAPI.GetComponentLookup<RenderComponent>(true)
                 }.ScheduleParallel(_damagedObstaclesQuery, state.Dependency);
             }
             
@@ -155,6 +161,9 @@ namespace RunawayHeroes.ECS.Systems.World
         {
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PatrolPathComponent> PatrolLookup;
+            [ReadOnly] public ComponentLookup<OscillatingObstacleComponent> OscillatingLookup;
+            [ReadOnly] public ComponentLookup<RotatingObstacleComponent> RotatingLookup;
             
             void Execute(
                 Entity entity, 
@@ -164,9 +173,9 @@ namespace RunawayHeroes.ECS.Systems.World
                 in ObstacleComponent obstacle)
             {
                 // Se ha un percorso di pattuglia
-                if (SystemAPI.HasComponent<PatrolPathComponent>(entity))
+                if (PatrolLookup.HasComponent(entity))
                 {
-                    var patrol = SystemAPI.GetComponent<PatrolPathComponent>(entity);
+                    var patrol = PatrolLookup[entity];
                     
                     // Avanzamento lungo il percorso
                     float3 currentTarget = patrol.CurrentPoint;
@@ -178,7 +187,7 @@ namespace RunawayHeroes.ECS.Systems.World
                     {
                         patrol.CurrentPointIndex = (patrol.CurrentPointIndex + 1) % patrol.TotalPoints;
                         patrol.CurrentPoint = patrol.GetPoint(patrol.CurrentPointIndex);
-                        SystemAPI.SetComponent(entity, patrol);
+                        ECB.SetComponent(sortKey, entity, patrol);
                     }
                     
                     // Muovi verso il target corrente
@@ -189,9 +198,9 @@ namespace RunawayHeroes.ECS.Systems.World
                     }
                 }
                 // Se ha un comportamento oscillatorio
-                else if (SystemAPI.HasComponent<OscillatingObstacleComponent>(entity))
+                else if (OscillatingLookup.HasComponent(entity))
                 {
-                    var oscillating = SystemAPI.GetComponent<OscillatingObstacleComponent>(entity);
+                    var oscillating = OscillatingLookup[entity];
                     
                     // Calcola la nuova posizione con il moto oscillatorio
                     oscillating.CurrentTime += DeltaTime;
@@ -208,12 +217,12 @@ namespace RunawayHeroes.ECS.Systems.World
                     physics.Velocity = (newPosition - transform.Position) / DeltaTime;
                     
                     // Aggiorna il componente
-                    SystemAPI.SetComponent(entity, oscillating);
+                    ECB.SetComponent(sortKey, entity, oscillating);
                 }
                 // Se è un ostacolo rotante
-                else if (SystemAPI.HasComponent<RotatingObstacleComponent>(entity))
+                else if (RotatingLookup.HasComponent(entity))
                 {
-                    var rotating = SystemAPI.GetComponent<RotatingObstacleComponent>(entity);
+                    var rotating = RotatingLookup[entity];
                     
                     // Calcola la nuova rotazione
                     quaternion addRotation = quaternion.AxisAngle(rotating.RotationAxis, rotating.RotationSpeed * DeltaTime);
@@ -233,6 +242,7 @@ namespace RunawayHeroes.ECS.Systems.World
         {
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<RenderComponent> RenderLookup;
             
             void Execute(
                 Entity entity, 
@@ -258,11 +268,11 @@ namespace RunawayHeroes.ECS.Systems.World
                     float fadeRatio = temporary.RemainingLifetime / temporary.FadeOutTime;
                     
                     // Se ha un componente di rendering, aggiorna l'alpha
-                    if (HasComponent<RenderComponent>(entity))
+                    if (RenderLookup.HasComponent(entity))
                     {
-                        var render = GetComponent<RenderComponent>(entity);
+                        var render = RenderLookup[entity];
                         render.Alpha = fadeRatio;
-                        SetComponent(entity, render);
+                        ECB.SetComponent(sortKey, entity, render);
                     }
                 }
             }
@@ -276,6 +286,7 @@ namespace RunawayHeroes.ECS.Systems.World
         {
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PhysicsComponent> PhysicsLookup;
             
             void Execute(
                 Entity entity, 
@@ -303,9 +314,9 @@ namespace RunawayHeroes.ECS.Systems.World
                 
                 // Aggiorna eventuali parametri basati sulla fase
                 // Ad esempio, la velocità per ostacoli con fasi di movimento
-                if (HasComponent<PhysicsComponent>(entity))
+                if (PhysicsLookup.HasComponent(entity))
                 {
-                    var physics = GetComponent<PhysicsComponent>(entity);
+                    var physics = PhysicsLookup[entity];
                     
                     // Esempio: modifica velocità in base alla fase
                     switch (sequence.GetPhaseType(sequence.CurrentPhase))
@@ -324,7 +335,7 @@ namespace RunawayHeroes.ECS.Systems.World
                             break;
                     }
                     
-                    SetComponent(entity, physics);
+                    ECB.SetComponent(sortKey, entity, physics);
                 }
             }
         }
@@ -337,6 +348,7 @@ namespace RunawayHeroes.ECS.Systems.World
         {
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<RenderComponent> RenderLookup;
             
             void Execute(
                 Entity entity, 
@@ -412,11 +424,11 @@ namespace RunawayHeroes.ECS.Systems.World
                     else
                     {
                         // Altrimenti, aggiorna solo il modello/aspetto
-                        if (HasComponent<RenderComponent>(entity))
+                        if (RenderLookup.HasComponent(entity))
                         {
-                            var render = GetComponent<RenderComponent>(entity);
+                            var render = RenderLookup[entity];
                             render.ModelVariant = (byte)damaged.DamageLevel;
-                            SetComponent(entity, render);
+                            ECB.SetComponent(sortKey, entity, render);
                         }
                     }
                 }

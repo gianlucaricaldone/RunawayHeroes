@@ -103,7 +103,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessUIVisibilityEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    VisibilityLookup = SystemAPI.GetComponentLookup<UIVisibilityComponent>(true)
                 }.ScheduleParallel(_uiVisibilityEventsQuery, state.Dependency);
             }
             
@@ -112,7 +114,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessUIGenericEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    HighlightLookup = SystemAPI.GetComponentLookup<UIHighlightComponent>(true),
+                    InteractableLookup = SystemAPI.GetComponentLookup<UIInteractableComponent>(true)
                 }.ScheduleParallel(_uiGenericEventsQuery, state.Dependency);
             }
             
@@ -121,7 +126,11 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessScoreUIEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    ScoreDisplayLookup = SystemAPI.GetComponentLookup<UIScoreDisplayComponent>(true),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    ScoreInfoLookup = SystemAPI.GetComponentLookup<UIScoreInfoComponent>(true),
+                    ElapsedTime = SystemAPI.Time.ElapsedTime
                 }.ScheduleParallel(_scoreUIEventsQuery, state.Dependency);
             }
             
@@ -139,7 +148,11 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessHealthUIEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    HealthDisplayLookup = SystemAPI.GetComponentLookup<UIHealthDisplayComponent>(true),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    HealthInfoLookup = SystemAPI.GetComponentLookup<UIHealthInfoComponent>(true),
+                    ElapsedTime = SystemAPI.Time.ElapsedTime
                 }.ScheduleParallel(_healthUIEventsQuery, state.Dependency);
             }
             
@@ -157,7 +170,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessObjectiveUIEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    ObjectiveInfoLookup = SystemAPI.GetComponentLookup<UIObjectiveInfoComponent>(true),
+                    ElapsedTime = SystemAPI.Time.ElapsedTime
                 }.ScheduleParallel(_objectiveUIEventsQuery, state.Dependency);
             }
             
@@ -184,7 +200,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessFragmentUIEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    FragmentInventoryLookup = SystemAPI.GetComponentLookup<UIFragmentInventoryComponent>(true),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup()
                 }.ScheduleParallel(_fragmentUIEventsQuery, state.Dependency);
             }
             
@@ -193,7 +211,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessNotificationEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    NotificationManagerLookup = SystemAPI.GetComponentLookup<UINotificationManagerComponent>(true),
+                    ElapsedTime = SystemAPI.Time.ElapsedTime
                 }.ScheduleParallel(_notificationEventsQuery, state.Dependency);
             }
             
@@ -202,7 +223,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessTooltipEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup(),
+                    TooltipManagerLookup = SystemAPI.GetComponentLookup<UITooltipManagerComponent>(true),
+                    ElapsedTime = SystemAPI.Time.ElapsedTime
                 }.ScheduleParallel(_tooltipEventsQuery, state.Dependency);
             }
         }
@@ -218,6 +242,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessUIVisibilityEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UIVisibilityComponent> VisibilityLookup;
             
             [BurstCompile]
             private void Execute(
@@ -226,15 +252,15 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 in UIVisibilityEvent visibilityEvent)
             {
                 // Cerca l'entità UI di destinazione
-                if (SystemAPI.Exists(visibilityEvent.UIEntityTarget))
+                if (EntityLookup.Exists(visibilityEvent.UIEntityTarget, out _))
                 {
                     // Se l'entità ha un componente di visibilità UI, aggiornalo
-                    if (SystemAPI.HasComponent<UIVisibilityComponent>(visibilityEvent.UIEntityTarget))
+                    if (VisibilityLookup.HasComponent(visibilityEvent.UIEntityTarget))
                     {
-                        var visibility = SystemAPI.GetComponent<UIVisibilityComponent>(visibilityEvent.UIEntityTarget);
+                        var visibility = VisibilityLookup[visibilityEvent.UIEntityTarget];
                         visibility.IsVisible = visibilityEvent.ShouldBeVisible;
                         visibility.FadeTime = visibilityEvent.FadeTime;
-                        SystemAPI.SetComponent(visibilityEvent.UIEntityTarget, visibility);
+                        ECB.SetComponent(sortKey, visibilityEvent.UIEntityTarget, visibility);
                         
                         // Aggiungi eventi specifici per animazioni se necessario
                         if (visibilityEvent.ShouldAnimate)
@@ -265,6 +291,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessUIGenericEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UIHighlightComponent> HighlightLookup;
+            [ReadOnly] public ComponentLookup<UIInteractableComponent> InteractableLookup;
             
             [BurstCompile]
             private void Execute(
@@ -276,20 +305,20 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 switch (genericEvent.ActionType)
                 {
                     case UIActionType.Highlight:
-                        if (SystemAPI.Exists(genericEvent.UIEntityTarget) && 
-                            SystemAPI.HasComponent<UIHighlightComponent>(genericEvent.UIEntityTarget))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _) && 
+                            HighlightLookup.HasComponent(genericEvent.UIEntityTarget))
                         {
-                            var highlight = SystemAPI.GetComponent<UIHighlightComponent>(genericEvent.UIEntityTarget);
+                            var highlight = HighlightLookup[genericEvent.UIEntityTarget];
                             highlight.IsHighlighted = true;
                             highlight.HighlightColor = genericEvent.Color;
                             highlight.Duration = genericEvent.Duration;
                             highlight.PulseIntensity = genericEvent.Intensity;
-                            SystemAPI.SetComponent(genericEvent.UIEntityTarget, highlight);
+                            ECB.SetComponent(sortKey, genericEvent.UIEntityTarget, highlight);
                         }
                         break;
                         
                     case UIActionType.Shake:
-                        if (SystemAPI.Exists(genericEvent.UIEntityTarget))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _))
                         {
                             // Crea un evento di animazione UI per shake
                             Entity animEvent = ECB.CreateEntity(sortKey);
@@ -304,7 +333,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         break;
                         
                     case UIActionType.Pulse:
-                        if (SystemAPI.Exists(genericEvent.UIEntityTarget))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _))
                         {
                             // Crea un evento di animazione UI per pulse
                             Entity animEvent = ECB.CreateEntity(sortKey);
@@ -320,22 +349,22 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         break;
                         
                     case UIActionType.Enable:
-                        if (SystemAPI.Exists(genericEvent.UIEntityTarget) && 
-                            SystemAPI.HasComponent<UIInteractableComponent>(genericEvent.UIEntityTarget))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _) && 
+                            InteractableLookup.HasComponent(genericEvent.UIEntityTarget))
                         {
-                            var interactable = SystemAPI.GetComponent<UIInteractableComponent>(genericEvent.UIEntityTarget);
+                            var interactable = InteractableLookup[genericEvent.UIEntityTarget];
                             interactable.IsEnabled = true;
-                            SystemAPI.SetComponent(genericEvent.UIEntityTarget, interactable);
+                            ECB.SetComponent(sortKey, genericEvent.UIEntityTarget, interactable);
                         }
                         break;
                         
                     case UIActionType.Disable:
-                        if (SystemAPI.Exists(genericEvent.UIEntityTarget) && 
-                            SystemAPI.HasComponent<UIInteractableComponent>(genericEvent.UIEntityTarget))
+                        if (EntityLookup.Exists(genericEvent.UIEntityTarget, out _) && 
+                            InteractableLookup.HasComponent(genericEvent.UIEntityTarget))
                         {
-                            var interactable = SystemAPI.GetComponent<UIInteractableComponent>(genericEvent.UIEntityTarget);
+                            var interactable = InteractableLookup[genericEvent.UIEntityTarget];
                             interactable.IsEnabled = false;
-                            SystemAPI.SetComponent(genericEvent.UIEntityTarget, interactable);
+                            ECB.SetComponent(sortKey, genericEvent.UIEntityTarget, interactable);
                         }
                         break;
                 }
@@ -356,6 +385,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessScoreUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<UIScoreDisplayComponent> ScoreDisplayLookup;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UIScoreInfoComponent> ScoreInfoLookup;
+            public double ElapsedTime;
             
             [BurstCompile]
             private void Execute(
@@ -364,22 +397,22 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 in ScoreUIUpdateEvent scoreEvent)
             {
                 // Se esiste un'entità UI per il punteggio associata al giocatore
-                if (SystemAPI.HasComponent<UIScoreDisplayComponent>(scoreEvent.PlayerEntity))
+                if (ScoreDisplayLookup.HasComponent(scoreEvent.PlayerEntity))
                 {
-                    var scoreDisplay = SystemAPI.GetComponent<UIScoreDisplayComponent>(scoreEvent.PlayerEntity);
+                    var scoreDisplay = ScoreDisplayLookup[scoreEvent.PlayerEntity];
                     
                     // Controlla se l'entità UI esiste ancora
-                    if (SystemAPI.Exists(scoreDisplay.UIScoreEntity))
+                    if (EntityLookup.Exists(scoreDisplay.UIScoreEntity, out _))
                     {
                         // Aggiorna l'informazione sul punteggio nell'entità UI
-                        if (SystemAPI.HasComponent<UIScoreInfoComponent>(scoreDisplay.UIScoreEntity))
+                        if (ScoreInfoLookup.HasComponent(scoreDisplay.UIScoreEntity))
                         {
-                            var scoreInfo = SystemAPI.GetComponent<UIScoreInfoComponent>(scoreDisplay.UIScoreEntity);
+                            var scoreInfo = ScoreInfoLookup[scoreDisplay.UIScoreEntity];
                             scoreInfo.CurrentScore = scoreEvent.NewScore;
                             scoreInfo.LastScoreIncrement = scoreEvent.ScoreIncrement;
                             scoreInfo.LastScoreSource = scoreEvent.ScoreSource;
-                            scoreInfo.LastUpdateTime = SystemAPI.Time.ElapsedTime;
-                            SystemAPI.SetComponent(scoreDisplay.UIScoreEntity, scoreInfo);
+                            scoreInfo.LastUpdateTime = ElapsedTime;
+                            ECB.SetComponent(sortKey, scoreDisplay.UIScoreEntity, scoreInfo);
                         }
                         
                         // Crea evento di animazione per feedback punteggio
@@ -444,6 +477,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessHealthUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<UIHealthDisplayComponent> HealthDisplayLookup;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UIHealthInfoComponent> HealthInfoLookup;
+            public double ElapsedTime;
             
             [BurstCompile]
             private void Execute(
@@ -452,22 +489,22 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 in HealthUIUpdateEvent healthEvent)
             {
                 // Se esiste un'entità UI per la salute associata al giocatore
-                if (SystemAPI.HasComponent<UIHealthDisplayComponent>(healthEvent.PlayerEntity))
+                if (HealthDisplayLookup.HasComponent(healthEvent.PlayerEntity))
                 {
-                    var healthDisplay = SystemAPI.GetComponent<UIHealthDisplayComponent>(healthEvent.PlayerEntity);
+                    var healthDisplay = HealthDisplayLookup[healthEvent.PlayerEntity];
                     
                     // Controlla se l'entità UI esiste ancora
-                    if (SystemAPI.Exists(healthDisplay.UIHealthEntity))
+                    if (EntityLookup.Exists(healthDisplay.UIHealthEntity, out _))
                     {
                         // Aggiorna l'informazione sulla salute nell'entità UI
-                        if (SystemAPI.HasComponent<UIHealthInfoComponent>(healthDisplay.UIHealthEntity))
+                        if (HealthInfoLookup.HasComponent(healthDisplay.UIHealthEntity))
                         {
-                            var healthInfo = SystemAPI.GetComponent<UIHealthInfoComponent>(healthDisplay.UIHealthEntity);
+                            var healthInfo = HealthInfoLookup[healthDisplay.UIHealthEntity];
                             healthInfo.CurrentHealth = healthEvent.NewHealth;
                             healthInfo.MaxHealth = healthEvent.MaxHealth;
                             healthInfo.LastHealthChange = healthEvent.HealthChange;
-                            healthInfo.LastUpdateTime = SystemAPI.Time.ElapsedTime;
-                            SystemAPI.SetComponent(healthDisplay.UIHealthEntity, healthInfo);
+                            healthInfo.LastUpdateTime = ElapsedTime;
+                            ECB.SetComponent(sortKey, healthDisplay.UIHealthEntity, healthInfo);
                         }
                         
                         // Se c'è stato un cambiamento di salute, crea un evento di animazione
@@ -521,6 +558,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessObjectiveUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UIObjectiveInfoComponent> ObjectiveInfoLookup;
+            public double ElapsedTime;
             
             [BurstCompile]
             private void Execute(
@@ -531,17 +571,17 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca l'entità UI per questo obiettivo
                 Entity objectiveUIEntity = FindObjectiveUIEntity(objectiveEvent.ObjectiveID);
                 
-                if (SystemAPI.Exists(objectiveUIEntity))
+                if (EntityLookup.Exists(objectiveUIEntity, out _))
                 {
                     // Aggiorna l'informazione sull'obiettivo nell'entità UI
-                    if (SystemAPI.HasComponent<UIObjectiveInfoComponent>(objectiveUIEntity))
+                    if (ObjectiveInfoLookup.HasComponent(objectiveUIEntity))
                     {
-                        var objectiveInfo = SystemAPI.GetComponent<UIObjectiveInfoComponent>(objectiveUIEntity);
+                        var objectiveInfo = ObjectiveInfoLookup[objectiveUIEntity];
                         objectiveInfo.Progress = objectiveEvent.Progress;
                         objectiveInfo.IsCompleted = objectiveEvent.IsCompleted;
                         objectiveInfo.IsFailed = objectiveEvent.IsFailed;
-                        objectiveInfo.LastUpdateTime = SystemAPI.Time.ElapsedTime;
-                        SystemAPI.SetComponent(objectiveUIEntity, objectiveInfo);
+                        objectiveInfo.LastUpdateTime = ElapsedTime;
+                        ECB.SetComponent(sortKey, objectiveUIEntity, objectiveInfo);
                     }
                     
                     // Crea evento di animazione in base allo stato
@@ -674,6 +714,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessFragmentUIEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<UIFragmentInventoryComponent> FragmentInventoryLookup;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
             
             [BurstCompile]
             private void Execute(
@@ -682,11 +724,11 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 in FragmentUIUpdateEvent fragmentEvent)
             {
                 // Cerca l'entità UI per l'inventario frammenti
-                if (SystemAPI.HasComponent<UIFragmentInventoryComponent>(fragmentEvent.CollectorEntity))
+                if (FragmentInventoryLookup.HasComponent(fragmentEvent.CollectorEntity))
                 {
-                    var inventoryDisplay = SystemAPI.GetComponent<UIFragmentInventoryComponent>(fragmentEvent.CollectorEntity);
+                    var inventoryDisplay = FragmentInventoryLookup[fragmentEvent.CollectorEntity];
                     
-                    if (SystemAPI.Exists(inventoryDisplay.UIInventoryEntity))
+                    if (EntityLookup.Exists(inventoryDisplay.UIInventoryEntity, out _))
                     {
                         // Aggiorna UI inventario frammenti
                         // (implementazione specifica dipendente dalla struttura UI)
@@ -717,6 +759,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessNotificationEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UINotificationManagerComponent> NotificationManagerLookup;
+            public double ElapsedTime;
             
             [BurstCompile]
             private void Execute(
@@ -727,7 +772,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca il gestore delle notifiche UI
                 Entity notificationManager = FindNotificationManager();
                 
-                if (SystemAPI.Exists(notificationManager))
+                if (EntityLookup.Exists(notificationManager, out _))
                 {
                     // Crea un'entità per la notifica
                     Entity newNotification = ECB.CreateEntity(sortKey);
@@ -737,15 +782,15 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         Priority = notificationEvent.Priority,
                         Duration = notificationEvent.Duration,
                         TextID = notificationEvent.TextID,
-                        CreationTime = SystemAPI.Time.ElapsedTime
+                        CreationTime = ElapsedTime
                     });
                     
                     // Collega la notifica al gestore
-                    if (SystemAPI.HasComponent<UINotificationManagerComponent>(notificationManager))
+                    if (NotificationManagerLookup.HasComponent(notificationManager))
                     {
-                        var manager = SystemAPI.GetComponent<UINotificationManagerComponent>(notificationManager);
+                        var manager = NotificationManagerLookup[notificationManager];
                         manager.ActiveNotificationsCount++;
-                        SystemAPI.SetComponent(notificationManager, manager);
+                        ECB.SetComponent(sortKey, notificationManager, manager);
                         
                         // Aggiorna il buffer di notifiche attive
                         // (simulazione - in pratica si userebbe un approccio con DynamicBuffer)
@@ -771,6 +816,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessTooltipEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<UITooltipManagerComponent> TooltipManagerLookup;
+            public double ElapsedTime;
             
             [BurstCompile]
             private void Execute(
@@ -781,7 +829,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 // Cerca il gestore dei tooltip UI
                 Entity tooltipManager = FindTooltipManager();
                 
-                if (SystemAPI.Exists(tooltipManager))
+                if (EntityLookup.Exists(tooltipManager, out _))
                 {
                     // Se è una richiesta di mostrare un tooltip
                     if (tooltipEvent.Show)
@@ -794,27 +842,27 @@ namespace RunawayHeroes.ECS.Events.Handlers
                             TextID = tooltipEvent.TextID,
                             Position = tooltipEvent.Position,
                             Width = tooltipEvent.Width,
-                            CreationTime = SystemAPI.Time.ElapsedTime
+                            CreationTime = ElapsedTime
                         });
                         
                         // Aggiorna il gestore dei tooltip
-                        if (SystemAPI.HasComponent<UITooltipManagerComponent>(tooltipManager))
+                        if (TooltipManagerLookup.HasComponent(tooltipManager))
                         {
-                            var manager = SystemAPI.GetComponent<UITooltipManagerComponent>(tooltipManager);
+                            var manager = TooltipManagerLookup[tooltipManager];
                             manager.CurrentTooltipEntity = newTooltip;
-                            SystemAPI.SetComponent(tooltipManager, manager);
+                            ECB.SetComponent(sortKey, tooltipManager, manager);
                         }
                     }
                     // Altrimenti, nascondi il tooltip corrente
-                    else if (SystemAPI.HasComponent<UITooltipManagerComponent>(tooltipManager))
+                    else if (TooltipManagerLookup.HasComponent(tooltipManager))
                     {
-                        var manager = SystemAPI.GetComponent<UITooltipManagerComponent>(tooltipManager);
-                        if (SystemAPI.Exists(manager.CurrentTooltipEntity))
+                        var manager = TooltipManagerLookup[tooltipManager];
+                        if (EntityLookup.Exists(manager.CurrentTooltipEntity, out _))
                         {
                             ECB.DestroyEntity(sortKey, manager.CurrentTooltipEntity);
                         }
                         manager.CurrentTooltipEntity = Entity.Null;
-                        SystemAPI.SetComponent(tooltipManager, manager);
+                        ECB.SetComponent(sortKey, tooltipManager, manager);
                     }
                 }
                 

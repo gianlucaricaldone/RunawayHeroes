@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 06/05/2025 21:21:57
+# Generato il: 06/05/2025 22:33:53
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -2433,6 +2433,41 @@ namespace RunawayHeroes.ECS.Components.Combat
 }
 
 
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Combat/CombatComponent.cs
+
+namespace RunawayHeroes.ECS.Components.Combat
+{
+     <summary>
+    /// Componente che rappresenta le proprietà offensive di un'entità, includendo il danno
+    /// di base, bonus e modificatori per diversi tipi di attacco.
+    /// </summary>
+
+    public struct CombatComponent : IComponentData
+    {
+        public float BaseDamage;
+        public float CurrentDamage;
+        public float CriticalHitChance;
+        public float CriticalHitMultiplier;
+        public float AttackRange;
+         <summary>
+        /// Crea un componente di combattimento con valori predefiniti
+        /// </summary>
+
+        public static CombatComponent CreateDefault();
+         <summary>
+        /// Crea un componente di combattimento per un'entità da mischia
+        /// </summary>
+
+        public static CombatComponent CreateMelee(float baseDamage);
+         <summary>
+        /// Crea un componente di combattimento per un'entità a distanza
+        /// </summary>
+
+        public static CombatComponent CreateRanged(float baseDamage, float range);
+    }
+}
+
+
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Input/SlideInputComponent.cs
 
 namespace RunawayHeroes.ECS.Components.Input
@@ -4090,6 +4125,33 @@ namespace RunawayHeroes.ECS.Components.Gameplay
 }
 
 
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Gameplay/MissionComponent.cs
+
+namespace RunawayHeroes.ECS.Components.Gameplay
+{
+     <summary>
+    /// Componente che rappresenta una missione o quest all'interno del gioco.
+    /// Una missione è composta da uno o più obiettivi che devono essere completati.
+    /// </summary>
+
+    public struct MissionComponent : IComponentData
+    {
+        public int MissionID;
+        public FixedString64Bytes MissionName;
+        public FixedString128Bytes Description;
+        public byte MissionType;
+        public int CompletedObjectives;
+        public int TotalObjectives;
+        public bool IsCompleted;
+        public bool IsFailed;
+        public bool IsActive;
+        public int AssociatedLevelID;
+        public int RewardValue;
+        public byte RewardType;
+    }
+}
+
+
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Gameplay/ProgressionComponents.cs
 
 namespace RunawayHeroes.ECS.Components.Gameplay
@@ -5094,12 +5156,15 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private EntityQuery _fragmentResonanceEventsQuery;
         private EntityQuery _checkpointEventsQuery;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<MissionComponent> MissionLookup;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<MissionComponent> MissionLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<FragmentInventoryComponent> FragmentInventoryLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
          <summary>
@@ -5134,6 +5199,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessObjectiveCompletedEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<MissionComponent> MissionLookup;
         private void Execute(int sortKey, Entity entity, ObjectiveCompletedEvent evt);
     }
      <summary>
@@ -5143,6 +5209,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessObjectiveFailedEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<MissionComponent> MissionLookup;
         private void Execute(int sortKey, Entity entity, ObjectiveFailedEvent evt);
     }
      <summary>
@@ -5188,6 +5255,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessFragmentCollectedEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<FragmentInventoryComponent> FragmentInventoryLookup;
         private void Execute(int sortKey, Entity entity, FragmentCollectedEvent evt);
     }
      <summary>
@@ -5361,7 +5429,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
     public partial struct DamageEventHandler : ISystem
     {
         private EntityQuery _damageEventsQuery;
-        public EntityCommandBuffer ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
          <summary>
         /// Inizializza il sistema e definisce le query necessarie
         /// </summary>
@@ -5390,7 +5460,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
 
     private partial struct ProcessDamageEventsJob : IJobEntity
     {
-        public EntityCommandBuffer ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
         private void Execute(Entity entity, int sortKey, DamageEvent damageEvent);
          <summary>
             /// Calcola il danno effettivo considerando le resistenze della difesa
@@ -5487,17 +5559,41 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private EntityQuery _notificationEventsQuery;
         private EntityQuery _tooltipEventsQuery;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIVisibilityComponent> VisibilityLookup;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIHighlightComponent> HighlightLookup;
+        public ComponentLookup<UIInteractableComponent> InteractableLookup;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UIScoreDisplayComponent> ScoreDisplayLookup;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIScoreInfoComponent> ScoreInfoLookup;
+        public double ElapsedTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UIHealthDisplayComponent> HealthDisplayLookup;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIHealthInfoComponent> HealthInfoLookup;
+        public double ElapsedTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIObjectiveInfoComponent> ObjectiveInfoLookup;
+        public double ElapsedTime;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UIFragmentInventoryComponent> FragmentInventoryLookup;
+        public EntityStorageInfoLookup EntityLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UINotificationManagerComponent> NotificationManagerLookup;
+        public double ElapsedTime;
         public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
-        public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UITooltipManagerComponent> TooltipManagerLookup;
+        public double ElapsedTime;
          <summary>
         /// Inizializza il sistema e configura le query per i diversi tipi di eventi UI
         /// </summary>
@@ -5537,6 +5633,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessUIVisibilityEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIVisibilityComponent> VisibilityLookup;
         private void Execute(Entity entity, int sortKey, UIVisibilityEvent visibilityEvent);
     }
      <summary>
@@ -5546,6 +5644,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessUIGenericEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIHighlightComponent> HighlightLookup;
+        public ComponentLookup<UIInteractableComponent> InteractableLookup;
         private void Execute(Entity entity, int sortKey, UIGenericEvent genericEvent);
     }
      <summary>
@@ -5555,6 +5656,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessScoreUIEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UIScoreDisplayComponent> ScoreDisplayLookup;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIScoreInfoComponent> ScoreInfoLookup;
+        public double ElapsedTime;
         private void Execute(Entity entity, int sortKey, ScoreUIUpdateEvent scoreEvent);
     }
      <summary>
@@ -5573,6 +5678,10 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessHealthUIEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UIHealthDisplayComponent> HealthDisplayLookup;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIHealthInfoComponent> HealthInfoLookup;
+        public double ElapsedTime;
         private void Execute(Entity entity, int sortKey, HealthUIUpdateEvent healthEvent);
     }
      <summary>
@@ -5591,6 +5700,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessObjectiveUIEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UIObjectiveInfoComponent> ObjectiveInfoLookup;
+        public double ElapsedTime;
         private void Execute(Entity entity, int sortKey, ObjectiveUIUpdateEvent objectiveEvent);
         private Entity FindObjectiveUIEntity(int objectiveID);
     }
@@ -5620,6 +5732,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessFragmentUIEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<UIFragmentInventoryComponent> FragmentInventoryLookup;
+        public EntityStorageInfoLookup EntityLookup;
         private void Execute(Entity entity, int sortKey, FragmentUIUpdateEvent fragmentEvent);
     }
      <summary>
@@ -5629,6 +5743,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessNotificationEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UINotificationManagerComponent> NotificationManagerLookup;
+        public double ElapsedTime;
         private void Execute(Entity entity, int sortKey, NotificationEvent notificationEvent);
         private Entity FindNotificationManager();
     }
@@ -5639,6 +5756,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
     private partial struct ProcessTooltipEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
+        public ComponentLookup<UITooltipManagerComponent> TooltipManagerLookup;
+        public double ElapsedTime;
         private void Execute(Entity entity, int sortKey, TooltipEvent tooltipEvent);
         private Entity FindTooltipManager();
     }
@@ -7553,12 +7673,18 @@ namespace RunawayHeroes.ECS.Systems.World
         private float _obstacleUpdateTimer;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PatrolPathComponent> PatrolLookup;
+        public ComponentLookup<OscillatingObstacleComponent> OscillatingLookup;
+        public ComponentLookup<RotatingObstacleComponent> RotatingLookup;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<RenderComponent> RenderLookup;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PhysicsComponent> PhysicsLookup;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<RenderComponent> RenderLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
          <summary>
         /// Inizializza il sistema di gestione ostacoli
@@ -7589,6 +7715,9 @@ namespace RunawayHeroes.ECS.Systems.World
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PatrolPathComponent> PatrolLookup;
+        public ComponentLookup<OscillatingObstacleComponent> OscillatingLookup;
+        public ComponentLookup<RotatingObstacleComponent> RotatingLookup;
          void Execute(Entity entity, int sortKey, PhysicsComponent physics, TransformComponent transform, ObstacleComponent obstacle);
     }
      <summary>
@@ -7599,6 +7728,7 @@ namespace RunawayHeroes.ECS.Systems.World
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<RenderComponent> RenderLookup;
          void Execute(Entity entity, int sortKey, TemporaryObstacleComponent temporary);
     }
      <summary>
@@ -7609,6 +7739,7 @@ namespace RunawayHeroes.ECS.Systems.World
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PhysicsComponent> PhysicsLookup;
          void Execute(Entity entity, int sortKey, SequencedBehaviorComponent sequence);
     }
      <summary>
@@ -7619,6 +7750,7 @@ namespace RunawayHeroes.ECS.Systems.World
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<RenderComponent> RenderLookup;
          void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, DamagedStateComponent damaged);
     }
      <summary>
@@ -10090,7 +10222,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private NativeParallelHashMap<Entity, ComboState> _playerCombos;
         public NativeParallelHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<ScoreComponent> ScoreLookup;
+        public double ElapsedTime;
          <summary>
         /// Inizializza il sistema e le sue strutture dati
         /// </summary>
@@ -10117,6 +10252,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         public NativeParallelHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public EntityStorageInfoLookup EntityLookup;
         private void Execute(Entity entity, int sortKey, ScoreUpdatedEvent scoreEvent);
     }
      <summary>
@@ -10126,6 +10262,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     private partial struct ProcessLevelCompletionJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<ScoreComponent> ScoreLookup;
+        public double ElapsedTime;
         private void Execute(Entity entity, int sortKey, LevelCompletedEvent completionEvent);
     }
      <summary>
@@ -10410,15 +10548,22 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<HealthComponent> HealthLookup;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<PhysicsComponent> PhysicsLookup;
+        public ComponentLookup<DamagedStateComponent> DamagedStateLookup;
+        public ComponentLookup<TemporaryObstacleComponent> TemporaryLookup;
          <summary>
         /// Inizializza il sistema di gestione difficoltà
         /// </summary>
@@ -10463,6 +10608,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
         private void Execute(Entity entity, int sortKey, EnemyComponent enemy, SegmentReferenceComponent segmentRef);
     }
      <summary>
@@ -10474,6 +10621,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<HealthComponent> HealthLookup;
         private void Execute(Entity entity, int sortKey, MidBossComponent midBoss, SegmentReferenceComponent segmentRef);
     }
      <summary>
@@ -10485,6 +10633,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
         private void Execute(Entity entity, int sortKey, BossComponent boss, SegmentReferenceComponent segmentRef);
     }
      <summary>
@@ -10496,6 +10645,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
         public ComponentLookup<PathSegmentComponent> PathSegments;
+        public ComponentLookup<PhysicsComponent> PhysicsLookup;
+        public ComponentLookup<DamagedStateComponent> DamagedStateLookup;
+        public ComponentLookup<TemporaryObstacleComponent> TemporaryLookup;
         private void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, SegmentReferenceComponent segmentRef);
     }
 }
@@ -10517,8 +10669,19 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _powerupCollisionsQuery;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PowerupComponent> PowerupLookup;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public ComponentLookup<MovementComponent> MovementLookup;
+        public ComponentLookup<CombatComponent> CombatLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public EntityStorageInfoLookup EntityStorageInfoLookup;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<MovementComponent> MovementLookup;
+        public ComponentLookup<CombatComponent> CombatLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
+        public ComponentLookup<HealthComponent> HealthLookup;
          <summary>
         /// Inizializza il sistema e configura le query necessarie
         /// </summary>
@@ -10557,6 +10720,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     private partial struct ProcessPowerupCollectionsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PowerupComponent> PowerupLookup;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public ComponentLookup<MovementComponent> MovementLookup;
+        public ComponentLookup<CombatComponent> CombatLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public EntityStorageInfoLookup EntityStorageInfoLookup;
         private void Execute(Entity entity, int sortKey, PowerupCollectedEvent collectionEvent);
         private void ApplyPowerupEffects(Entity characterEntity, PowerupComponent powerup, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
     }
@@ -10568,6 +10738,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<MovementComponent> MovementLookup;
+        public ComponentLookup<CombatComponent> CombatLookup;
+        public ComponentLookup<DefenseComponent> DefenseLookup;
+        public ComponentLookup<HealthComponent> HealthLookup;
         private void Execute(Entity entity, int sortKey, ActivePowerupComponent activePowerup);
         private void RevertPowerupEffects(Entity characterEntity, ActivePowerupComponent activePowerup, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
     }
@@ -10691,7 +10865,16 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public NativeArray<MagnetSourceComponent> MagnetProperties;
         public EntityCommandBuffer.ParallelWriter ECB;
         public float DeltaTime;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public EntityStorageInfoLookup EntityLookupTable;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<CollectibleComponent> CollectibleLookup;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public ComponentLookup<ScoreComponent> ScoreLookup;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<FragmentInventoryComponent> FragmentInventoryLookup;
+        public ComponentLookup<KeyInventoryComponent> KeyInventoryLookup;
+        public EntityStorageInfoLookup EntityLookupTable;
          <summary>
         /// Inizializza il sistema e configura le query necessarie
         /// </summary>
@@ -10742,6 +10925,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     private partial struct MoveMagnetizedCollectiblesJob : IJobEntity
     {
         public float DeltaTime;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public EntityStorageInfoLookup EntityLookupTable;
         private void Execute(TransformComponent transform, MagnetizationMovementData magnetData);
     }
      <summary>
@@ -10751,6 +10936,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     private partial struct ProcessCollectionEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<CollectibleComponent> CollectibleLookup;
+        public ComponentLookup<TransformComponent> TransformLookup;
+        public ComponentLookup<ScoreComponent> ScoreLookup;
+        public ComponentLookup<HealthComponent> HealthLookup;
+        public ComponentLookup<FragmentInventoryComponent> FragmentInventoryLookup;
+        public ComponentLookup<KeyInventoryComponent> KeyInventoryLookup;
+        public EntityStorageInfoLookup EntityLookupTable;
         private void Execute(Entity entity, int sortKey, CollectibleCollectedEvent collectionEvent);
         private void ApplyCollectibleEffects(Entity collectibleEntity, Entity collectorEntity, CollectibleComponent collectible, EntityCommandBuffer.ParallelWriter ecb, int sortKey);
     }

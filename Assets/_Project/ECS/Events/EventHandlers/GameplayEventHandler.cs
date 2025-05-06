@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.Gameplay;
+using RunawayHeroes.ECS.Systems.Gameplay; // For FragmentInventoryComponent
 
 namespace RunawayHeroes.ECS.Events.Handlers
 {
@@ -89,7 +90,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessObjectiveCompletedEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    MissionLookup = SystemAPI.GetComponentLookup<MissionComponent>(true)
                 }.ScheduleParallel(_objectiveCompletedEventsQuery, state.Dependency);
             }
             
@@ -98,7 +100,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessObjectiveFailedEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    MissionLookup = SystemAPI.GetComponentLookup<MissionComponent>(true)
                 }.ScheduleParallel(_objectiveFailedEventsQuery, state.Dependency);
             }
             
@@ -143,7 +146,8 @@ namespace RunawayHeroes.ECS.Events.Handlers
             {
                 state.Dependency = new ProcessFragmentCollectedEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    FragmentInventoryLookup = SystemAPI.GetComponentLookup<FragmentInventoryComponent>(true)
                 }.ScheduleParallel(_fragmentCollectedEventsQuery, state.Dependency);
             }
             
@@ -177,6 +181,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessObjectiveCompletedEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<MissionComponent> MissionLookup;
             
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in ObjectiveCompletedEvent evt)
@@ -191,9 +196,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 });
                 
                 // Aggiorna il progresso della missione
-                if (SystemAPI.HasComponent<MissionComponent>(evt.MissionEntity))
+                if (MissionLookup.HasComponent(evt.MissionEntity))
                 {
-                    var mission = SystemAPI.GetComponent<MissionComponent>(evt.MissionEntity);
+                    var mission = MissionLookup[evt.MissionEntity];
                     mission.CompletedObjectives++;
                     
                     // Verifica se la missione è completata
@@ -209,7 +214,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                     }
                     
                     // Aggiorna il componente missione
-                    SystemAPI.SetComponent(evt.MissionEntity, mission);
+                    ECB.SetComponent(sortKey, evt.MissionEntity, mission);
                 }
                 
                 // Distruggi l'evento dopo l'elaborazione
@@ -224,6 +229,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessObjectiveFailedEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<MissionComponent> MissionLookup;
             
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in ObjectiveFailedEvent evt)
@@ -238,14 +244,14 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 });
                 
                 // Aggiorna lo stato della missione se necessario
-                if (SystemAPI.HasComponent<MissionComponent>(evt.MissionEntity) && evt.IsCritical)
+                if (MissionLookup.HasComponent(evt.MissionEntity) && evt.IsCritical)
                 {
                     // Se l'obiettivo è critico, la missione fallisce
                     var missionFailEvent = ECB.CreateEntity(sortKey);
                     ECB.AddComponent(sortKey, missionFailEvent, new MissionFailedEvent
                     {
                         MissionEntity = evt.MissionEntity,
-                        MissionID = SystemAPI.GetComponent<MissionComponent>(evt.MissionEntity).MissionID,
+                        MissionID = MissionLookup[evt.MissionEntity].MissionID,
                         FailReason = evt.FailReason
                     });
                 }
@@ -375,6 +381,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
         private partial struct ProcessFragmentCollectedEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<FragmentInventoryComponent> FragmentInventoryLookup;
             
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int sortKey, Entity entity, in FragmentCollectedEvent evt)
@@ -389,15 +396,15 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 });
                 
                 // Aggiorna il componente di inventario frammenti se presente
-                if (SystemAPI.HasComponent<FragmentInventoryComponent>(evt.CollectorEntity))
+                if (FragmentInventoryLookup.HasComponent(evt.CollectorEntity))
                 {
-                    var inventory = SystemAPI.GetComponent<FragmentInventoryComponent>(evt.CollectorEntity);
+                    var inventory = FragmentInventoryLookup[evt.CollectorEntity];
                     
                     // Aggiorna l'inventario (implementazione specifica)
                     // ...
                     
                     // Riapplica il componente aggiornato
-                    SystemAPI.SetComponent(evt.CollectorEntity, inventory);
+                    ECB.SetComponent(sortKey, evt.CollectorEntity, inventory);
                 }
                 
                 // Distruggi l'evento dopo l'elaborazione

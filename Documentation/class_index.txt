@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Tue May  6 21:21:49 CEST 2025
+# Generato il: Tue May  6 22:33:45 CEST 2025
 
 private class CyclicDependency
 private class ProfilerScope : System.IDisposable
@@ -165,6 +165,7 @@ public struct CollectibleCollectedEvent : IComponentData
 public struct CollectibleComponent : IComponentData
 public struct CollectibleFeedbackEvent : IComponentData
 public struct CollisionEvent : IComponentData
+public struct CombatComponent : IComponentData
 public struct CombinedAbilitiesEvent : IComponentData
 public struct ComboEndedEvent : IComponentData
 public struct ComboMilestoneEvent : IComponentData
@@ -290,6 +291,7 @@ public struct MidBossComponent : IComponentData
 public struct MidBossEnrageEvent : IComponentData
 public struct MidBossSpecialAbilityReadyEvent : IComponentData
 public struct MissionCompletedEvent : IComponentData
+public struct MissionComponent : IComponentData
 public struct MissionFailedEvent : IComponentData
 public struct MissionUIUpdateEvent : IComponentData
 public struct MovementComponent : IComponentData

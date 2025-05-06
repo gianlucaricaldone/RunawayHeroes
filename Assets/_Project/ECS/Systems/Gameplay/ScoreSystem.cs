@@ -126,7 +126,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 state.Dependency = new ProcessScoreUpdatesJob
                 {
                     PlayerCombos = _playerCombos.AsParallelWriter(),
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    EntityLookup = SystemAPI.GetEntityStorageInfoLookup()
                 }.ScheduleParallel(_scoreUpdateEventsQuery, state.Dependency);
             }
             
@@ -135,7 +136,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             {
                 state.Dependency = new ProcessLevelCompletionJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    ScoreLookup = SystemAPI.GetComponentLookup<ScoreComponent>(true),
+                    ElapsedTime = SystemAPI.Time.ElapsedTime
                 }.ScheduleParallel(_levelCompletionEventsQuery, state.Dependency);
             }
         }
@@ -148,6 +151,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             public NativeParallelHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
             
             [BurstCompile]
             private void Execute(
@@ -156,7 +160,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in ScoreUpdatedEvent scoreEvent)
             {
                 // Controlla se l'entità giocatore esiste ancora
-                if (!SystemAPI.Exists(scoreEvent.PlayerEntity))
+                if (!EntityLookup.Exists(scoreEvent.PlayerEntity, out _))
                 {
                     ECB.DestroyEntity(sortKey, entity);
                     return;
@@ -231,6 +235,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private partial struct ProcessLevelCompletionJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<ScoreComponent> ScoreLookup;
+            public double ElapsedTime;
             
             [BurstCompile]
             private void Execute(
@@ -239,9 +245,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in LevelCompletedEvent completionEvent)
             {
                 // Controlla tutti i giocatori che hanno completato il livello
-                if (SystemAPI.HasComponent<ScoreComponent>(entity))
+                if (ScoreLookup.HasComponent(entity))
                 {
-                    var scoreComponent = SystemAPI.GetComponent<ScoreComponent>(entity);
+                    var scoreComponent = ScoreLookup[entity];
                     
                     // Verifica se è un nuovo record
                     bool isHighScore = scoreComponent.CurrentScore > scoreComponent.HighScore;
@@ -250,8 +256,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     if (isHighScore)
                     {
                         scoreComponent.HighScore = scoreComponent.CurrentScore;
-                        scoreComponent.HighScoreDate = SystemAPI.Time.ElapsedTime;
-                        SystemAPI.SetComponent(entity, scoreComponent);
+                        scoreComponent.HighScoreDate = ElapsedTime;
+                        ECB.SetComponent(sortKey, entity, scoreComponent);
                         
                         // Crea un evento di nuovo record
                         Entity highScoreEvent = ECB.CreateEntity(sortKey);
@@ -266,7 +272,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     
                     // Salva il punteggio attuale come punteggio precedente per il prossimo confronto
                     scoreComponent.PreviousHighScore = scoreComponent.CurrentScore;
-                    SystemAPI.SetComponent(entity, scoreComponent);
+                    ECB.SetComponent(sortKey, entity, scoreComponent);
                     
                     // Crea un evento per l'UI del punteggio finale
                     Entity finalScoreEvent = ECB.CreateEntity(sortKey);

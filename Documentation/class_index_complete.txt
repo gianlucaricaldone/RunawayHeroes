@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 06/05/2025 21:21:57
+# Generato il: 06/05/2025 22:33:53
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -120,6 +120,7 @@ public struct IdentityComponent
 public struct PhysicsComponent
 public struct RenderComponent
 public struct DefenseComponent
+public struct CombatComponent
 public struct SlideInputComponent
 public struct JumpInputComponent
 public struct TouchInputComponent
@@ -199,6 +200,7 @@ public struct CombinedAbilitiesEvent
 public struct HealthComponent
 public struct MovementComponent
 public struct ObstacleComponent
+public struct MissionComponent
 public struct PlayerProgressionComponent
 public struct TutorialProgressionComponent
 public struct TutorialLevelTag
