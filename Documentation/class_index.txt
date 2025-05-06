@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Tue May  6 23:18:01 CEST 2025
+# Generato il: Tue May  6 23:34:04 CEST 2025
 
 private class CyclicDependency
 private class ProfilerScope : System.IDisposable

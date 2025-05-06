@@ -108,5 +108,29 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             abilityInput.CurrentAbilityType = abilityType;
         }
         
+        /// <summary>
+        /// Determina il tipo di abilità associata a un personaggio
+        /// </summary>
+        private AbilityType GetAbilityTypeForCharacter(CharacterType characterType)
+        {
+            switch (characterType)
+            {
+                case CharacterType.Alex:
+                    return AbilityType.UrbanDash;
+                case CharacterType.Maya:
+                    return AbilityType.NatureCall;
+                case CharacterType.Kai:
+                    return AbilityType.HeatAura;
+                case CharacterType.Ember:
+                    return AbilityType.FireproofBody;
+                case CharacterType.Marina:
+                    return AbilityType.AirBubble;
+                case CharacterType.Neo:
+                    return AbilityType.ControlledGlitch;
+                default:
+                    return AbilityType.None;
+            }
+        }
+        
     }
 }

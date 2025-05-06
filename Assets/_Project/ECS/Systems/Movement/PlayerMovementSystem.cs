@@ -34,7 +34,9 @@ namespace RunawayHeroes.ECS.Systems.Movement
             // Definisce la query per identificare le entità giocatore
             _playerQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<TagComponent, InputComponent>()
-                .WithAllRW<TransformComponent, PhysicsComponent, MovementComponent>()
+                .WithAllRW<TransformComponent>()
+                .WithAllRW<PhysicsComponent>()
+                .WithAllRW<MovementComponent>()
                 .Build(ref state);
             
             // Richiede almeno un giocatore per l'esecuzione
@@ -94,7 +96,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
                 
                 // Esempio di implementazione di base:
                 // Gestione movimenti laterali
-                float lateralMovement = input.HorizontalInput;
+                float lateralMovement = input.LateralMovement;
                 if (lateralMovement != 0)
                 {
                     // Calcola nuova posizione laterale con limite alle corsie

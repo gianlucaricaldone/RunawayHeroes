@@ -180,5 +180,56 @@ namespace RunawayHeroes.Gameplay
                 startOffset = 5f
             };
         }
+        
+        /// <summary>
+        /// Operatore di uguaglianza per comparare due ObstacleSetup
+        /// </summary>
+        public static bool operator ==(ObstacleSetup a, ObstacleSetup b)
+        {
+            return a.obstacleCode == b.obstacleCode
+                && a.count == b.count
+                && a.placement == b.placement
+                && a.randomizeHeight == b.randomizeHeight
+                && a.heightRange.Equals(b.heightRange)
+                && a.randomizeScale == b.randomizeScale
+                && a.scaleRange.Equals(b.scaleRange)
+                && Math.Abs(a.startOffset - b.startOffset) < 0.001f;
+        }
+        
+        /// <summary>
+        /// Operatore di disuguaglianza per comparare due ObstacleSetup
+        /// </summary>
+        public static bool operator !=(ObstacleSetup a, ObstacleSetup b)
+        {
+            return !(a == b);
+        }
+        
+        /// <summary>
+        /// Override del metodo Equals per compatibilità con operatore ==
+        /// </summary>
+        public override bool Equals(object obj)
+        {
+            if (!(obj is ObstacleSetup))
+                return false;
+                
+            return this == (ObstacleSetup)obj;
+        }
+        
+        /// <summary>
+        /// Override del metodo GetHashCode per compatibilità con operatore ==
+        /// </summary>
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            hash = hash * 31 + (obstacleCode?.GetHashCode() ?? 0);
+            hash = hash * 31 + count.GetHashCode();
+            hash = hash * 31 + placement.GetHashCode();
+            hash = hash * 31 + randomizeHeight.GetHashCode();
+            hash = hash * 31 + heightRange.GetHashCode();
+            hash = hash * 31 + randomizeScale.GetHashCode();
+            hash = hash * 31 + scaleRange.GetHashCode();
+            hash = hash * 31 + startOffset.GetHashCode();
+            return hash;
+        }
     }
 }

@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 06/05/2025 23:18:09
+# Generato il: 06/05/2025 23:34:12
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -1842,6 +1842,16 @@ namespace RunawayHeroes.Gameplay
         /// </summary>
 
         public static ObstacleSetup CreateRandomObstacles(string code, int count);
+         <summary>
+        /// Override del metodo Equals per compatibilità con operatore ==
+        /// </summary>
+
+        public override bool Equals(object obj);
+         <summary>
+        /// Override del metodo GetHashCode per compatibilità con operatore ==
+        /// </summary>
+
+        public override int GetHashCode();
     }
 }
 
@@ -2421,6 +2431,8 @@ namespace RunawayHeroes.ECS.Components.Combat
 
     public struct DefenseComponent : IComponentData
     {
+        public float BaseDefense;
+        public float CurrentDefense;
         public float PhysicalResistance;
         public float ElementalResistance;
         public float EnergyResistance;
@@ -7106,7 +7118,7 @@ namespace RunawayHeroes.ECS.Systems.Combat
         public float KnockbackForce;
         public float InitialActiveTime;
         public float RemainingActiveTime;
-        public Entity HitEntities;
+        public NativeList<Entity> HitEntities;
     }
      <summary>
     /// Componente che definisce una hurtbox (box di vulnerabilità)
@@ -8795,6 +8807,11 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     public partial struct AbilityInputProcessorJob : IJobEntity
     {
          void Execute(Entity entity, AbilityInputComponent abilityInput, InputComponent input, PlayerDataComponent playerData);
+         <summary>
+        /// Determina il tipo di abilità associata a un personaggio
+        /// </summary>
+
+        private AbilityType GetAbilityTypeForCharacter(CharacterType characterType);
     }
 }
 

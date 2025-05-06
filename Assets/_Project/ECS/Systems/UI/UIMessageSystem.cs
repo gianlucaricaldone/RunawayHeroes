@@ -167,16 +167,27 @@ namespace RunawayHeroes.ECS.Systems.UI
             var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
             // Raccogli i nuovi messaggi e li metti in coda
-            foreach (var (entity, message) in 
-                     SystemAPI.Query<RefRW<UIMessageComponent>>()
-                     .WithAll<QueuedMessageTag>()
-                     .WithEntityAccess())
+            // Utilizzo di EntityQueryBuilder per la query di entità
+            var queryBuilder = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<UIMessageComponent, QueuedMessageTag>()
+                .Build(ref state);
+            
+            var entities = queryBuilder.ToEntityArray(Allocator.Temp);
+            try
             {
-                // Aggiungi il messaggio alla coda
-                _messageQueue.Enqueue(entity);
-                
-                // Rimuovi il tag di accodamento
-                commandBuffer.RemoveComponent<QueuedMessageTag>(entity);
+                foreach (var entity in entities)
+                {
+                    // Aggiungi il messaggio alla coda
+                    _messageQueue.Enqueue(entity);
+                    
+                    // Rimuovi il tag di accodamento
+                    commandBuffer.RemoveComponent<QueuedMessageTag>(entity);
+                }
+            }
+            finally
+            {
+                // Rilascia le risorse
+                entities.Dispose();
             }
         }
         
@@ -282,18 +293,42 @@ namespace RunawayHeroes.ECS.Systems.UI
         private void ProcessMessageEvents(ref SystemState state)
         {
             // Rimuovi entità eventi dopo l'elaborazione
-            foreach (var (entity, showEvent) in 
-                     SystemAPI.Query<RefRO<MessageShowEvent>>().WithEntityAccess())
+            // Query per MessageShowEvent
+            var showEventQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<MessageShowEvent>()
+                .Build(ref state);
+            var showEntities = showEventQuery.ToEntityArray(Allocator.Temp);
+            
+            try
             {
-                // L'evento è già stato gestito nel metodo ShowNextMessage
-                state.EntityManager.DestroyEntity(entity);
+                foreach (var entity in showEntities)
+                {
+                    // L'evento è già stato gestito nel metodo ShowNextMessage
+                    state.EntityManager.DestroyEntity(entity);
+                }
+            }
+            finally
+            {
+                showEntities.Dispose();
             }
             
-            foreach (var (entity, hideEvent) in 
-                     SystemAPI.Query<RefRO<MessageHideEvent>>().WithEntityAccess())
+            // Query per MessageHideEvent
+            var hideEventQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<MessageHideEvent>()
+                .Build(ref state);
+            var hideEntities = hideEventQuery.ToEntityArray(Allocator.Temp);
+            
+            try
             {
-                // L'evento è già stato gestito nel metodo UpdateCurrentMessage
-                state.EntityManager.DestroyEntity(entity);
+                foreach (var entity in hideEntities)
+                {
+                    // L'evento è già stato gestito nel metodo UpdateCurrentMessage
+                    state.EntityManager.DestroyEntity(entity);
+                }
+            }
+            finally
+            {
+                hideEntities.Dispose();
             }
         }
         

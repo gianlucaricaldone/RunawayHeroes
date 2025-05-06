@@ -162,8 +162,7 @@ namespace RunawayHeroes.ECS.Systems.Combat
                         if (distanceSquared <= radiusSum * radiusSum)
                         {
                             // Aggiungi l'entità colpita alla lista per evitare colpi multipli
-                            // Nota: nella realtà vogliamo utilizzare una NativeList, qui è semplificato
-                            // hitbox.HitEntities.Add(hurtboxEntity);
+                            hitbox.HitEntities.Add(hurtboxEntity);
                             
                             // Calcola il punto di impatto (semplificato)
                             float3 impactPoint = (hitboxTransform.Position + hurtboxTransform.Position) * 0.5f;
@@ -217,7 +216,7 @@ namespace RunawayHeroes.ECS.Systems.Combat
         public float RemainingActiveTime;   // Tempo rimanente dell'attacco
         // La lista delle entità colpite andrebbe implementata con NativeList/NativeArray
         // ma è semplificata per l'esempio
-        public Entity HitEntities;          // Entità già colpite da questa hitbox (evita colpi multipli)
+        public NativeList<Entity> HitEntities;   // Entità già colpite da questa hitbox (evita colpi multipli)
     }
     
     /// <summary>

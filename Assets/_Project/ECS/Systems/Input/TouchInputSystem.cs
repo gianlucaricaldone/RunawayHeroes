@@ -99,9 +99,9 @@ namespace RunawayHeroes.ECS.Systems.Input
             
             // Gestisce gli input touch (solo su dispositivi mobili o editor con touch abilitato)
             #if UNITY_ANDROID || UNITY_IOS || UNITY_EDITOR
-            if (Input.touchCount > 0)
+            if (UnityEngine.Input.touchCount > 0)
             {
-                Touch touch = Input.GetTouch(0);
+                UnityEngine.Touch touch = UnityEngine.Input.GetTouch(0);
                 float2 touchPosition = new float2(touch.position.x, touch.position.y);
                 
                 switch (touch.phase)
@@ -176,9 +176,9 @@ namespace RunawayHeroes.ECS.Systems.Input
             // Supporto per testing in editor con mouse
             else if (Application.isEditor)
             {
-                float2 mousePosition = new float2(Input.mousePosition.x, Input.mousePosition.y);
+                float2 mousePosition = new float2(UnityEngine.Input.mousePosition.x, UnityEngine.Input.mousePosition.y);
                 
-                if (Input.GetMouseButtonDown(0))
+                if (UnityEngine.Input.GetMouseButtonDown(0))
                 {
                     _isTouching = true;
                     _touchStartTime = currentTime;
@@ -186,13 +186,13 @@ namespace RunawayHeroes.ECS.Systems.Input
                     touchInput.IsTouching = true;
                     touchInput.TouchPosition = mousePosition;
                 }
-                else if (Input.GetMouseButton(0))
+                else if (UnityEngine.Input.GetMouseButton(0))
                 {
                     touchInput.IsTouching = true;
                     touchInput.TouchDelta = mousePosition - touchInput.TouchPosition;
                     touchInput.TouchPosition = mousePosition;
                 }
-                else if (Input.GetMouseButtonUp(0))
+                else if (UnityEngine.Input.GetMouseButtonUp(0))
                 {
                     _isTouching = false;
                     touchInput.IsTouching = false;

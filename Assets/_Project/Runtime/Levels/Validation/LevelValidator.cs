@@ -1,6 +1,7 @@
 // Path: LevelValidator.cs
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -224,6 +225,163 @@ namespace RunawayHeroes.Runtime.Levels
             ValidateSequenceLength(sequence);
         }
         
+        /// <summary>
+        /// Verifica combinazioni impossibili di ostacoli
+        /// </summary>
+        private void ValidateObstacleCombinations(TutorialScenario scenario)
+        {
+            // Non procedere se non ci sono abbastanza ostacoli per creare una combinazione
+            if (scenario.obstacles == null || scenario.obstacles.Length <= 1)
+                return;
+                
+            // Raggruppa gli ostacoli per tipo
+            var jumpObstacles = new List<ObstacleSetup>();
+            var slideObstacles = new List<ObstacleSetup>();
+            var sideObstacles = new List<ObstacleSetup>();
+            var specialObstacles = new List<ObstacleSetup>();
+            
+            foreach (var setup in scenario.obstacles)
+            {
+                ObstacleType type = DetermineObstacleType(setup.obstacleCode);
+                
+                switch (type)
+                {
+                    case ObstacleType.JumpObstacle:
+                        jumpObstacles.Add(setup);
+                        break;
+                    case ObstacleType.SlideObstacle:
+                        slideObstacles.Add(setup);
+                        break;
+                    case ObstacleType.SideObstacle:
+                        sideObstacles.Add(setup);
+                        break;
+                    case ObstacleType.SpecialObstacle:
+                        specialObstacles.Add(setup);
+                        break;
+                }
+            }
+            
+            // Verifica combinazioni critiche
+            
+            // 1. Combinazione salto + scivolata troppo ravvicinati (difficile da eseguire)
+            if (jumpObstacles.Count > 0 && slideObstacles.Count > 0)
+            {
+                foreach (var jumpSetup in jumpObstacles)
+                {
+                    foreach (var slideSetup in slideObstacles)
+                    {
+                        float jumpZ = scenario.distanceFromStart + jumpSetup.startOffset;
+                        float slideZ = scenario.distanceFromStart + slideSetup.startOffset;
+                        
+                        // Se gli ostacoli sono molto vicini tra loro
+                        if (Math.Abs(jumpZ - slideZ) < 3.0f)
+                        {
+                            _validationIssues.Add(new ValidationIssue
+                            {
+                                Type = IssueType.Warning,
+                                Message = $"Combinazione ravvicinata di salto + scivolata in '{scenario.name}' " +
+                                         $"potrebbe essere difficile da eseguire (distanza: {Math.Abs(jumpZ - slideZ):F2}m)",
+                                ScenarioName = scenario.name,
+                                Position = new Vector3(0, 0, Math.Min(jumpZ, slideZ))
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // 2. Combinazione side step + salto/scivolata (richiede cambio di input veloce)
+            if (sideObstacles.Count > 0 && (jumpObstacles.Count > 0 || slideObstacles.Count > 0))
+            {
+                // Esamina combinazioni con salto
+                foreach (var sideSetup in sideObstacles)
+                {
+                    foreach (var jumpSetup in jumpObstacles)
+                    {
+                        float sideZ = scenario.distanceFromStart + sideSetup.startOffset;
+                        float jumpZ = scenario.distanceFromStart + jumpSetup.startOffset;
+                        
+                        if (Math.Abs(sideZ - jumpZ) < 2.0f)
+                        {
+                            _validationIssues.Add(new ValidationIssue
+                            {
+                                Type = IssueType.Warning,
+                                Message = $"Combinazione ravvicinata di spostamento laterale + salto in '{scenario.name}' " +
+                                         $"potrebbe richiedere un cambio di input troppo veloce (distanza: {Math.Abs(sideZ - jumpZ):F2}m)",
+                                ScenarioName = scenario.name,
+                                Position = new Vector3(0, 0, Math.Min(sideZ, jumpZ))
+                            });
+                        }
+                    }
+                    
+                    // Esamina combinazioni con scivolata
+                    foreach (var slideSetup in slideObstacles)
+                    {
+                        float sideZ = scenario.distanceFromStart + sideSetup.startOffset;
+                        float slideZ = scenario.distanceFromStart + slideSetup.startOffset;
+                        
+                        if (Math.Abs(sideZ - slideZ) < 2.0f)
+                        {
+                            _validationIssues.Add(new ValidationIssue
+                            {
+                                Type = IssueType.Warning,
+                                Message = $"Combinazione ravvicinata di spostamento laterale + scivolata in '{scenario.name}' " +
+                                         $"potrebbe richiedere un cambio di input troppo veloce (distanza: {Math.Abs(sideZ - slideZ):F2}m)",
+                                ScenarioName = scenario.name,
+                                Position = new Vector3(0, 0, Math.Min(sideZ, slideZ))
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // 3. Combinazione di ostacoli speciali che richiedono abilità diverse nello stesso scenario
+            if (specialObstacles.Count > 1)
+            {
+                var lavaObstacles = specialObstacles.Where(o => o.obstacleCode.StartsWith("L", StringComparison.OrdinalIgnoreCase)).ToList();
+                var iceObstacles = specialObstacles.Where(o => o.obstacleCode.StartsWith("I", StringComparison.OrdinalIgnoreCase)).ToList();
+                var digitalObstacles = specialObstacles.Where(o => o.obstacleCode.StartsWith("D", StringComparison.OrdinalIgnoreCase)).ToList();
+                
+                // Controlla se ci sono più tipi diversi di ostacoli speciali
+                int specialTypes = 0;
+                if (lavaObstacles.Count > 0) specialTypes++;
+                if (iceObstacles.Count > 0) specialTypes++;
+                if (digitalObstacles.Count > 0) specialTypes++;
+                
+                if (specialTypes > 1)
+                {
+                    _validationIssues.Add(new ValidationIssue
+                    {
+                        Type = IssueType.Critical,
+                        Message = $"Lo scenario '{scenario.name}' contiene {specialTypes} tipi diversi di ostacoli speciali " +
+                                 $"che potrebbero richiedere personaggi diversi contemporaneamente",
+                        ScenarioName = scenario.name,
+                        Position = new Vector3(0, 0, scenario.distanceFromStart)
+                    });
+                }
+            }
+            
+            // 4. Verifica pattern di ostacoli difficili
+            if (scenario.obstacleSpacing < 5.0f && 
+                (jumpObstacles.Sum(o => o.count) + slideObstacles.Sum(o => o.count) + sideObstacles.Sum(o => o.count)) > 5)
+            {
+                _validationIssues.Add(new ValidationIssue
+                {
+                    Type = IssueType.Warning,
+                    Message = $"Lo scenario '{scenario.name}' ha una combinazione ad alta densità di ostacoli con " +
+                             $"spaziatura ridotta ({scenario.obstacleSpacing}m) che potrebbe essere troppo difficile",
+                    ScenarioName = scenario.name,
+                    Position = new Vector3(0, 0, scenario.distanceFromStart)
+                });
+            }
+            
+            // 5. Se il posizionamento non è casuale, verifica la possibilità di passaggio
+            if (!scenario.randomPlacement)
+            {
+                // Chiamata già implementata altrove nel codice
+                // ScanObstacleCombination(scenario);
+            }
+        }
+
         /// <summary>
         /// Verifica che non ci siano sovrapposizioni tra scenari
         /// </summary>
