@@ -1,5 +1,5 @@
 Alberatura delle directory, file .cs, .png e .fbx a partire da: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets
-Generato il: Sun May  4 12:11:00 CEST 2025
+Generato il: Tue May  6 21:21:56 CEST 2025
 ----------------------------------------
             📁 Assets
               📁 Adaptive Performance
@@ -148,6 +148,8 @@ Generato il: Sun May  4 12:11:00 CEST 2025
                       📄 MayaComponent.cs
                       📄 NeoComponent.cs
                       📄 PlayerDataComponent.cs
+                    📁 Combat
+                      📄 DefenseComponent.cs
                     📁 Core
                       📄 CommonTags.cs
                       📄 IdentityComponent.cs
@@ -163,6 +165,7 @@ Generato il: Sun May  4 12:11:00 CEST 2025
                       📄 EnemyComponent.cs
                       📄 MidBossComponent.cs
                       📄 PatrolComponent.cs
+                      📄 StatusTags.cs
                     📁 Gameplay
                       📄 CollectibleComponent.cs
                       📄 EnvironmentalEffectComponent.cs
@@ -211,9 +214,12 @@ Generato il: Sun May  4 12:11:00 CEST 2025
                       📄 RoomTemplateComponent.cs
                       📄 RunnerLevelConfigComponent.cs
                       📄 SegmentContentBuffer.cs
+                      📄 SegmentReferenceComponent.cs
                       📄 SpawnPointComponent.cs
                       📄 WorldDifficultyConfigComponent.cs
                       📄 WorldIdentifierComponent.cs
+                  📁 Core
+                    📄 SystemGroups.cs
                   📁 Entities
                     📁 Archetypes
                       📄 CollectibleArchetypes.cs
@@ -280,6 +286,7 @@ Generato il: Sun May  4 12:11:00 CEST 2025
                       📄 HealthSystem.cs
                       📄 HitboxSystem.cs
                       📄 KnockbackSystem.cs
+                      📄 StatusEffectSystem.cs
                     📁 Core
                       📄 CollisionSystem.cs
                       📄 EntityLifecycleSystem.cs

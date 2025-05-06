@@ -15,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Si occupa di avviare i salti, gestire i salti multipli e coordinare
     /// con il sistema di fisica per applicare le forze appropriate.
     /// </summary>
-    [UpdateInGroup(typeof(MovementSystemGroup))]
+    [UpdateInGroup(typeof(RunawayHeroes.ECS.Systems.Movement.Group.MovementSystemGroup))]
     public partial struct JumpSystem : ISystem
     {
         private EntityQuery _jumpableEntitiesQuery;

@@ -97,42 +97,44 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 SystemAPI.Query<RefRO<ProgressionAdvancementEvent>>()
                     .WithEntityAccess())
             {
+                var eventData = progressionEvent.ValueRO;
+                
                 // Propaga l'evento di avanzamento tra diversi sistemi
-                switch (progressionEvent.ValueRO.ProgressionType)
+                switch (eventData.ProgressionType)
                 {
                     case 0: // Tutorial
                         // Avanzamento tutorial potrebbe influenzare mondo
-                        if (progressionEvent.ValueRO.IsSignificantAdvancement)
+                        if (eventData.IsSignificantAdvancement)
                         {
-                            NotifyWorldOfTutorialAdvancement(commandBuffer, progressionEvent.ValueRO.PrimaryIndex);
+                            NotifyWorldOfTutorialAdvancement(commandBuffer, eventData.PrimaryIndex);
                         }
                         break;
                         
                     case 1: // Mondo
                         // Avanzamento mondo potrebbe influenzare livelli
-                        if (progressionEvent.ValueRO.IsSignificantAdvancement)
+                        if (eventData.IsSignificantAdvancement)
                         {
-                            NotifyLevelsOfWorldAdvancement(commandBuffer, progressionEvent.ValueRO.PrimaryIndex);
+                            NotifyLevelsOfWorldAdvancement(commandBuffer, eventData.PrimaryIndex);
                         }
                         break;
                         
                     case 2: // Livello
                         // Avanzamento livello potrebbe influenzare mondo
-                        if (progressionEvent.ValueRO.IsSignificantAdvancement)
+                        if (eventData.IsSignificantAdvancement)
                         {
-                            NotifyWorldOfLevelAdvancement(commandBuffer, progressionEvent.ValueRO.PrimaryIndex, progressionEvent.ValueRO.SecondaryIndex);
+                            NotifyWorldOfLevelAdvancement(commandBuffer, eventData.PrimaryIndex, eventData.SecondaryIndex);
                         }
                         break;
                 }
                 
                 // Aggiorna anche PlayerPrefs (sistema di salvataggio)
-                UpdatePlayerPrefs(progressionEvent.ValueRO);
+                UpdatePlayerPrefs(eventData);
                 
                 // Riproduce effetti audio appropriati per avanzamento
-                PlayProgressionAudio(progressionEvent.ValueRO);
+                PlayProgressionAudio(eventData);
                 
                 // Rimuovi l'evento dopo l'elaborazione
-                state.EntityManager.DestroyEntity(entityRef);
+                commandBuffer.DestroyEntity(entity);
             }
         }
         
@@ -141,16 +143,18 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// </summary>
         private void ProcessUnlockEvents(ref SystemState state, EntityCommandBuffer commandBuffer)
         {
-            foreach (var (entityRef, unlockEventRef) in 
+            foreach (var (entity, unlockEventRef) in 
                 SystemAPI.Query<RefRO<UnlockEvent>>()
                     .WithEntityAccess())
             {
+                var unlockData = unlockEventRef.ValueRO;
+                
                 // Gestisci sblocchi in base al tipo
-                switch (unlockEventRef.ValueRO.UnlockType)
+                switch (unlockData.UnlockType)
                 {
                     case 0: // Tutorial
                         // Sblocco tutorial potrebbe influenzare mondo
-                        if (unlockEventRef.ValueRO.UnlockedItemIndex > 0)
+                        if (unlockData.UnlockedItemIndex > 0)
                         {
                             // Seleziona audio appropriato
                             PlayUnlockAudio("unlock_tutorial");
@@ -159,58 +163,57 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         
                     case 1: // Mondo
                         // Sblocco mondo è un avanzamento significativo
-                        if (unlockEventRef.ValueRO.UnlockedItemIndex > 0)
+                        if (unlockData.UnlockedItemIndex > 0)
                         {
                             // Seleziona audio appropriato
                             PlayUnlockAudio("unlock_world");
                             
                             // Registra nelle statistiche
-                            UpdatePlayerPrefsForUnlock("World", unlockEventRef.ValueRO.UnlockedItemIndex);
+                            UpdatePlayerPrefsForUnlock("World", unlockData.UnlockedItemIndex);
                         }
                         break;
                         
                     case 2: // Livello
                         // Sblocco livello potrebbe influenzare mondo
-                        if (unlockEventRef.ValueRO.UnlockedItemIndex > 0)
+                        if (unlockData.UnlockedItemIndex > 0)
                         {
                             // Audio più semplice per livello
                             PlayUnlockAudio("unlock_level");
                             
                             // Registra nelle statistiche
-                            int worldIndex = unlockEventRef.ValueRO.UnlockedItemIndex / 100;
-                            int levelIndex = unlockEventRef.ValueRO.UnlockedItemIndex % 100;
+                            int worldIndex = unlockData.UnlockedItemIndex / 100;
+                            int levelIndex = unlockData.UnlockedItemIndex % 100;
                             UpdatePlayerPrefsForUnlock($"Level_{worldIndex}", levelIndex);
                         }
                         break;
                         
                     case 3: // Personaggio
                         // Sblocco personaggio è un avanzamento molto significativo
-                        if (unlockEventRef.ValueRO.UnlockedItemIndex > 0)
+                        if (unlockData.UnlockedItemIndex > 0)
                         {
                             // Audio speciale per personaggio
                             PlayUnlockAudio("unlock_character");
                             
                             // Registra nelle statistiche
-                            UpdatePlayerPrefsForUnlock("Character", unlockEventRef.ValueRO.UnlockedItemIndex);
+                            UpdatePlayerPrefsForUnlock("Character", unlockData.UnlockedItemIndex);
                         }
                         break;
                         
                     case 4: // Abilità
                         // Sblocco abilità
-                        if (unlockEventRef.ValueRO.UnlockedItemIndex > 0)
+                        if (unlockData.UnlockedItemIndex > 0)
                         {
                             // Audio per abilità
                             PlayUnlockAudio("unlock_ability");
                             
                             // Registra nelle statistiche
-                            // Riscrivo la riga per forzare l'aggiornamento
-                            UpdatePlayerPrefsForUnlock("Ability", unlockEventRef.ValueRO.UnlockedItemIndex);
+                            UpdatePlayerPrefsForUnlock("Ability", unlockData.UnlockedItemIndex);
                         }
                         break;
                 }
                 
                 // Rimuovi l'evento dopo l'elaborazione
-                state.EntityManager.DestroyEntity(entityRef);
+                commandBuffer.DestroyEntity(entity);
             }
         }
         
@@ -223,7 +226,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             if (!_playerProgressionQuery.IsEmpty)
             {
                 var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                var playerProgress = state.EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
+                var playerProgress = SystemAPI.GetComponent<PlayerProgressionComponent>(playerProgressEntity);
                 
                 if (playerProgress.TutorialsCompleted && playerProgress.HighestUnlockedWorld < 1)
                 {
@@ -277,7 +280,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 if (!_playerProgressionQuery.IsEmpty)
                 {
                     var playerProgressEntity = _playerProgressionQuery.GetSingletonEntity();
-                    var playerProgress = state.EntityManager.GetComponentData<PlayerProgressionComponent>(playerProgressEntity);
+                    var playerProgress = SystemAPI.GetComponent<PlayerProgressionComponent>(playerProgressEntity);
                     
                     isWorldAlreadyCompleted = (playerProgress.WorldsCompleted & (1 << worldIndex)) != 0;
                 }

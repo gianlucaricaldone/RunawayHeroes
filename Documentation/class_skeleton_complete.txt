@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 04/05/2025 12:11:01
+# Generato il: 06/05/2025 21:21:57
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -1225,6 +1225,8 @@ namespace RunawayHeroes.Runtime.Levels
     {
         public TutorialLevelData[] tutorialSequence;
         public bool showDebugGizmos;
+        public int tutorialLevelIndex;
+        public Vector3 playerStartPosition;
         private EntityManager _entityManager;
         private float _currentLevelLength;
         private Vector3 _startPosition;
@@ -1566,6 +1568,41 @@ namespace RunawayHeroes.Runtime.Characters
         public Vector3 Position;
         public Quaternion Rotation;
         public Vector3 Scale;
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Core/SystemGroups.cs
+
+namespace RunawayHeroes.ECS.Core
+{
+     <summary>
+    /// Gruppo di sistemi per la gestione delle trasformazioni e del movimento
+    /// </summary>
+
+    public partial class TransformSystemGroup : ComponentSystemGroup
+    {
+    }
+     <summary>
+    /// Gruppo di sistemi per la gestione degli input
+    /// </summary>
+
+    public partial class InputSystemGroup : ComponentSystemGroup
+    {
+    }
+     <summary>
+    /// Gruppo di sistemi per la gestione della fisica e delle collisioni
+    /// </summary>
+
+    public partial class PhysicsSystemGroup : ComponentSystemGroup
+    {
+    }
+     <summary>
+    /// Gruppo di sistemi per la gestione del movimento
+    /// </summary>
+
+    public partial class MovementSystemGroup : ComponentSystemGroup
+    {
     }
 }
 
@@ -2364,6 +2401,34 @@ namespace RunawayHeroes.ECS.Components.Core
 
     public struct RenderComponent : IComponentData
     {
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Combat/DefenseComponent.cs
+
+namespace RunawayHeroes.ECS.Components.Combat
+{
+     <summary>
+    /// Componente che rappresenta le proprietà difensive di un'entità, includendo resistenze
+    /// a diversi tipi di danno e capacità di protezione.
+    /// </summary>
+
+    public struct DefenseComponent : IComponentData
+    {
+        public float PhysicalResistance;
+        public float ElementalResistance;
+        public float EnergyResistance;
+         <summary>
+        /// Crea un componente di difesa con valori predefiniti (nessuna resistenza)
+        /// </summary>
+
+        public static DefenseComponent CreateDefault();
+         <summary>
+        /// Crea un componente di difesa con resistenze bilanciate (10% a tutti i tipi di danno)
+        /// </summary>
+
+        public static DefenseComponent CreateBalanced();
     }
 }
 
@@ -3187,6 +3252,23 @@ namespace RunawayHeroes.ECS.Components.World
 }
 
 
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/SegmentReferenceComponent.cs
+
+namespace RunawayHeroes.ECS.Components.World
+{
+     <summary>
+    /// Componente che fornisce un riferimento a un segmento di percorso.
+    /// Utilizzato per collegare entità (nemici, ostacoli, ecc.) ai segmenti di livello a cui appartengono.
+    /// </summary>
+
+    public struct SegmentReferenceComponent : IComponentData
+    {
+        public Entity SegmentEntity;
+        public int SegmentID;
+    }
+}
+
+
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Abilities/UrbanDashAbilityComponent.cs
 
 namespace RunawayHeroes.ECS.Components.Abilities
@@ -3868,17 +3950,32 @@ namespace RunawayHeroes.ECS.Components.Gameplay
         public float MaxHealth;
         public bool IsInvulnerable;
         public float InvulnerabilityTime;
+        public float InvulnerabilityTimer;
+        public bool HasAutoRegen;
         public float RegenRate;
+        public float RegenDelay;
+        public float TimeSinceLastDamage;
         public bool IsRegenerating;
+        public bool HasShield;
+        public float CurrentShield;
+        public float MaxShield;
+        public bool HasShieldAutoRegen;
+        public float ShieldRegenRate;
+        public float ShieldRegenDelay;
+        public float TimeSinceLastShieldDamage;
         public bool IsDead { ... }
         public float HealthPercentage { ... }
+        public float ShieldPercentage { ... }
          <summary>
         /// Crea un nuovo HealthComponent con valori predefiniti
         /// </summary>
         /// <param name="maxHealth">Punti vita massimi</param>
+        /// <param name="maxShield">Punti scudo massimi (0 per nessuno scudo)</param>
+        /// <param name="enableAutoRegen">Abilita rigenerazione automatica della salute</param>
+        /// <param name="enableShieldRegen">Abilita rigenerazione automatica dello scudo</param>
         /// <returns>HealthComponent inizializzato con i valori specificati</returns>
 
-        public static HealthComponent Default(float maxHealth);
+        public static HealthComponent Default(float maxHealth, float maxShield, bool enableAutoRegen, bool enableShieldRegen);
          <summary>
         /// Applica danni all'entità, tenendo conto dell'invulnerabilità
         /// </summary>
@@ -4038,6 +4135,7 @@ namespace RunawayHeroes.ECS.Components.Gameplay
     public struct TutorialLevelTag : IComponentData
     {
         public int TutorialIndex;
+        public int CurrentSequence;
         public bool Completed;
     }
      <summary>
@@ -4678,6 +4776,36 @@ namespace RunawayHeroes.ECS.Components.Enemies
         EliteDrone = 20,
         EliteGuard = 21,
         CommandUnit = 22
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Enemies/StatusTags.cs
+
+namespace RunawayHeroes.ECS.Components.Enemies
+{
+     <summary>
+    /// Tag che indica che un'entità è attualmente stordita.
+    /// Le entità con questo tag sono escluse da sistemi di movimento e attacco.
+    /// </summary>
+
+    public struct StunnedTag : IComponentData
+    {
+    }
+     <summary>
+    /// Tag che indica che un'entità è attualmente paralizzata.
+    /// Simile allo stordimento ma con effetti visivi diversi.
+    /// </summary>
+
+    public struct ParalyzedTag : IComponentData
+    {
+    }
+     <summary>
+    /// Tag che indica che un'entità è vulnerabile a danni aggiuntivi.
+    /// </summary>
+
+    public struct VulnerableTag : IComponentData
+    {
     }
 }
 
@@ -5900,11 +6028,16 @@ namespace RunawayHeroes.ECS.Events.Handlers
 namespace RunawayHeroes.ECS.Events
 {
      <summary>
-    /// 
+    /// Evento generato quando un livello è completato con successo.
+    /// Contiene informazioni sul livello e le statistiche di completamento.
     /// </summary>
 
     public struct LevelCompletedEvent : IComponentData
     {
+        public int LevelID;
+        public float FinalScore;
+        public float TimeElapsed;
+        public byte FragmentsCollected;
     }
 }
 
@@ -7130,6 +7263,95 @@ namespace RunawayHeroes.ECS.Systems.Combat
         public float RegenAmount;
         public float CurrentHealth;
         public float CurrentShield;
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Combat/StatusEffectSystem.cs
+
+namespace RunawayHeroes.ECS.Systems.Combat
+{
+     <summary>
+    /// Sistema che gestisce gli effetti di stato sulle entità.
+    /// Si occupa di applicare, monitorare e rimuovere effetti come stordimento,
+    /// paralisi, vulnerabilità e altri effetti temporanei.
+    /// </summary>
+
+    public partial struct StatusEffectSystem : ISystem
+    {
+        private EntityQuery _stunnedEntitiesQuery;
+        private EntityQuery _stunEventQuery;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+         <summary>
+        /// Inizializza il sistema di effetti di stato
+        /// </summary>
+
+        public void OnCreate(SystemState state);
+         <summary>
+        /// Pulisce le risorse quando il sistema viene distrutto
+        /// </summary>
+
+        public void OnDestroy(SystemState state);
+         <summary>
+        /// Aggiorna gli effetti di stato su tutte le entità
+        /// </summary>
+
+        public void OnUpdate(SystemState state);
+        private void Execute(int sortKey, Entity entity, StunEvent stunEvent);
+        private void Execute(int sortKey, Entity entity, StunDurationComponent stunDuration);
+    }
+     <summary>
+        /// Job che processa gli eventi di stordimento
+        /// </summary>
+
+    private partial struct ProcessStunEventsJob : IJobEntity
+    {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, StunEvent stunEvent);
+    }
+     <summary>
+        /// Job che aggiorna lo stato di stordimento
+        /// </summary>
+
+    private partial struct UpdateStunEffectsJob : IJobEntity
+    {
+        public float DeltaTime;
+        public EntityCommandBuffer.ParallelWriter ECB;
+        private void Execute(int sortKey, Entity entity, StunDurationComponent stunDuration);
+    }
+     <summary>
+    /// Componente che tiene traccia della durata rimanente di uno stordimento
+    /// </summary>
+
+    public struct StunDurationComponent : IComponentData
+    {
+        public float RemainingTime;
+        public float OriginalDuration;
+    }
+     <summary>
+    /// Evento per stordire un'entità
+    /// </summary>
+
+    public struct StunEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public float Duration;
+        public StunType Type;
+    }
+     <summary>
+    /// Tipi di stordimento disponibili
+    /// </summary>
+
+    public enum StunType
+    {
+        Light = 0,
+        Medium = 1,
+        Heavy = 2,
+        Freeze = 3,
+        Shock = 4,
+        Override = 5
     }
 }
 
@@ -9865,8 +10087,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _scoreEntitiesQuery;
         private EntityQuery _scoreUpdateEventsQuery;
         private EntityQuery _levelCompletionEventsQuery;
-        private NativeHashMap<Entity, ComboState> _playerCombos;
-        public NativeHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
+        private NativeParallelHashMap<Entity, ComboState> _playerCombos;
+        public NativeParallelHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityCommandBuffer.ParallelWriter ECB;
          <summary>
@@ -9893,7 +10115,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
 
     private partial struct ProcessScoreUpdatesJob : IJobEntity
     {
-        public NativeHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
+        public NativeParallelHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
         public EntityCommandBuffer.ParallelWriter ECB;
         private void Execute(Entity entity, int sortKey, ScoreUpdatedEvent scoreEvent);
     }
@@ -10187,12 +10409,16 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public WorldDifficultyConfigComponent DifficultyConfig;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
          <summary>
         /// Inizializza il sistema di gestione difficoltà
         /// </summary>
@@ -10236,6 +10462,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         private void Execute(Entity entity, int sortKey, EnemyComponent enemy, SegmentReferenceComponent segmentRef);
     }
      <summary>
@@ -10246,6 +10473,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         private void Execute(Entity entity, int sortKey, MidBossComponent midBoss, SegmentReferenceComponent segmentRef);
     }
      <summary>
@@ -10256,6 +10484,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         private void Execute(Entity entity, int sortKey, BossComponent boss, SegmentReferenceComponent segmentRef);
     }
      <summary>
@@ -10266,6 +10495,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     {
         public WorldDifficultyConfigComponent DifficultyConfig;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public ComponentLookup<PathSegmentComponent> PathSegments;
         private void Execute(Entity entity, int sortKey, ObstacleComponent obstacle, SegmentReferenceComponent segmentRef);
     }
 }
@@ -10735,21 +10965,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public float MessageDuration;
         public bool RandomPlacement;
         public float ObstacleSpacing;
-        public float StartOffset;
-    }
-     <summary>
-    /// Buffer per gli ostacoli di un tutorial
-    /// </summary>
-
-    public struct TutorialObstacleBuffer : IBufferElementData
-    {
-        public FixedString32Bytes ObstacleCode;
-        public int Count;
-        public byte Placement;
-        public bool RandomizeHeight;
-        public float2 HeightRange;
-        public bool RandomizeScale;
-        public float2 ScaleRange;
         public float StartOffset;
     }
      <summary>

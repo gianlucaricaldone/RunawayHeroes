@@ -62,6 +62,7 @@ namespace RunawayHeroes.ECS.Components.Gameplay
     public struct TutorialLevelTag : IComponentData
     {
         public int TutorialIndex;             // Indice del tutorial nella sequenza
+        public int CurrentSequence;           // Sequenza corrente del tutorial
         public bool Completed;                // Se il tutorial è stato completato
     }
     

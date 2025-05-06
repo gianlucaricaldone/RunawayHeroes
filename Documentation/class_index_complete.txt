@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 04/05/2025 12:11:01
+# Generato il: 06/05/2025 21:21:57
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -74,6 +74,10 @@ public enum ObstaclePlacement
 public class PlayerController
 public struct PlayerMovementComponent
 public struct TransformComponent
+public partial class TransformSystemGroup
+public partial class InputSystemGroup
+public partial class PhysicsSystemGroup
+public partial class MovementSystemGroup
 public static class EntityQueries
 public static class ECSLogger
 public static class ComponentExtensions
@@ -115,6 +119,7 @@ public struct TransformComponent
 public struct IdentityComponent
 public struct PhysicsComponent
 public struct RenderComponent
+public struct DefenseComponent
 public struct SlideInputComponent
 public struct JumpInputComponent
 public struct TouchInputComponent
@@ -149,6 +154,7 @@ public enum SegmentType
 public enum WorldTheme
 public struct PathComponent
 public struct PathSegmentBuffer
+public struct SegmentReferenceComponent
 public struct UrbanDashAbilityComponent
 public struct FireproofBodyAbilityComponent
 public struct HeatAuraAbilityComponent
@@ -219,6 +225,9 @@ public struct AlexComponent
 public struct NeoComponent
 public struct EnemyComponent
 public enum EnemyType
+public struct StunnedTag
+public struct ParalyzedTag
+public struct VulnerableTag
 public struct DroneComponent
 public struct MidBossComponent
 public enum MidBossType
@@ -379,6 +388,12 @@ public partial struct HealthSystem
 public partial struct ProcessHealthJob
 public struct HealthRegeneratedEvent
 public struct ShieldRegeneratedEvent
+public partial struct StatusEffectSystem
+private partial struct ProcessStunEventsJob
+private partial struct UpdateStunEffectsJob
+public struct StunDurationComponent
+public struct StunEvent
+public enum StunType
 public partial struct InputSystem
 public partial struct UpdatePlayerInputJob
 public partial struct TouchInputSystem
@@ -574,7 +589,6 @@ public struct KeyInventoryComponent
 public partial struct TutorialGuidanceSystem
 public partial struct CheckScenarioTriggerJob
 public struct TutorialScenarioComponent
-public struct TutorialObstacleBuffer
 public struct TriggeredTag
 public static class ColosalYeti
 public static class CorruptedAI

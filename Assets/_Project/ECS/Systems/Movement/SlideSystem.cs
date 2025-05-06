@@ -15,7 +15,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Si occupa di avviare le scivolate in risposta all'input, gestire la durata
     /// e gli effetti collaterali come l'altezza ridotta per passare sotto gli ostacoli.
     /// </summary>
-    [UpdateInGroup(typeof(MovementSystemGroup))]
+    [UpdateInGroup(typeof(RunawayHeroes.ECS.Systems.Movement.Group.MovementSystemGroup))]
     public partial struct SlideSystem : ISystem
     {
         private EntityQuery _slidableEntitiesQuery;

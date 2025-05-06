@@ -23,7 +23,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Estende le funzionalità di base dell'ObstacleCollisionSystem per supportare l'interazione con tutti i tipi di ostacoli
     /// in base alle abilità dei vari personaggi.
     /// </summary>
-    [UpdateInGroup(typeof(MovementSystemGroup))]
+    [UpdateInGroup(typeof(RunawayHeroes.ECS.Systems.Movement.Group.MovementSystemGroup))]
     [BurstCompile]
     public partial struct ObstacleInteractionSystem : ISystem
     {

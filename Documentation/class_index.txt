@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Sun May  4 12:10:54 CEST 2025
+# Generato il: Tue May  6 21:21:49 CEST 2025
 
 private class CyclicDependency
 private class ProfilerScope : System.IDisposable
@@ -105,6 +105,7 @@ public enum SegmentContentType
 public enum SegmentType
 public enum SpecialAbilityType : byte
 public enum StatusEffectType : byte
+public enum StunType : byte
 public enum UIActionType : byte
 public enum UIAnimationType : byte
 public enum WorldTheme
@@ -185,6 +186,7 @@ public struct DamageFeedbackEvent : IComponentData
 public struct DamageReceivedEvent : IComponentData
 public struct DamagedStateComponent : IComponentData
 public struct DeathEvent : IComponentData
+public struct DefenseComponent : IComponentData
 public struct DestinationReachedEvent : IComponentData
 public struct DestructionDelayComponent : IComponentData
 public struct DigitalBarrierTag : IComponentData
@@ -321,6 +323,7 @@ public struct ObstacleSpawnConfigComponent : IComponentData
 public struct ObstacleTypeComponent : IComponentData
 public struct OscillatingObstacleComponent : IComponentData
 public struct OxygenInteractionEvent : IComponentData
+public struct ParalyzedTag : IComponentData { }
 public struct PathComponent : IComponentData
 public struct PathSegmentBuffer : IBufferElementData
 public struct PathSegmentComponent : IComponentData
@@ -361,6 +364,7 @@ public struct ScoreComponent : IComponentData
 public struct ScoreUIUpdateEvent : IComponentData
 public struct ScoreUpdatedEvent : IComponentData
 public struct SegmentContentBuffer : IBufferElementData
+public struct SegmentReferenceComponent : IComponentData
 public struct SequencedBehaviorComponent : IComponentData
 public struct ShieldRegeneratedEvent : IComponentData
 public struct ShowCollectiblePopupEvent : IComponentData
@@ -373,6 +377,9 @@ public struct SlipperyTag : IComponentData
 public struct SlipperyTag : IComponentData { }
 public struct SpawnPointComponent : IComponentData
 public struct StatusEffectComponent : IComponentData
+public struct StunDurationComponent : IComponentData
+public struct StunEvent : IComponentData
+public struct StunnedTag : IComponentData { }
 public struct T01_IceWall : IComponentData
 public struct T02_IceBlock : IComponentData
 public struct T03_IcySurface : IComponentData
@@ -450,6 +457,7 @@ public struct V07_PyroclasticFlow : IComponentData
 public struct V08_UnstableGround : IComponentData
 public struct VirtualObstacleTag : IComponentData { }
 public struct VolcanoObstacleTag : IComponentData { }
+public struct VulnerableTag : IComponentData { }
 public struct WorldCompletionEvent : IComponentData
 public struct WorldDifficultyConfigComponent : IComponentData
 public struct WorldIdentifierComponent : IComponentData

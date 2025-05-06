@@ -119,17 +119,17 @@ namespace RunawayHeroes.ECS.Systems.Input
             // Gestisce i gesti con multitouch (solo su dispositivi mobili o editor con touch abilitato)
             #if UNITY_ANDROID || UNITY_IOS || UNITY_EDITOR
             // Controlla multitouch
-            if (Input.touchCount >= 2)
+            if (UnityEngine.Input.touchCount >= 2)
             {
-                Touch touch1 = Input.GetTouch(0);
-                Touch touch2 = Input.GetTouch(1);
+                UnityEngine.Touch touch1 = UnityEngine.Input.GetTouch(0);
+                UnityEngine.Touch touch2 = UnityEngine.Input.GetTouch(1);
                 
                 float2 touch1Pos = new float2(touch1.position.x, touch1.position.y);
                 float2 touch2Pos = new float2(touch2.position.x, touch2.position.y);
                 
                 // Inizia multitouch tracking
                 if (!_isMultiTouch && 
-                    (touch1.phase == TouchPhase.Began || touch2.phase == TouchPhase.Began))
+                    (touch1.phase == UnityEngine.TouchPhase.Began || touch2.phase == UnityEngine.TouchPhase.Began))
                 {
                     _isMultiTouch = true;
                     _touch1StartPos = touch1Pos;
@@ -170,8 +170,8 @@ namespace RunawayHeroes.ECS.Systems.Input
                 }
                 
                 // Termina multitouch se uno dei touch termina
-                if (touch1.phase == TouchPhase.Ended || touch1.phase == TouchPhase.Canceled ||
-                    touch2.phase == TouchPhase.Ended || touch2.phase == TouchPhase.Canceled)
+                if (touch1.phase == UnityEngine.TouchPhase.Ended || touch1.phase == UnityEngine.TouchPhase.Canceled ||
+                    touch2.phase == UnityEngine.TouchPhase.Ended || touch2.phase == UnityEngine.TouchPhase.Canceled)
                 {
                     _isMultiTouch = false;
                 }
@@ -182,20 +182,20 @@ namespace RunawayHeroes.ECS.Systems.Input
             }
             
             // Gestisce i gesti con singolo touch
-            if (Input.touchCount == 1)
+            if (UnityEngine.Input.touchCount == 1)
             {
-                Touch touch = Input.GetTouch(0);
+                UnityEngine.Touch touch = UnityEngine.Input.GetTouch(0);
                 float2 touchPos = new float2(touch.position.x, touch.position.y);
                 
                 // Inizia tracking per long press
-                if (touch.phase == TouchPhase.Began)
+                if (touch.phase == UnityEngine.TouchPhase.Began)
                 {
                     _touchStartTime = currentTime;
                     gesture.LongPress = false;
                 }
                 
                 // Controlla long press
-                if (touch.phase == TouchPhase.Stationary && 
+                if (touch.phase == UnityEngine.TouchPhase.Stationary && 
                     (currentTime - _touchStartTime) > _longPressThreshold &&
                     !gesture.LongPress)
                 {
@@ -204,7 +204,7 @@ namespace RunawayHeroes.ECS.Systems.Input
                 }
                 
                 // Controlla edge swipe
-                if (touch.phase == TouchPhase.Ended)
+                if (touch.phase == UnityEngine.TouchPhase.Ended)
                 {
                     // Ottiene dimensioni dello schermo
                     float screenWidth = Screen.width;
@@ -238,7 +238,7 @@ namespace RunawayHeroes.ECS.Systems.Input
                     gesture.LongPress = false;
                 }
             }
-            else if (Input.touchCount == 0)
+            else if (UnityEngine.Input.touchCount == 0)
             {
                 // Resetta long press se non ci sono touch
                 gesture.LongPress = false;
@@ -247,31 +247,31 @@ namespace RunawayHeroes.ECS.Systems.Input
             
             // Supporto per testing in editor con mouse e tastiera
             #if UNITY_EDITOR
-            if (!_isMultiTouch && Input.touchCount == 0)
+            if (!_isMultiTouch && UnityEngine.Input.touchCount == 0)
             {
                 // Simula long press con alt+click
-                if (Input.GetMouseButtonDown(0) && Input.GetKey(KeyCode.LeftAlt))
+                if (UnityEngine.Input.GetMouseButtonDown(0) && UnityEngine.Input.GetKey(UnityEngine.KeyCode.LeftAlt))
                 {
                     _touchStartTime = currentTime;
                 }
                 
-                if (Input.GetMouseButton(0) && Input.GetKey(KeyCode.LeftAlt) &&
+                if (UnityEngine.Input.GetMouseButton(0) && UnityEngine.Input.GetKey(UnityEngine.KeyCode.LeftAlt) &&
                     (currentTime - _touchStartTime) > _longPressThreshold &&
                     !gesture.LongPress)
                 {
                     gesture.LongPress = true;
-                    gesture.LongPressPosition = new float2(Input.mousePosition.x, Input.mousePosition.y);
+                    gesture.LongPressPosition = new float2(UnityEngine.Input.mousePosition.x, UnityEngine.Input.mousePosition.y);
                 }
                 
-                if (Input.GetMouseButtonUp(0) && Input.GetKey(KeyCode.LeftAlt))
+                if (UnityEngine.Input.GetMouseButtonUp(0) && UnityEngine.Input.GetKey(UnityEngine.KeyCode.LeftAlt))
                 {
                     gesture.LongPress = false;
                 }
                 
                 // Simula pinch con ctrl+mousewheel
-                if (Input.GetKey(KeyCode.LeftControl))
+                if (UnityEngine.Input.GetKey(UnityEngine.KeyCode.LeftControl))
                 {
-                    float scroll = Input.GetAxis("Mouse ScrollWheel");
+                    float scroll = UnityEngine.Input.GetAxis("Mouse ScrollWheel");
                     if (scroll > 0.01f)
                     {
                         gesture.PinchOut = true;
@@ -283,9 +283,9 @@ namespace RunawayHeroes.ECS.Systems.Input
                 }
                 
                 // Simula rotazione con shift+mousewheel
-                if (Input.GetKey(KeyCode.LeftShift))
+                if (UnityEngine.Input.GetKey(UnityEngine.KeyCode.LeftShift))
                 {
-                    float scroll = Input.GetAxis("Mouse ScrollWheel");
+                    float scroll = UnityEngine.Input.GetAxis("Mouse ScrollWheel");
                     if (math.abs(scroll) > 0.01f)
                     {
                         gesture.Rotate = true;
@@ -294,21 +294,21 @@ namespace RunawayHeroes.ECS.Systems.Input
                 }
                 
                 // Simula edge swipe con shift+frecce direzionali
-                if (Input.GetKey(KeyCode.LeftShift))
+                if (UnityEngine.Input.GetKey(UnityEngine.KeyCode.LeftShift))
                 {
-                    if (Input.GetKeyDown(KeyCode.UpArrow))
+                    if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.UpArrow))
                     {
                         gesture.EdgeSwipeTop = true;
                     }
-                    else if (Input.GetKeyDown(KeyCode.DownArrow))
+                    else if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.DownArrow))
                     {
                         gesture.EdgeSwipeBottom = true;
                     }
-                    else if (Input.GetKeyDown(KeyCode.LeftArrow))
+                    else if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.LeftArrow))
                     {
                         gesture.EdgeSwipeLeft = true;
                     }
-                    else if (Input.GetKeyDown(KeyCode.RightArrow))
+                    else if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.RightArrow))
                     {
                         gesture.EdgeSwipeRight = true;
                     }

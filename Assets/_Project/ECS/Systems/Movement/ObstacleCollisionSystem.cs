@@ -17,7 +17,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Sistema che gestisce le collisioni tra il giocatore e gli ostacoli.
     /// Rileva collisioni, genera eventi appropriati e applica gli effetti delle collisioni.
     /// </summary>
-    [UpdateInGroup(typeof(MovementSystemGroup))]
+    [UpdateInGroup(typeof(RunawayHeroes.ECS.Systems.Movement.Group.MovementSystemGroup))]
     public partial struct ObstacleCollisionSystem : ISystem
     {
         private EntityQuery _playerQuery;

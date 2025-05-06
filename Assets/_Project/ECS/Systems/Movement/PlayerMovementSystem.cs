@@ -1,7 +1,7 @@
 // Path: Assets/_Project/ECS/Systems/Movement/PlayerMovementSystem.cs
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Transforms;
+using Unity.Collections;
 using Unity.Burst;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
@@ -17,7 +17,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
     /// Elabora la corsa automatica, i movimenti laterali, e coordina con altri sistemi
     /// come salto e scivolata.
     /// </summary>
-    [UpdateInGroup(typeof(MovementSystemGroup))]
+    [UpdateInGroup(typeof(RunawayHeroes.ECS.Systems.Movement.Group.MovementSystemGroup))]
     public partial struct PlayerMovementSystem : ISystem
     {
         // Costanti di configurazione

@@ -25,6 +25,13 @@ namespace RunawayHeroes.Runtime.Levels
         [Tooltip("Se true, mostra gizmo per visualizzare gli scenari nel editor")]
         public bool showDebugGizmos = true;
         
+        [Header("Stato Tutorial")]
+        [Tooltip("Indice del livello tutorial attuale nella sequenza")]
+        public int tutorialLevelIndex = 0;
+        
+        [Tooltip("Posizione iniziale del giocatore")]
+        public Vector3 playerStartPosition = Vector3.zero;
+        
         private EntityManager _entityManager;
         private float _currentLevelLength;
         private Vector3 _startPosition;
@@ -52,18 +59,31 @@ namespace RunawayHeroes.Runtime.Levels
                 return;
             }
             
+            // Verifica che l'indice del livello tutorial sia valido
+            if (tutorialLevelIndex < 0 || tutorialLevelIndex >= tutorialSequence.Length)
+            {
+                Debug.LogWarning($"Indice tutorial non valido: {tutorialLevelIndex}. Impostato a 0.");
+                tutorialLevelIndex = 0;
+            }
+            
+            // Imposta la posizione iniziale su _startPosition se non specificata
+            if (playerStartPosition == Vector3.zero)
+            {
+                playerStartPosition = _startPosition;
+            }
+            
             // Crea un'entità singleton per marcare questo come livello tutorial
             Entity tutorialLevelEntity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(tutorialLevelEntity, new TutorialLevelTag 
             {
-                CurrentSequence = 0,
+                CurrentSequence = tutorialLevelIndex,
                 Completed = false
             });
             
-            // Configura il primo tutorial della sequenza
-            SetupTutorialScenarios(tutorialSequence[0]);
+            // Configura il tutorial della sequenza corrente
+            SetupTutorialScenarios(tutorialSequence[tutorialLevelIndex]);
             
-            Debug.Log($"Tutorial inizializzato: {tutorialSequence[0].description}");
+            Debug.Log($"Tutorial inizializzato: {tutorialSequence[tutorialLevelIndex].description}");
         }
         
         /// <summary>
@@ -84,6 +104,7 @@ namespace RunawayHeroes.Runtime.Levels
             var tutorialTag = _entityManager.GetComponentData<TutorialLevelTag>(tutorialEntity);
             
             int nextSequence = tutorialTag.CurrentSequence + 1;
+            tutorialLevelIndex = nextSequence; // Aggiorna anche l'indice del livello tutorial
             
             if (nextSequence >= tutorialSequence.Length)
             {

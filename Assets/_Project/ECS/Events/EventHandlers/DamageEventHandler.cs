@@ -47,12 +47,18 @@ namespace RunawayHeroes.ECS.Events.Handlers
         {
             // Ottiene il buffer di comandi per eventuali modifiche strutturali
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            
+            // Prepara i ComponentLookup
+            var healthLookup = SystemAPI.GetComponentLookup<HealthComponent>(true);
+            var defenseLookup = SystemAPI.GetComponentLookup<DefenseComponent>(true);
             
             // Esegue il job di elaborazione eventi
             state.Dependency = new ProcessDamageEventsJob
             {
-                ECB = ecb
+                ECB = ecb,
+                HealthLookup = healthLookup,
+                DefenseLookup = defenseLookup
             }.ScheduleParallel(state.Dependency);
         }
         
@@ -62,7 +68,9 @@ namespace RunawayHeroes.ECS.Events.Handlers
         [BurstCompile]
         private partial struct ProcessDamageEventsJob : IJobEntity
         {
-            public EntityCommandBuffer ECB;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
+            [ReadOnly] public ComponentLookup<DefenseComponent> DefenseLookup;
             
             // Definisce il metodo che verrà eseguito per ogni entità che soddisfa la query
             private void Execute(Entity entity, [EntityIndexInQuery] int sortKey, in DamageEvent damageEvent)
@@ -77,17 +85,17 @@ namespace RunawayHeroes.ECS.Events.Handlers
                 
                 // Se l'evento ha un target specifico e questo ha un componente di salute
                 if (damageEvent.TargetEntity != Entity.Null && 
-                    SystemAPI.HasComponent<HealthComponent>(damageEvent.TargetEntity))
+                    HealthLookup.HasComponent(damageEvent.TargetEntity))
                 {
-                    var health = SystemAPI.GetComponent<HealthComponent>(damageEvent.TargetEntity);
+                    var health = HealthLookup[damageEvent.TargetEntity];
                     
                     // Calcola il danno effettivo considerando resistenze e moltiplicatori
                     float actualDamage = damageEvent.DamageAmount;
                     
                     // Se l'entità ha un componente di difesa, applica modificatori
-                    if (SystemAPI.HasComponent<DefenseComponent>(damageEvent.TargetEntity))
+                    if (DefenseLookup.HasComponent(damageEvent.TargetEntity))
                     {
-                        var defense = SystemAPI.GetComponent<DefenseComponent>(damageEvent.TargetEntity);
+                        var defense = DefenseLookup[damageEvent.TargetEntity];
                         actualDamage = CalculateDamageWithDefense(damageEvent.DamageAmount, 
                                                                  damageEvent.DamageType, 
                                                                  defense);
@@ -100,13 +108,13 @@ namespace RunawayHeroes.ECS.Events.Handlers
                     health.CurrentHealth = math.max(0, health.CurrentHealth);
                     
                     // Aggiorna il componente
-                    SystemAPI.SetComponent(damageEvent.TargetEntity, health);
+                    ECB.SetComponent(sortKey, damageEvent.TargetEntity, health);
                     
                     // Se l'entità ha raggiunto 0 salute, crea un evento di morte
                     if (health.CurrentHealth <= 0 && !health.IsDead)
                     {
                         health.IsDead = true;
-                        SystemAPI.SetComponent(damageEvent.TargetEntity, health);
+                        ECB.SetComponent(sortKey, damageEvent.TargetEntity, health);
                         
                         // Crea un evento di morte
                         Entity deathEvent = ECB.CreateEntity(sortKey);

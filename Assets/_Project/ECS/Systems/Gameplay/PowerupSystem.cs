@@ -6,6 +6,7 @@ using Unity.Transforms;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Characters;
+using RunawayHeroes.ECS.Components.Combat;
 using RunawayHeroes.ECS.Events;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
@@ -75,6 +76,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
+            // Prepara i ComponentLookup
+            var powerupLookup = SystemAPI.GetComponentLookup<PowerupComponent>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<TransformComponent>(true);
+            var movementLookup = SystemAPI.GetComponentLookup<MovementComponent>(true);
+            var combatLookup = SystemAPI.GetComponentLookup<CombatComponent>(true);
+            var defenseLookup = SystemAPI.GetComponentLookup<DefenseComponent>(true);
+            var healthLookup = SystemAPI.GetComponentLookup<HealthComponent>(true);
+            var entityLookup = SystemAPI.GetEntityStorageInfoLookup();
+            
             // 1. Aggiorna la rotazione e gli effetti visivi dei powerup nel mondo
             if (!_powerupEntitiesQuery.IsEmpty)
             {
@@ -89,7 +99,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             {
                 state.Dependency = new ProcessPowerupCollectionsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    PowerupLookup = powerupLookup,
+                    TransformLookup = transformLookup,
+                    MovementLookup = movementLookup,
+                    CombatLookup = combatLookup,
+                    DefenseLookup = defenseLookup,
+                    HealthLookup = healthLookup,
+                    EntityStorageInfoLookup = entityLookup
                 }.ScheduleParallel(_powerupCollisionsQuery, state.Dependency);
             }
             
@@ -99,7 +116,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 state.Dependency = new UpdateActivePowerupsJob
                 {
                     DeltaTime = deltaTime,
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    MovementLookup = movementLookup,
+                    CombatLookup = combatLookup,
+                    DefenseLookup = defenseLookup,
+                    HealthLookup = healthLookup
                 }.ScheduleParallel(_activePowerupEffectsQuery, state.Dependency);
             }
         }
@@ -146,6 +167,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private partial struct ProcessPowerupCollectionsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<PowerupComponent> PowerupLookup;
+            [ReadOnly] public ComponentLookup<TransformComponent> TransformLookup;
+            [ReadOnly] public ComponentLookup<MovementComponent> MovementLookup;
+            [ReadOnly] public ComponentLookup<CombatComponent> CombatLookup;
+            [ReadOnly] public ComponentLookup<DefenseComponent> DefenseLookup;
+            [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
+            [ReadOnly] public EntityStorageInfoLookup EntityStorageInfoLookup;
             
             [BurstCompile]
             private void Execute(
@@ -157,7 +185,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 Entity powerupEntity = collectionEvent.PowerupEntity;
                 Entity characterEntity = collectionEvent.CollectorEntity;
                 
-                if (!SystemAPI.Exists(powerupEntity) || !SystemAPI.Exists(characterEntity))
+                if (!EntityStorageInfoLookup.Exists(powerupEntity, out _) || !EntityStorageInfoLookup.Exists(characterEntity, out _))
                 {
                     // Entità invalide, distruggi l'evento e termina
                     ECB.DestroyEntity(sortKey, entity);
@@ -165,9 +193,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 }
                 
                 // Ottieni il componente powerup
-                if (SystemAPI.HasComponent<PowerupComponent>(powerupEntity))
+                if (PowerupLookup.HasComponent(powerupEntity))
                 {
-                    var powerup = SystemAPI.GetComponent<PowerupComponent>(powerupEntity);
+                    var powerup = PowerupLookup[powerupEntity];
                     
                     // Crea un componente di powerup attivo sul personaggio
                     ECB.AddComponent(sortKey, characterEntity, new ActivePowerupComponent
@@ -190,7 +218,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     {
                         PowerupType = powerup.PowerupType,
                         CollectorEntity = characterEntity,
-                        CollectionPoint = SystemAPI.GetComponent<TransformComponent>(powerupEntity).Position
+                        CollectionPoint = TransformLookup.HasComponent(powerupEntity) ? 
+                                         TransformLookup[powerupEntity].Position : float3.zero
                     });
                     
                     // Distrugge il powerup nel mondo
@@ -208,9 +237,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 switch (powerup.PowerupType)
                 {
                     case PowerupType.SpeedBoost:
-                        if (SystemAPI.HasComponent<MovementComponent>(characterEntity))
+                        if (MovementLookup.HasComponent(characterEntity))
                         {
-                            var movement = SystemAPI.GetComponent<MovementComponent>(characterEntity);
+                            var movement = MovementLookup[characterEntity];
                             // Salva la velocità originale nel componente powerup attivo
                             var activePowerup = new ActivePowerupComponent
                             {
@@ -221,14 +250,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             
                             // Applica il moltiplicatore di velocità
                             movement.CurrentSpeed = movement.BaseSpeed * powerup.SpeedMultiplier;
-                            SystemAPI.SetComponent(characterEntity, movement);
+                            ecb.SetComponent(sortKey, characterEntity, movement);
                         }
                         break;
                         
                     case PowerupType.DamageBoost:
-                        if (SystemAPI.HasComponent<CombatComponent>(characterEntity))
+                        if (CombatLookup.HasComponent(characterEntity))
                         {
-                            var combat = SystemAPI.GetComponent<CombatComponent>(characterEntity);
+                            var combat = CombatLookup[characterEntity];
                             // Salva il danno originale nel componente powerup attivo
                             var activePowerup = new ActivePowerupComponent
                             {
@@ -239,14 +268,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             
                             // Applica il moltiplicatore di danno
                             combat.CurrentDamage = combat.BaseDamage * powerup.StrengthMultiplier;
-                            SystemAPI.SetComponent(characterEntity, combat);
+                            ecb.SetComponent(sortKey, characterEntity, combat);
                         }
                         break;
                         
                     case PowerupType.DefenseBoost:
-                        if (SystemAPI.HasComponent<DefenseComponent>(characterEntity))
+                        if (DefenseLookup.HasComponent(characterEntity))
                         {
-                            var defense = SystemAPI.GetComponent<DefenseComponent>(characterEntity);
+                            var defense = DefenseLookup[characterEntity];
                             // Salva la difesa originale nel componente powerup attivo
                             var activePowerup = new ActivePowerupComponent
                             {
@@ -257,25 +286,25 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             
                             // Applica il moltiplicatore di difesa
                             defense.CurrentDefense = defense.BaseDefense * powerup.DefenseMultiplier;
-                            SystemAPI.SetComponent(characterEntity, defense);
+                            ecb.SetComponent(sortKey, characterEntity, defense);
                         }
                         break;
                         
                     case PowerupType.Invulnerability:
-                        if (SystemAPI.HasComponent<HealthComponent>(characterEntity))
+                        if (HealthLookup.HasComponent(characterEntity))
                         {
-                            var health = SystemAPI.GetComponent<HealthComponent>(characterEntity);
+                            var health = HealthLookup[characterEntity];
                             health.IsInvulnerable = true;
-                            SystemAPI.SetComponent(characterEntity, health);
+                            ecb.SetComponent(sortKey, characterEntity, health);
                         }
                         break;
                         
                     case PowerupType.HealthRestore:
-                        if (SystemAPI.HasComponent<HealthComponent>(characterEntity))
+                        if (HealthLookup.HasComponent(characterEntity))
                         {
-                            var health = SystemAPI.GetComponent<HealthComponent>(characterEntity);
+                            var health = HealthLookup[characterEntity];
                             health.CurrentHealth = health.MaxHealth;
-                            SystemAPI.SetComponent(characterEntity, health);
+                            ecb.SetComponent(sortKey, characterEntity, health);
                         }
                         break;
                 }
@@ -290,6 +319,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<MovementComponent> MovementLookup;
+            [ReadOnly] public ComponentLookup<CombatComponent> CombatLookup;
+            [ReadOnly] public ComponentLookup<DefenseComponent> DefenseLookup;
+            [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
             
             [BurstCompile]
             private void Execute(
@@ -339,38 +372,38 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 switch (activePowerup.PowerupType)
                 {
                     case PowerupType.SpeedBoost:
-                        if (SystemAPI.HasComponent<MovementComponent>(characterEntity))
+                        if (MovementLookup.HasComponent(characterEntity))
                         {
-                            var movement = SystemAPI.GetComponent<MovementComponent>(characterEntity);
+                            var movement = MovementLookup[characterEntity];
                             movement.CurrentSpeed = activePowerup.OriginalSpeed;
-                            SystemAPI.SetComponent(characterEntity, movement);
+                            ecb.SetComponent(sortKey, characterEntity, movement);
                         }
                         break;
                         
                     case PowerupType.DamageBoost:
-                        if (SystemAPI.HasComponent<CombatComponent>(characterEntity))
+                        if (CombatLookup.HasComponent(characterEntity))
                         {
-                            var combat = SystemAPI.GetComponent<CombatComponent>(characterEntity);
+                            var combat = CombatLookup[characterEntity];
                             combat.CurrentDamage = activePowerup.OriginalDamage;
-                            SystemAPI.SetComponent(characterEntity, combat);
+                            ecb.SetComponent(sortKey, characterEntity, combat);
                         }
                         break;
                         
                     case PowerupType.DefenseBoost:
-                        if (SystemAPI.HasComponent<DefenseComponent>(characterEntity))
+                        if (DefenseLookup.HasComponent(characterEntity))
                         {
-                            var defense = SystemAPI.GetComponent<DefenseComponent>(characterEntity);
+                            var defense = DefenseLookup[characterEntity];
                             defense.CurrentDefense = activePowerup.OriginalDefense;
-                            SystemAPI.SetComponent(characterEntity, defense);
+                            ecb.SetComponent(sortKey, characterEntity, defense);
                         }
                         break;
                         
                     case PowerupType.Invulnerability:
-                        if (SystemAPI.HasComponent<HealthComponent>(characterEntity))
+                        if (HealthLookup.HasComponent(characterEntity))
                         {
-                            var health = SystemAPI.GetComponent<HealthComponent>(characterEntity);
+                            var health = HealthLookup[characterEntity];
                             health.IsInvulnerable = false;
-                            SystemAPI.SetComponent(characterEntity, health);
+                            ecb.SetComponent(sortKey, characterEntity, health);
                         }
                         break;
                 }

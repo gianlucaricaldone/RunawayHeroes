@@ -357,20 +357,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public float StartOffset;
     }
     
-    /// <summary>
-    /// Buffer per gli ostacoli di un tutorial
-    /// </summary>
-    public struct TutorialObstacleBuffer : IBufferElementData
-    {
-        public FixedString32Bytes ObstacleCode;
-        public int Count;
-        public byte Placement; // 0=Center, 1=Left, 2=Right, 3=Random, 4=Pattern
-        public bool RandomizeHeight;
-        public float2 HeightRange; // min, max
-        public bool RandomizeScale;
-        public float2 ScaleRange;  // min, max
-        public float StartOffset;
-    }
+    // TutorialObstacleBuffer is now defined in RunawayHeroes.ECS.Components.Gameplay.TutorialComponents
     
     /// <summary>
     /// Tag per gli scenari tutorial già attivati

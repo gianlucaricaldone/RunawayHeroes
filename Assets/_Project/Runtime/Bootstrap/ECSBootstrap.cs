@@ -77,10 +77,10 @@ namespace RunawayHeroes.Runtime.Bootstrap
                 var simulationSystemGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
                 
                 // Crea i gruppi di sistema necessari
-                var transformSystemGroup = _world.CreateSystemManaged<TransformSystemGroup>();
+                var transformSystemGroup = _world.CreateSystemManaged<RunawayHeroes.ECS.Core.TransformSystemGroup>();
                 simulationSystemGroup.AddSystemToUpdateList(transformSystemGroup);
                 
-                var movementSystemGroup = _world.CreateSystemManaged<MovementSystemGroup>();
+                var movementSystemGroup = _world.CreateSystemManaged<RunawayHeroes.ECS.Core.MovementSystemGroup>();
                 transformSystemGroup.AddSystemToUpdateList(movementSystemGroup);
                 
                 // Metodo sicuro per aggiungere i sistemi
@@ -123,16 +123,17 @@ namespace RunawayHeroes.Runtime.Bootstrap
                         {
                             Type groupType = updateInGroup.GroupType;
                             
-                            if (groupType == typeof(MovementSystemGroup))
+                            if (groupType == typeof(RunawayHeroes.ECS.Core.MovementSystemGroup) || 
+                                groupType == typeof(RunawayHeroes.ECS.Systems.Movement.Group.MovementSystemGroup))
                             {
-                                var movementGroup = _world.GetExistingSystemManaged<MovementSystemGroup>();
+                                var movementGroup = _world.GetExistingSystemManaged<RunawayHeroes.ECS.Core.MovementSystemGroup>();
                                 movementGroup.AddSystemToUpdateList(system);
                                 isInCustomGroup = true;
                                 break;
                             }
-                            else if (groupType == typeof(TransformSystemGroup))
+                            else if (groupType == typeof(RunawayHeroes.ECS.Core.TransformSystemGroup))
                             {
-                                var transformGroup = _world.GetExistingSystemManaged<TransformSystemGroup>();
+                                var transformGroup = _world.GetExistingSystemManaged<RunawayHeroes.ECS.Core.TransformSystemGroup>();
                                 transformGroup.AddSystemToUpdateList(system);
                                 isInCustomGroup = true;
                                 break;

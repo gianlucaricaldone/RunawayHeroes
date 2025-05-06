@@ -78,6 +78,7 @@ digraph ClassDependencies {
   "ResonanceUISystemGroup" [tooltip="File: ResonanceUISystem.cs"];
   "ComponentSystemGroup" -> "ResonanceUISystemGroup" [arrowhead=empty, style=solid, label="extends"];
   "ResonanceUISystemGroup" -> "Entity" [style=dotted, label="uses"];
+  "ResonanceUISystemGroup" -> "Transform" [style=dotted, label="uses"];
   "ObstacleSystemGroup" [tooltip="File: ObstacleSystemGroup.cs"];
   "ComponentSystemGroup" -> "ObstacleSystemGroup" [arrowhead=empty, style=solid, label="extends"];
   "StandardObstacleAuthoring" [tooltip="File: ObstacleAuthoringComponents.cs"];

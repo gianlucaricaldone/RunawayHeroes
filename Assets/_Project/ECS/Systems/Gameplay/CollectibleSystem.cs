@@ -81,6 +81,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
+            // Prepara i ComponentLookup
+            var transformLookup = SystemAPI.GetComponentLookup<TransformComponent>(true);
+            var scoreLookup = SystemAPI.GetComponentLookup<ScoreComponent>(true);
+            var healthLookup = SystemAPI.GetComponentLookup<HealthComponent>(true);
+            var fragmentInventoryLookup = SystemAPI.GetComponentLookup<FragmentInventoryComponent>(true);
+            var keyInventoryLookup = SystemAPI.GetComponentLookup<KeyInventoryComponent>(true);
+            var collectibleLookup = SystemAPI.GetComponentLookup<CollectibleComponent>(true);
+            var entityLookup = SystemAPI.GetEntityStorageInfoLookup();
+            
             // 1. Aggiorna l'animazione dei collezionabili (rotazione, fluttuazione, ecc.)
             if (!_collectiblesQuery.IsEmpty)
             {
@@ -119,7 +128,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             {
                 state.Dependency = new MoveMagnetizedCollectiblesJob
                 {
-                    DeltaTime = deltaTime
+                    DeltaTime = deltaTime,
+                    TransformLookup = transformLookup,
+                    EntityLookupTable = entityLookup
                 }.ScheduleParallel(_magnetizedCollectiblesQuery, state.Dependency);
             }
             
@@ -128,7 +139,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             {
                 state.Dependency = new ProcessCollectionEventsJob
                 {
-                    ECB = ecb.AsParallelWriter()
+                    ECB = ecb.AsParallelWriter(),
+                    CollectibleLookup = collectibleLookup,
+                    TransformLookup = transformLookup,
+                    ScoreLookup = scoreLookup,
+                    HealthLookup = healthLookup,
+                    FragmentInventoryLookup = fragmentInventoryLookup,
+                    KeyInventoryLookup = keyInventoryLookup,
+                    EntityLookupTable = entityLookup
                 }.ScheduleParallel(_collectibleEventsQuery, state.Dependency);
             }
         }
@@ -248,6 +266,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private partial struct MoveMagnetizedCollectiblesJob : IJobEntity
         {
             public float DeltaTime;
+            [ReadOnly] public ComponentLookup<TransformComponent> TransformLookup;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookupTable;
             
             [BurstCompile]
             private void Execute(
@@ -255,13 +275,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in MagnetizationMovementData magnetData)
             {
                 // Se l'entità target esiste ancora
-                if (SystemAPI.Exists(magnetData.TargetEntity))
+                if (EntityLookupTable.Exists(magnetData.TargetEntity, out _))
                 {
                     // Aggiorna la posizione target se il magnete si muove
                     float3 targetPosition;
-                    if (SystemAPI.HasComponent<TransformComponent>(magnetData.TargetEntity))
+                    if (TransformLookup.HasComponent(magnetData.TargetEntity))
                     {
-                        targetPosition = SystemAPI.GetComponent<TransformComponent>(magnetData.TargetEntity).Position;
+                        targetPosition = TransformLookup[magnetData.TargetEntity].Position;
                     }
                     else
                     {
@@ -298,6 +318,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private partial struct ProcessCollectionEventsJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<CollectibleComponent> CollectibleLookup;
+            [ReadOnly] public ComponentLookup<TransformComponent> TransformLookup;
+            [ReadOnly] public ComponentLookup<ScoreComponent> ScoreLookup;
+            [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
+            [ReadOnly] public ComponentLookup<FragmentInventoryComponent> FragmentInventoryLookup;
+            [ReadOnly] public ComponentLookup<KeyInventoryComponent> KeyInventoryLookup;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookupTable;
             
             [BurstCompile]
             private void Execute(
@@ -309,7 +336,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 Entity collectibleEntity = collectionEvent.CollectibleEntity;
                 Entity collectorEntity = collectionEvent.CollectorEntity;
                 
-                if (!SystemAPI.Exists(collectibleEntity) || !SystemAPI.Exists(collectorEntity))
+                if (!EntityLookupTable.Exists(collectibleEntity, out _) || !EntityLookupTable.Exists(collectorEntity, out _))
                 {
                     // Entità invalide, distruggi l'evento e termina
                     ECB.DestroyEntity(sortKey, entity);
@@ -317,9 +344,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 }
                 
                 // Ottieni il componente collezionabile
-                if (SystemAPI.HasComponent<CollectibleComponent>(collectibleEntity))
+                if (CollectibleLookup.HasComponent(collectibleEntity))
                 {
-                    var collectible = SystemAPI.GetComponent<CollectibleComponent>(collectibleEntity);
+                    var collectible = CollectibleLookup[collectibleEntity];
                     
                     // Applica gli effetti in base al tipo di collezionabile
                     ApplyCollectibleEffects(collectibleEntity, collectorEntity, collectible, ECB, sortKey);
@@ -330,7 +357,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     {
                         CollectibleType = collectible.CollectibleType,
                         CollectorEntity = collectorEntity,
-                        CollectionPoint = SystemAPI.GetComponent<TransformComponent>(collectibleEntity).Position,
+                        CollectionPoint = TransformLookup.HasComponent(collectibleEntity) ? 
+                                          TransformLookup[collectibleEntity].Position : float3.zero,
                         Value = collectible.Value
                     });
                     
@@ -352,12 +380,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     case CollectibleType.Coin:
                     case CollectibleType.Gem:
                         // Aggiorna il componente score del collettore
-                        if (SystemAPI.HasComponent<ScoreComponent>(collectorEntity))
+                        if (ScoreLookup.HasComponent(collectorEntity))
                         {
-                            var score = SystemAPI.GetComponent<ScoreComponent>(collectorEntity);
+                            var score = ScoreLookup[collectorEntity];
                             score.CurrentScore += collectible.Value;
                             score.TotalCollectibles++;
-                            SystemAPI.SetComponent(collectorEntity, score);
+                            ecb.SetComponent(sortKey, collectorEntity, score);
                             
                             // Crea un evento di aggiornamento punteggio
                             Entity scoreEvent = ecb.CreateEntity(sortKey);
@@ -373,12 +401,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         
                     case CollectibleType.HealthPickup:
                         // Ripristina salute al collettore
-                        if (SystemAPI.HasComponent<HealthComponent>(collectorEntity))
+                        if (HealthLookup.HasComponent(collectorEntity))
                         {
-                            var health = SystemAPI.GetComponent<HealthComponent>(collectorEntity);
+                            var health = HealthLookup[collectorEntity];
                             float originalHealth = health.CurrentHealth;
                             health.CurrentHealth = math.min(health.CurrentHealth + collectible.Value, health.MaxHealth);
-                            SystemAPI.SetComponent(collectorEntity, health);
+                            ecb.SetComponent(sortKey, collectorEntity, health);
                             
                             // Crea un evento di aggiornamento salute
                             Entity healthEvent = ecb.CreateEntity(sortKey);
@@ -394,9 +422,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         
                     case CollectibleType.Fragment:
                         // Aggiungi il frammento all'inventario
-                        if (SystemAPI.HasComponent<FragmentInventoryComponent>(collectorEntity))
+                        if (FragmentInventoryLookup.HasComponent(collectorEntity))
                         {
-                            var inventory = SystemAPI.GetComponent<FragmentInventoryComponent>(collectorEntity);
+                            var inventory = FragmentInventoryLookup[collectorEntity];
                             
                             // Aggiorna l'inventario in base al tipo di frammento
                             switch (collectible.FragmentType)
@@ -421,7 +449,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                                     break;
                             }
                             
-                            SystemAPI.SetComponent(collectorEntity, inventory);
+                            ecb.SetComponent(sortKey, collectorEntity, inventory);
                             
                             // Crea un evento di frammento raccolto
                             Entity fragmentEvent = ecb.CreateEntity(sortKey);
@@ -436,9 +464,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         
                     case CollectibleType.Key:
                         // Aggiunge la chiave all'inventario
-                        if (SystemAPI.HasComponent<KeyInventoryComponent>(collectorEntity))
+                        if (KeyInventoryLookup.HasComponent(collectorEntity))
                         {
-                            var keyInventory = SystemAPI.GetComponent<KeyInventoryComponent>(collectorEntity);
+                            var keyInventory = KeyInventoryLookup[collectorEntity];
                             
                             // Aggiorna l'inventario chiavi in base al tipo di chiave
                             switch (collectible.KeyType)
@@ -457,7 +485,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                                     break;
                             }
                             
-                            SystemAPI.SetComponent(collectorEntity, keyInventory);
+                            ecb.SetComponent(sortKey, collectorEntity, keyInventory);
                             
                             // Crea un evento di chiave raccolta
                             Entity keyEvent = ecb.CreateEntity(sortKey);

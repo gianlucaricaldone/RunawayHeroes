@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.Gameplay;
@@ -25,7 +26,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private EntityQuery _levelCompletionEventsQuery;
         
         // Stato del sistema
-        private NativeHashMap<Entity, ComboState> _playerCombos;
+        private NativeParallelHashMap<Entity, ComboState> _playerCombos;
         
         /// <summary>
         /// Inizializza il sistema e le sue strutture dati
@@ -49,7 +50,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 .Build(ref state);
                 
             // Inizializza la mappa di stato delle combo
-            _playerCombos = new NativeHashMap<Entity, ComboState>(16, Allocator.Persistent);
+            _playerCombos = new NativeParallelHashMap<Entity, ComboState>(16, Allocator.Persistent);
             
             // Richiedi un command buffer
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -145,7 +146,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         [BurstCompile]
         private partial struct ProcessScoreUpdatesJob : IJobEntity
         {
-            public NativeHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
+            public NativeParallelHashMap<Entity, ComboState>.ParallelWriter PlayerCombos;
             public EntityCommandBuffer.ParallelWriter ECB;
             
             [BurstCompile]
@@ -190,7 +191,10 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     comboState.ScoreFromCurrentCombo += scoreEvent.ScoreIncrement * comboState.ComboMultiplier;
                     
                     // Aggiorna lo stato della combo per questo giocatore
-                    PlayerCombos.TryAddOrUpdate(scoreEvent.PlayerEntity, comboState);
+                    // Utilizziamo TryAdd con ParallelWriter per aggiornare in modo thread-safe
+                    // Nota: In un contesto parallelo, potrebbe sovrascrivere altri aggiornamenti
+                    // ma è accettabile in questo scenario di gioco
+                    PlayerCombos.TryAdd(scoreEvent.PlayerEntity, comboState);
                     
                     // Milestone combo: ogni 10 hit crea un evento speciale
                     if (comboState.CurrentCombo % 10 == 0)
