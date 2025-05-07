@@ -76,14 +76,14 @@ namespace RunawayHeroes.ECS.Systems.Movement
                 if (navigator.ValueRO.HasDestination)
                 {
                     // Se il percorso è già stato calcolato
-                    if (navigator.ValueRO.PathStatus == PathStatus.Ready && navigator.ValueRO.PathPoints.Length > 0)
+                    if (navigator.ValueRO.PathStatus == PathStatus.Ready && navigator.ValueRO.PathPointCount > 0)
                     {
                         // Ottieni il prossimo punto target
                         int currentPointIndex = navigator.ValueRO.CurrentPathIndex;
                         
-                        if (currentPointIndex < navigator.ValueRO.PathPoints.Length)
+                        if (currentPointIndex < navigator.ValueRO.PathPointCount)
                         {
-                            float3 currentTarget = navigator.ValueRO.PathPoints[currentPointIndex];
+                            float3 currentTarget = navigator.ValueRO.GetPathPoint(currentPointIndex);
                             float3 directionToTarget = currentTarget - transform.ValueRO.Position;
                             
                             // Ignora l'asse Y per movimento orizzontale
@@ -98,7 +98,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                 navigator.ValueRW.CurrentPathIndex++;
                                 
                                 // Se abbiamo raggiunto la destinazione finale
-                                if (navigator.ValueRW.CurrentPathIndex >= navigator.ValueRO.PathPoints.Length)
+                                if (navigator.ValueRW.CurrentPathIndex >= navigator.ValueRO.PathPointCount)
                                 {
                                     // Crea evento di destinazione raggiunta
                                     var destinationReachedEvent = commandBuffer.CreateEntity();
@@ -186,13 +186,17 @@ namespace RunawayHeroes.ECS.Systems.Movement
             
             if (pathFound && path.status == NavMeshPathStatus.PathComplete)
             {
-                // Converti i corner del percorso in un array float3 per l'ECS
+                // Converti i corner del percorso in punti individuali per l'ECS
                 Vector3[] corners = path.corners;
-                navigator.PathPoints = new float3[corners.Length];
+                int pointCount = math.min(corners.Length, NavigatorComponent.MaxPathPoints);
                 
-                for (int i = 0; i < corners.Length; i++)
+                // Imposta il conteggio dei punti del percorso
+                navigator.PathPointCount = pointCount;
+                
+                // Salva i punti del percorso nelle proprietà individuali
+                for (int i = 0; i < pointCount; i++)
                 {
-                    navigator.PathPoints[i] = new float3(corners[i].x, corners[i].y, corners[i].z);
+                    navigator.SetPathPoint(i, new float3(corners[i].x, corners[i].y, corners[i].z));
                 }
                 
                 navigator.CurrentPathIndex = 0;
@@ -202,7 +206,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
             {
                 // Se il percorso non può essere completato, prova un percorso parziale o fallisci
                 navigator.PathStatus = PathStatus.Failed;
-                navigator.PathPoints = new float3[0];
+                navigator.PathPointCount = 0;
             }
         }
         
@@ -220,9 +224,102 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public float SteeringSpeed;           // Velocità di sterzata
         public bool RotateTowardsTarget;      // Se ruotare verso la direzione di movimento
         public PathStatus PathStatus;         // Stato attuale del calcolo del percorso
-        public float3[] PathPoints;           // Punti del percorso calcolato
+        
+        // Definizione statica del numero massimo di punti nel percorso
+        public const int MaxPathPoints = 20;
+        
+        // Punti del percorso calcolato (sostituito array con campi individuali)
+        public float3 PathPoint1;
+        public float3 PathPoint2;
+        public float3 PathPoint3;
+        public float3 PathPoint4;
+        public float3 PathPoint5;
+        public float3 PathPoint6;
+        public float3 PathPoint7;
+        public float3 PathPoint8;
+        public float3 PathPoint9;
+        public float3 PathPoint10;
+        public float3 PathPoint11;
+        public float3 PathPoint12;
+        public float3 PathPoint13;
+        public float3 PathPoint14;
+        public float3 PathPoint15;
+        public float3 PathPoint16;
+        public float3 PathPoint17;
+        public float3 PathPoint18;
+        public float3 PathPoint19;
+        public float3 PathPoint20;
+        
+        public int PathPointCount;            // Numero effettivo di punti nel percorso
         public int CurrentPathIndex;          // Indice corrente nel percorso
         public float WaypointReachedThreshold;// Distanza per considerare un waypoint raggiunto
+        
+        /// <summary>
+        /// Ottiene il punto del percorso all'indice specificato
+        /// </summary>
+        public float3 GetPathPoint(int index)
+        {
+            if (index < 0 || index >= PathPointCount)
+                return float3.zero;
+                
+            switch (index)
+            {
+                case 0: return PathPoint1;
+                case 1: return PathPoint2;
+                case 2: return PathPoint3;
+                case 3: return PathPoint4;
+                case 4: return PathPoint5;
+                case 5: return PathPoint6;
+                case 6: return PathPoint7;
+                case 7: return PathPoint8;
+                case 8: return PathPoint9;
+                case 9: return PathPoint10;
+                case 10: return PathPoint11;
+                case 11: return PathPoint12;
+                case 12: return PathPoint13;
+                case 13: return PathPoint14;
+                case 14: return PathPoint15;
+                case 15: return PathPoint16;
+                case 16: return PathPoint17;
+                case 17: return PathPoint18;
+                case 18: return PathPoint19;
+                case 19: return PathPoint20;
+                default: return float3.zero;
+            }
+        }
+        
+        /// <summary>
+        /// Imposta il punto del percorso all'indice specificato
+        /// </summary>
+        public void SetPathPoint(int index, float3 point)
+        {
+            if (index < 0 || index >= MaxPathPoints)
+                return;
+                
+            switch (index)
+            {
+                case 0: PathPoint1 = point; break;
+                case 1: PathPoint2 = point; break;
+                case 2: PathPoint3 = point; break;
+                case 3: PathPoint4 = point; break;
+                case 4: PathPoint5 = point; break;
+                case 5: PathPoint6 = point; break;
+                case 6: PathPoint7 = point; break;
+                case 7: PathPoint8 = point; break;
+                case 8: PathPoint9 = point; break;
+                case 9: PathPoint10 = point; break;
+                case 10: PathPoint11 = point; break;
+                case 11: PathPoint12 = point; break;
+                case 12: PathPoint13 = point; break;
+                case 13: PathPoint14 = point; break;
+                case 14: PathPoint15 = point; break;
+                case 15: PathPoint16 = point; break;
+                case 16: PathPoint17 = point; break;
+                case 17: PathPoint18 = point; break;
+                case 18: PathPoint19 = point; break;
+                case 19: PathPoint20 = point; break;
+            }
+        }
     }
     
     /// <summary>

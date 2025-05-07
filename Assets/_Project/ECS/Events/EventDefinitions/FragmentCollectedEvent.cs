@@ -9,8 +9,7 @@ namespace RunawayHeroes.ECS.Events
     {
         // Dati evento
         public int FragmentID;
-        public int FragmentType; // Cambiato da byte a int per coerenza con gli altri tipi di eventi
+        public byte FragmentType;
         public Entity CollectorEntity;
-
     }
 }

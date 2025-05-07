@@ -195,16 +195,13 @@ namespace RunawayHeroes.ECS.Components.Gameplay
         }
         
         /// <summary>
-        /// Ottiene i bonus ambientali in base al tipo di mondo e al personaggio
+        /// Ottiene i bonus ambientali in base al tipo di mondo e al carattere fornito
         /// </summary>
         /// <param name="worldType">Il tipo di mondo corrente</param>
+        /// <param name="characterType">Il tipo di carattere</param>
         /// <returns>Struttura contenente i bonus applicabili</returns>
-        public EnvironmentalBonus GetEnvironmentalBonus(WorldType worldType)
+        public EnvironmentalBonus GetEnvironmentalBonus(WorldType worldType, CharacterType characterType)
         {
-            // Ottiene il tipo di personaggio dal componente PlayerData
-            // In una implementazione reale, questo verrebbe fatto con EntityManager
-            CharacterType characterType = CharacterType.Alex; // Placeholder
-            
             var bonus = new EnvironmentalBonus
             {
                 SpeedBonus = 0,
@@ -215,26 +212,29 @@ namespace RunawayHeroes.ECS.Components.Gameplay
             };
             
             // Applica bonus in base alla combinazione personaggio-ambiente
-            switch (characterType)
+            if (characterType == CharacterType.Alex && worldType == WorldType.Urban)
             {
-                case CharacterType.Alex when worldType == WorldType.Urban:
-                    bonus.SpeedBonus = 0.25f; // +25% velocità per 3 secondi
-                    break;
-                case CharacterType.Maya when worldType == WorldType.Forest:
-                    bonus.HealingEfficiency = 0.4f; // +40% efficacia oggetti curativi
-                    break;
-                case CharacterType.Kai when worldType == WorldType.Tundra:
-                    bonus.ElementalResistance = 0.5f; // Resistenza al freddo per 5 secondi
-                    break;
-                case CharacterType.Ember when worldType == WorldType.Volcano:
-                    bonus.ElementalResistance = 0.6f; // Resistenza al fuoco per 4 secondi
-                    break;
-                case CharacterType.Marina when worldType == WorldType.Abyss:
-                    bonus.JumpBonus = 0.3f; // +30% potenza salto sott'acqua
-                    break;
-                case CharacterType.Neo when worldType == WorldType.Virtual:
-                    bonus.CooldownReduction = 0.2f; // -20% tempo ricarica abilità
-                    break;
+                bonus.SpeedBonus = 0.25f; // +25% velocità per 3 secondi
+            }
+            else if (characterType == CharacterType.Maya && worldType == WorldType.Forest)
+            {
+                bonus.HealingEfficiency = 0.4f; // +40% efficacia oggetti curativi
+            }
+            else if (characterType == CharacterType.Kai && worldType == WorldType.Tundra)
+            {
+                bonus.ElementalResistance = 0.5f; // Resistenza al freddo per 5 secondi
+            }
+            else if (characterType == CharacterType.Ember && worldType == WorldType.Volcano)
+            {
+                bonus.ElementalResistance = 0.6f; // Resistenza al fuoco per 4 secondi
+            }
+            else if (characterType == CharacterType.Marina && worldType == WorldType.Abyss)
+            {
+                bonus.JumpBonus = 0.3f; // +30% potenza salto sott'acqua
+            }
+            else if (characterType == CharacterType.Neo && worldType == WorldType.Virtual)
+            {
+                bonus.CooldownReduction = 0.2f; // -20% tempo ricarica abilità
             }
             
             return bonus;

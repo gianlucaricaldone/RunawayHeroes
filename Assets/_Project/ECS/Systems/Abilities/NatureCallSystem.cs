@@ -69,8 +69,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                 DeltaTime = deltaTime,
                 ECB = commandBuffer,
                 EnemyQuery = _enemyQuery,
-                // Queste operazioni devono essere eseguite nel main thread
-                EntityManagerPtr = state.EntityManager.GetUnsafeEntityDataAccess(),
                 EntityTypeHandle = SystemAPI.GetEntityTypeHandle()
             }.Run(state.EntityManager, _abilityQuery);
             
@@ -92,8 +90,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             new NatureAllyTargetInteractionJob
             {
                 DeltaTime = deltaTime,
-                GameTime = (float)SystemAPI.Time.ElapsedTime,
-                EntityManagerPtr = state.EntityManager.GetUnsafeEntityDataAccess()
+                GameTime = (float)SystemAPI.Time.ElapsedTime
             }.Run(state.EntityManager, _allyQuery);
             
             // Non è più necessario chiamare AddJobHandleForProducer nella nuova API DOTS
@@ -125,7 +122,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
         [ReadOnly] public EntityQuery EnemyQuery;
-        public IntPtr EntityManagerPtr;
         [ReadOnly] public EntityTypeHandle EntityTypeHandle;
         
         public void Run(EntityManager entityManager, EntityQuery query)
@@ -341,7 +337,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     {
         public float DeltaTime;
         public float GameTime;
-        public IntPtr EntityManagerPtr;
         
         public void Run(EntityManager entityManager, EntityQuery query)
         {

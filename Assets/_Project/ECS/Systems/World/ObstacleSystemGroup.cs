@@ -7,7 +7,7 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema che raggruppa tutti i sistemi relativi agli ostacoli
     /// </summary>
     [UpdateAfter(typeof(SegmentContentGenerationSystem))]
-    public class ObstacleSystemGroup : ComponentSystemGroup
+    partial class ObstacleSystemGroup : ComponentSystemGroup
     {
         protected override void OnCreate()
         {
