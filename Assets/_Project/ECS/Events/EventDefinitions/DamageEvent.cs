@@ -16,11 +16,11 @@ namespace RunawayHeroes.ECS.Events
         
         // Dati del danno
         public float DamageAmount;        // Quantità di danno base
-        public byte DamageType;           // Tipo di danno (fisico, elementale, ecc.)
+        public RunawayHeroes.ECS.Systems.Movement.DamageType DamageType; // Tipo di danno (fisico, elementale, ecc.)
         public bool IsCritical;           // Se è un colpo critico
         
         // Dati di impatto
-        public float3 HitPoint;           // Punto di impatto del danno
+        public float3 ImpactPosition;     // Punto di impatto del danno
         
         // Dati per effetti di stato
         public byte StatusEffectType;     // Tipo di effetto di stato che può essere applicato

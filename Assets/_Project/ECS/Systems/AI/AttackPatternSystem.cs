@@ -331,8 +331,8 @@ namespace RunawayHeroes.ECS.Systems.AI
                                     SourceEntity = entity,
                                     TargetEntity = Entity.Null, // In questo caso è un area attack, quindi non c'è un target specifico
                                     DamageAmount = attackComponent.BaseDamage,
-                                    DamageType = (byte)attackComponent.ElementType,
-                                    HitPoint = targetPosition,
+                                    DamageType = RunawayHeroes.ECS.Systems.Movement.DamageType.Enemy, // Modificato per utilizzare l'enum corretto
+                                    ImpactPosition = targetPosition,
                                     IsCritical = false,
                                     StatusEffectType = (byte)attackComponent.StatusEffect,
                                     StatusEffectDuration = attackComponent.StatusEffectDuration
@@ -391,8 +391,8 @@ namespace RunawayHeroes.ECS.Systems.AI
                                     SourceEntity = entity,
                                     TargetEntity = Entity.Null, // Area sweep attack
                                     DamageAmount = attackComponent.BaseDamage * 0.5f,
-                                    DamageType = (byte)attackComponent.ElementType,
-                                    HitPoint = hitPoint,
+                                    DamageType = RunawayHeroes.ECS.Systems.Movement.DamageType.Enemy, // Modificato per utilizzare l'enum corretto
+                                    ImpactPosition = hitPoint,
                                     IsCritical = false,
                                     StatusEffectType = (byte)attackComponent.StatusEffect,
                                     StatusEffectDuration = attackComponent.StatusEffectDuration * 0.5f

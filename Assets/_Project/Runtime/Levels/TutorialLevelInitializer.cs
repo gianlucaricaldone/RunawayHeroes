@@ -9,6 +9,7 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Systems.Gameplay;
 using RunawayHeroes.Gameplay;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 
 namespace RunawayHeroes.Runtime.Levels
 {

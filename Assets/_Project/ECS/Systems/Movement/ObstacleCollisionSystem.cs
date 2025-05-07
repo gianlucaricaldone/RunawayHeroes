@@ -381,9 +381,9 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                 TargetEntity = playerEntity,
                                 SourceEntity = obstacleEntity,
                                 DamageAmount = actualDamage,
-                                DamageType = (byte)DamageType.Obstacle,
+                                DamageType = DamageType.Obstacle,
                                 IsCritical = false,
-                                HitPoint = impactPosition,
+                                ImpactPosition = impactPosition,
                                 StatusEffectType = 0,
                                 StatusEffectDuration = 0
                             });
@@ -492,34 +492,4 @@ namespace RunawayHeroes.ECS.Systems.Movement
         StatusEffect = 4
     }
     
-    /// <summary>
-    /// Evento generico di danno
-    /// </summary>
-    public struct DamageEvent : IComponentData
-    {
-        /// <summary>
-        /// Entità che riceve il danno
-        /// </summary>
-        public Entity TargetEntity;
-        
-        /// <summary>
-        /// Entità che causa il danno (può essere Entity.Null)
-        /// </summary>
-        public Entity SourceEntity;
-        
-        /// <summary>
-        /// Quantità di danno
-        /// </summary>
-        public float DamageAmount;
-        
-        /// <summary>
-        /// Tipo di danno
-        /// </summary>
-        public DamageType DamageType;
-        
-        /// <summary>
-        /// Posizione dell'impatto
-        /// </summary>
-        public float3 ImpactPosition;
-    }
 }

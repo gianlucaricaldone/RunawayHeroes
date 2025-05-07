@@ -191,9 +191,9 @@ namespace RunawayHeroes.ECS.Systems.World
                                     TargetEntity = vulnerableEntity,
                                     DamageAmount = damageAmount,
                                     SourceEntity = entity,
-                                    DamageType = (byte)hazard.Type,
+                                    DamageType = RunawayHeroes.ECS.Systems.Movement.DamageType.Hazard, // Modificato per utilizzare l'enum corretto
                                     IsCritical = false,
-                                    HitPoint = entityPosition,
+                                    ImpactPosition = entityPosition,
                                     StatusEffectType = (byte)hazard.StatusEffect,
                                     StatusEffectDuration = hazard.StatusEffectDuration
                                 });

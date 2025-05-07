@@ -133,7 +133,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
                         DamageAmount = actualDamage,
                         DamageType = damageEvent.DamageType,
                         IsCritical = damageEvent.IsCritical,
-                        HitPoint = damageEvent.HitPoint
+                        HitPoint = damageEvent.ImpactPosition
                     });
                 }
                 
@@ -144,21 +144,27 @@ namespace RunawayHeroes.ECS.Events.Handlers
             /// <summary>
             /// Calcola il danno effettivo considerando le resistenze della difesa
             /// </summary>
-            private float CalculateDamageWithDefense(float rawDamage, byte damageType, DefenseComponent defense)
+            private float CalculateDamageWithDefense(float rawDamage, RunawayHeroes.ECS.Systems.Movement.DamageType damageType, DefenseComponent defense)
             {
                 float damageMultiplier = 1.0f;
                 
                 // Applica resistenze in base al tipo di danno
                 switch (damageType)
                 {
-                    case 0: // Fisico
+                    case RunawayHeroes.ECS.Systems.Movement.DamageType.Obstacle: // Fisico
                         damageMultiplier = 1.0f - math.clamp(defense.PhysicalResistance / 100.0f, 0.0f, 0.75f);
                         break;
-                    case 1: // Elementale
+                    case RunawayHeroes.ECS.Systems.Movement.DamageType.Fall: // Elementale
                         damageMultiplier = 1.0f - math.clamp(defense.ElementalResistance / 100.0f, 0.0f, 0.75f);
                         break;
-                    case 2: // Energia
+                    case RunawayHeroes.ECS.Systems.Movement.DamageType.Enemy: // Energia
                         damageMultiplier = 1.0f - math.clamp(defense.EnergyResistance / 100.0f, 0.0f, 0.75f);
+                        break;
+                    case RunawayHeroes.ECS.Systems.Movement.DamageType.Hazard:
+                        damageMultiplier = 1.0f - math.clamp(defense.PhysicalResistance / 100.0f, 0.0f, 0.75f);
+                        break;
+                    case RunawayHeroes.ECS.Systems.Movement.DamageType.StatusEffect:
+                        damageMultiplier = 1.0f - math.clamp(defense.ElementalResistance / 100.0f, 0.0f, 0.75f);
                         break;
                     default:
                         damageMultiplier = 1.0f;

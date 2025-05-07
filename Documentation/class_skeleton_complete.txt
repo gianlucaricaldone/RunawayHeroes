@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 06/05/2025 23:34:12
+# Generato il: 07/05/2025 11:55:30
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -2066,6 +2066,11 @@ namespace RunawayHeroes.Runtime.Levels
         /// </summary>
 
         private void ValidateTutorialSequence(TutorialLevelData sequence, int sequenceIndex);
+         <summary>
+        /// Verifica combinazioni impossibili di ostacoli
+        /// </summary>
+
+        private void ValidateObstacleCombinations(TutorialScenario scenario);
          <summary>
         /// Verifica che non ci siano sovrapposizioni tra scenari
         /// </summary>
@@ -6299,6 +6304,9 @@ namespace RunawayHeroes.ECS.Events
 
     public struct FragmentCollectedEvent : IComponentData
     {
+        public int FragmentID;
+        public byte FragmentType;
+        public Entity CollectorEntity;
     }
 }
 
@@ -9275,18 +9283,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
         Enemy = 2,
         Hazard = 3,
         StatusEffect = 4
-    }
-     <summary>
-    /// Evento generico di danno
-    /// </summary>
-
-    public struct DamageEvent : IComponentData
-    {
-        public Entity TargetEntity;
-        public Entity SourceEntity;
-        public float DamageAmount;
-        public DamageType DamageType;
-        public float3 ImpactPosition;
     }
 }
 

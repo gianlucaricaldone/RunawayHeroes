@@ -12,6 +12,7 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.UI;
 using RunawayHeroes.ECS.Systems.Gameplay.Group;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 
 namespace RunawayHeroes.ECS.Systems.Gameplay
 {
@@ -307,9 +308,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             });
             
             // Aggiungi un componente per tenere traccia del codice dell'ostacolo
-            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ObstacleTypeComponent
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new RunawayHeroes.ECS.Components.World.Obstacles.ObstacleTypeComponent
             {
-                TypeCode = new Unity.Collections.FixedString32Bytes(obstacleCode)
+                ObstacleID = (ushort)obstacleCode.GetHashCode(),
+                Category = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.SmallBarrier,
+                IsUniversal = true
             });
             
             // Qui andrebbe aggiunta la logica per configurare ostacoli specifici in base al codice

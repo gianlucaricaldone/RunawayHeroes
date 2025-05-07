@@ -426,7 +426,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             
             // Trova l'entità di progressione mondo
             // Approccio alternativo senza RefRW
-            var query = SystemAPI.QueryBuilder().WithAll<WorldProgressionComponent>().Build(ref state);
+            var entityManager = state.EntityManager;
+            var query = SystemAPI.QueryBuilder().WithAll<WorldProgressionComponent>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             
             foreach (var entity in entities)

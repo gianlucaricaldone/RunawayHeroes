@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 06/05/2025 23:34:12
+# Generato il: 07/05/2025 11:55:30
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -502,7 +502,6 @@ public partial struct ObstacleCollisionSystem
 private partial struct ProcessCollisionsJob
 public struct ObstacleBreakThroughEvent
 public enum DamageType
-public struct DamageEvent
 public partial struct NavigationSystem
 public struct NavigatorComponent
 public enum PathStatus

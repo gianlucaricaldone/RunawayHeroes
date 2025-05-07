@@ -1,6 +1,6 @@
 // Path: Assets/_Project/ECS/Systems/UI/UIMessageSystem.cs
 using Unity.Entities;
-using Unity.Mathematics;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
