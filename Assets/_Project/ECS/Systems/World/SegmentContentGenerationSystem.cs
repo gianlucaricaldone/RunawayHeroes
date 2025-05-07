@@ -6,6 +6,7 @@ using Unity.Burst;
 using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Enemies;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 using System;
 
 namespace RunawayHeroes.ECS.Systems.World

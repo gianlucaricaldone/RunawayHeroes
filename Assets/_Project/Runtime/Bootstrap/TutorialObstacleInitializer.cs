@@ -8,14 +8,14 @@ using UnityEngine;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.Authoring;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 
 namespace RunawayHeroes.Runtime.Bootstrap
 {
     /// <summary>
-    /// Inizializzatore del livello tutorial che gestisce la creazione di scenari con
-    /// ostacoli multipli per ogni scenario.
+    /// Inizializzatore che gestisce la creazione di scenari di ostacoli per i livelli tutorial.
     /// </summary>
-    public class TutorialLevelInitializer : MonoBehaviour
+    public class TutorialObstacleInitializer : MonoBehaviour
     {
         [System.Serializable]
         public class ScenarioSetup

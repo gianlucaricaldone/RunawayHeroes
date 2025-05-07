@@ -98,7 +98,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             // Aggiorna i visualizzatori dell'aura con un IJobEntity
             var visualQuery = SystemAPI.QueryBuilder()
                 .WithAll<HeatAuraVisualComponent, TransformComponent>()
-                .Build(ref state);
+                .Build();
                 
             state.Dependency = new HeatAuraVisualUpdateJob
             {

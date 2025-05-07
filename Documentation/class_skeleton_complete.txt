@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 07/05/2025 11:55:30
+# Generato il: 07/05/2025 15:22:42
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -481,16 +481,62 @@ namespace RunawayHeroes.Runtime.Bootstrap
 }
 
 
-## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Bootstrap/TutorialLevelInitializer.cs
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Bootstrap/ECSBootstrap.cs
 
 namespace RunawayHeroes.Runtime.Bootstrap
 {
      <summary>
-    /// Inizializzatore del livello tutorial che gestisce la creazione di scenari con
-    /// ostacoli multipli per ogni scenario.
+    /// Sistema di bootstrap per l'inizializzazione dell'Entity Component System.
+    /// Questo componente crea e registra tutti i sistemi ECS necessari per il gioco.
     /// </summary>
 
-    public class TutorialLevelInitializer : MonoBehaviour
+    public class ECSBootstrap : MonoBehaviour
+    {
+        private World _world;
+        private bool _initialized;
+         <summary>
+        /// Inizializza il sistema ECS all'avvio del gioco
+        /// </summary>
+
+        private void Start();
+         <summary>
+        /// Crea e registra tutti i sistemi ECS necessari
+        /// </summary>
+
+        private void InitializeECS();
+         <summary>
+        /// Aggiunge i sistemi in modo sicuro, evitando dipendenze circolari
+        /// </summary>
+
+        private void AddSystemsSafely(List<Type> systems, SimulationSystemGroup simulationSystemGroup);
+        private void AddCoreSystems(List<Type> systems);
+        private void AddInputSystems(List<Type> systems);
+        private void AddMovementSystems(List<Type> systems);
+        private void AddAbilitySystems(List<Type> systems);
+        private void AddCombatSystems(List<Type> systems);
+        private void AddAISystems(List<Type> systems);
+        private void AddGameplaySystems(List<Type> systems);
+        private void AddWorldSystems(List<Type> systems);
+        private void AddUISystems(List<Type> systems);
+        private void AddEventHandlers(List<Type> systems);
+         <summary>
+        /// Pulisce le risorse quando il componente viene distrutto
+        /// </summary>
+
+        private void OnDestroy();
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Bootstrap/TutorialObstacleInitializer.cs
+
+namespace RunawayHeroes.Runtime.Bootstrap
+{
+     <summary>
+    /// Inizializzatore che gestisce la creazione di scenari di ostacoli per i livelli tutorial.
+    /// </summary>
+
+    public class TutorialObstacleInitializer : MonoBehaviour
     {
         public string scenarioName;
         public ObstacleSetup[] obstacles;
@@ -568,53 +614,6 @@ namespace RunawayHeroes.Runtime.Bootstrap
         Underwater,
         AirCurrent,
         ToxicGas
-    }
-}
-
-
-## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Bootstrap/ECSBootstrap.cs
-
-namespace RunawayHeroes.Runtime.Bootstrap
-{
-     <summary>
-    /// Sistema di bootstrap per l'inizializzazione dell'Entity Component System.
-    /// Questo componente crea e registra tutti i sistemi ECS necessari per il gioco.
-    /// </summary>
-
-    public class ECSBootstrap : MonoBehaviour
-    {
-        private World _world;
-        private bool _initialized;
-         <summary>
-        /// Inizializza il sistema ECS all'avvio del gioco
-        /// </summary>
-
-        private void Start();
-         <summary>
-        /// Crea e registra tutti i sistemi ECS necessari
-        /// </summary>
-
-        private void InitializeECS();
-         <summary>
-        /// Aggiunge i sistemi in modo sicuro, evitando dipendenze circolari
-        /// </summary>
-
-        private void AddSystemsSafely(List<Type> systems, SimulationSystemGroup simulationSystemGroup);
-        private void AddCoreSystems(List<Type> systems);
-        private void AddInputSystems(List<Type> systems);
-        private void AddMovementSystems(List<Type> systems);
-        private void AddAbilitySystems(List<Type> systems);
-        private void AddCombatSystems(List<Type> systems);
-        private void AddAISystems(List<Type> systems);
-        private void AddGameplaySystems(List<Type> systems);
-        private void AddWorldSystems(List<Type> systems);
-        private void AddUISystems(List<Type> systems);
-        private void AddEventHandlers(List<Type> systems);
-         <summary>
-        /// Pulisce le risorse quando il componente viene distrutto
-        /// </summary>
-
-        private void OnDestroy();
     }
 }
 
@@ -2425,6 +2424,26 @@ namespace RunawayHeroes.ECS.Components.Core
 }
 
 
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Combat/CombatTypes.cs
+
+namespace RunawayHeroes.ECS.Systems.Combat
+{
+     <summary>
+    /// Motivi per cui un danno può essere bloccato
+    /// </summary>
+
+    public enum BlockReason
+    {
+        Invulnerability = 0,
+        Immunity = 1,
+        Shield = 2,
+        Dodge = 3,
+        Parry = 4,
+        AbilityBlock = 5
+    }
+}
+
+
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Combat/DefenseComponent.cs
 
 namespace RunawayHeroes.ECS.Components.Combat
@@ -2486,6 +2505,25 @@ namespace RunawayHeroes.ECS.Components.Combat
         /// </summary>
 
         public static CombatComponent CreateRanged(float baseDamage, float range);
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Combat/ArmorComponent.cs
+
+namespace RunawayHeroes.ECS.Components.Combat
+{
+     <summary>
+    /// Componente che rappresenta l'armatura e le resistenze di un'entità
+    /// </summary>
+
+    public struct ArmorComponent : IComponentData
+    {
+        public float PhysicalDamageReduction;
+        public float EnemyDamageReduction;
+        public float HazardDamageReduction;
+        public float FallDamageReduction;
+        public float StatusEffectResistance;
     }
 }
 
@@ -3571,83 +3609,10 @@ namespace RunawayHeroes.ECS.Components.Gameplay
 }
 
 
-## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Gameplay/ObstacleTagComponent.cs
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/Gameplay/ObstacleTagCompatibility.cs
 
 namespace RunawayHeroes.ECS.Components.Gameplay
 {
-     <summary>
-    /// Tag per identificare le superfici di lava, utilizzato per l'abilità Corpo Ignifugo di Ember
-    /// </summary>
-
-    public struct LavaTag : IComponentData
-    {
-    }
-     <summary>
-    /// Tag per identificare le zone di ghiaccio, utilizzato per l'abilità Aura di Calore di Kai
-    /// </summary>
-
-    public struct IceObstacleTag : IComponentData
-    {
-    }
-     <summary>
-    /// Componente per tracciare l'integrità di un ostacolo di ghiaccio, utilizzato per l'effetto di scioglimento
-    /// </summary>
-
-    public struct IceIntegrityComponent : IComponentData
-    {
-        public float MaxIntegrity;
-        public float CurrentIntegrity;
-    }
-     <summary>
-    /// Tag per identificare barriere digitali, utilizzato per l'abilità Glitch Controllato di Neo
-    /// </summary>
-
-    public struct DigitalBarrierTag : IComponentData
-    {
-    }
-     <summary>
-    /// Tag per identificare le zone sottomarine, utilizzato per l'abilità Bolla d'Aria di Marina
-    /// </summary>
-
-    public struct UnderwaterTag : IComponentData
-    {
-    }
-     <summary>
-    /// Tag per identificare superfici scivolose o ghiacciate, utilizzato per l'abilità Aura di Calore di Kai
-    /// </summary>
-
-    public struct SlipperyTag : IComponentData
-    {
-        public float SlipFactor;
-    }
-     <summary>
-    /// Tag per identificare terreni tossici, utilizzato per varie abilità di resistenza
-    /// </summary>
-
-    public struct ToxicGroundTag : IComponentData
-    {
-        public byte ToxicType;
-        public float DamagePerSecond;
-    }
-     <summary>
-    /// Tag per identificare correnti d'aria o d'acqua, utilizzato per varie abilità
-    /// </summary>
-
-    public struct CurrentTag : IComponentData
-    {
-        public Unity.Mathematics.float3 Direction;
-        public float Strength;
-        public byte CurrentType;
-    }
-     <summary>
-    /// Componente per l'effetto visivo di scioglimento del ghiaccio
-    /// </summary>
-
-    public struct IceMeltEffectComponent : IComponentData
-    {
-        public Unity.Mathematics.float3 Position;
-        public float Size;
-    }
 }
 
 
@@ -5474,7 +5439,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
             /// Calcola il danno effettivo considerando le resistenze della difesa
             /// </summary>
 
-        private float CalculateDamageWithDefense(float rawDamage, byte damageType, DefenseComponent defense);
+        private float CalculateDamageWithDefense(float rawDamage, RunawayHeroes.ECS.Systems.Movement.DamageType damageType, DefenseComponent defense);
     }
      <summary>
         /// Job che elabora gli eventi di danno
@@ -5490,7 +5455,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
             /// Calcola il danno effettivo considerando le resistenze della difesa
             /// </summary>
 
-        private float CalculateDamageWithDefense(float rawDamage, byte damageType, DefenseComponent defense);
+        private float CalculateDamageWithDefense(float rawDamage, RunawayHeroes.ECS.Systems.Movement.DamageType damageType, DefenseComponent defense);
     }
      <summary>
     /// Evento di feedback visivo per il danno
@@ -6169,6 +6134,27 @@ namespace RunawayHeroes.ECS.Events.Handlers
 }
 
 
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Events/EventDefinitions/DamageReceivedEvent.cs
+
+namespace RunawayHeroes.ECS.Events
+{
+     <summary>
+    /// Evento generato quando un'entità riceve danno
+    /// </summary>
+
+    public struct DamageReceivedEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public Entity SourceEntity;
+        public float DamageAmount;
+        public DamageType DamageType;
+        public float3 ImpactPosition;
+        public float RemainingHealth;
+        public float RemainingShield;
+    }
+}
+
+
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Events/EventDefinitions/LevelCompletedEvent.cs
 
 namespace RunawayHeroes.ECS.Events
@@ -6294,18 +6280,36 @@ namespace RunawayHeroes.ECS.Events.EventDefinitions
 }
 
 
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Events/EventDefinitions/DeathEvent.cs
+
+namespace RunawayHeroes.ECS.Events
+{
+     <summary>
+    /// Evento generato quando un'entità muore
+    /// </summary>
+
+    public struct DeathEvent : IComponentData
+    {
+        public Entity DeadEntity;
+        public Entity KillerEntity;
+        public DamageType DamageType;
+        public float3 DeathPosition;
+    }
+}
+
+
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Events/EventDefinitions/FragmentCollectedEvent.cs
 
 namespace RunawayHeroes.ECS.Events
 {
      <summary>
-    /// 
+    /// Evento generato quando un giocatore raccoglie un frammento del Nucleo dell'Equilibrio
     /// </summary>
 
     public struct FragmentCollectedEvent : IComponentData
     {
         public int FragmentID;
-        public byte FragmentType;
+        public int FragmentType;
         public Entity CollectorEntity;
     }
 }
@@ -6383,6 +6387,25 @@ namespace RunawayHeroes.ECS.Events.EventDefinitions
         public Entity UserEntity;
         public Entity ItemEntity;
         public int SlotIndex;
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Events/EventDefinitions/DamageBlockedEvent.cs
+
+namespace RunawayHeroes.ECS.Events
+{
+     <summary>
+    /// Evento generato quando un danno viene bloccato
+    /// </summary>
+
+    public struct DamageBlockedEvent : IComponentData
+    {
+        public Entity TargetEntity;
+        public Entity SourceEntity;
+        public float DamageAmount;
+        public DamageType DamageType;
+        public BlockReason BlockReason;
     }
 }
 
@@ -6558,9 +6581,9 @@ namespace RunawayHeroes.ECS.Events
         public Entity TargetEntity;
         public Entity SourceEntity;
         public float DamageAmount;
-        public byte DamageType;
+        public RunawayHeroes.ECS.Systems.Movement.DamageType DamageType;
         public bool IsCritical;
-        public float3 HitPoint;
+        public float3 ImpactPosition;
         public byte StatusEffectType;
         public float StatusEffectDuration;
     }
@@ -7299,68 +7322,6 @@ namespace RunawayHeroes.ECS.Systems.Combat
         /// </summary>
 
         private float CalculateFinalDamage(DamageEvent damageEvent);
-    }
-     <summary>
-    /// Componente che rappresenta l'armatura e le resistenze di un'entità
-    /// </summary>
-
-    public struct ArmorComponent : IComponentData
-    {
-        public float PhysicalDamageReduction;
-        public float EnemyDamageReduction;
-        public float HazardDamageReduction;
-        public float FallDamageReduction;
-        public float StatusEffectResistance;
-    }
-     <summary>
-    /// Motivi per cui un danno può essere bloccato
-    /// </summary>
-
-    public enum BlockReason
-    {
-        Invulnerability = 0,
-        Immunity = 1,
-        Shield = 2,
-        Dodge = 3,
-        Parry = 4,
-        AbilityBlock = 5
-    }
-     <summary>
-    /// Evento generato quando un'entità riceve danno
-    /// </summary>
-
-    public struct DamageReceivedEvent : IComponentData
-    {
-        public Entity TargetEntity;
-        public Entity SourceEntity;
-        public float DamageAmount;
-        public DamageType DamageType;
-        public float3 ImpactPosition;
-        public float RemainingHealth;
-        public float RemainingShield;
-    }
-     <summary>
-    /// Evento generato quando un danno viene bloccato
-    /// </summary>
-
-    public struct DamageBlockedEvent : IComponentData
-    {
-        public Entity TargetEntity;
-        public Entity SourceEntity;
-        public float DamageAmount;
-        public DamageType DamageType;
-        public BlockReason BlockReason;
-    }
-     <summary>
-    /// Evento generato quando un'entità muore
-    /// </summary>
-
-    public struct DeathEvent : IComponentData
-    {
-        public Entity DeadEntity;
-        public Entity KillerEntity;
-        public DamageType DamageType;
-        public float3 DeathPosition;
     }
 }
 
@@ -8554,13 +8515,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public float RemainingTime;
     }
      <summary>
-    /// Tag per identificare le zone di lava
-    /// </summary>
-
-    public struct LavaTag : IComponentData
-    {
-    }
-     <summary>
     /// Evento per l'attraversamento della lava
     /// </summary>
 
@@ -9064,13 +9018,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
 namespace RunawayHeroes.ECS.Systems.Movement
 {
      <summary>
-    /// Tag per identificare superfici scivolose
-    /// </summary>
-
-    public struct SlipperyTag : IComponentData
-    {
-    }
-     <summary>
     /// Sistema che gestisce le interazioni speciali tra i personaggi e gli ostacoli in base alle loro abilità.
     /// Estende le funzionalità di base dell'ObstacleCollisionSystem per supportare l'interazione con tutti i tipi di ostacoli
     /// in base alle abilità dei vari personaggi.
@@ -9272,18 +9219,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public Entity ObstacleEntity;
         public float3 BreakThroughPosition;
     }
-     <summary>
-    /// Tipi di danno che possono essere applicati
-    /// </summary>
-
-    public enum DamageType
-    {
-        Obstacle = 0,
-        Fall = 1,
-        Enemy = 2,
-        Hazard = 3,
-        StatusEffect = 4
-    }
 }
 
 
@@ -9414,6 +9349,25 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public float AvoidanceStrength;
         public float MaxSteeringForce;
         public float MoveSpeed;
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/Movement/DamageType.cs
+
+namespace RunawayHeroes.ECS.Systems.Movement
+{
+     <summary>
+    /// Tipi di danno che possono essere applicati
+    /// </summary>
+
+    public enum DamageType
+    {
+        Obstacle = 0,
+        Fall = 1,
+        Enemy = 2,
+        Hazard = 3,
+        StatusEffect = 4
     }
 }
 
@@ -11683,6 +11637,97 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
         public float Direction;
         public float DamagePerSecond;
         public static ObstacleTypeComponent GetTypeData();
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/Obstacles/ObstacleTags.cs
+
+namespace RunawayHeroes.ECS.Components.World.Obstacles
+{
+     <summary>
+    /// Componente tag per identificare un'entità come ostacolo
+    /// </summary>
+
+    public struct ObstacleTag : IComponentData
+    {
+    }
+     <summary>
+    /// Tag per identificare le superfici di lava, utilizzato per l'abilità Corpo Ignifugo di Ember
+    /// </summary>
+
+    public struct LavaTag : IComponentData
+    {
+        public float DamagePerSecond;
+    }
+     <summary>
+    /// Tag per identificare le zone di ghiaccio, utilizzato per l'abilità Aura di Calore di Kai
+    /// </summary>
+
+    public struct IceObstacleTag : IComponentData
+    {
+        public float SlipperyFactor;
+    }
+     <summary>
+    /// Componente per tracciare l'integrità di un ostacolo di ghiaccio, utilizzato per l'effetto di scioglimento
+    /// </summary>
+
+    public struct IceIntegrityComponent : IComponentData
+    {
+        public float MaxIntegrity;
+        public float CurrentIntegrity;
+    }
+     <summary>
+    /// Tag per identificare barriere digitali, utilizzato per l'abilità Glitch Controllato di Neo
+    /// </summary>
+
+    public struct DigitalBarrierTag : IComponentData
+    {
+        public byte SecurityLevel;
+    }
+     <summary>
+    /// Tag per identificare le zone sottomarine, utilizzato per l'abilità Bolla d'Aria di Marina
+    /// </summary>
+
+    public struct UnderwaterTag : IComponentData
+    {
+        public float DepthPressure;
+    }
+     <summary>
+    /// Tag per identificare superfici scivolose o ghiacciate, utilizzato per l'abilità Aura di Calore di Kai
+    /// </summary>
+
+    public struct SlipperyTag : IComponentData
+    {
+        public float SlipFactor;
+    }
+     <summary>
+    /// Tag per identificare terreni tossici, utilizzato per varie abilità di resistenza
+    /// </summary>
+
+    public struct ToxicGroundTag : IComponentData
+    {
+        public byte ToxicType;
+        public float DamagePerSecond;
+    }
+     <summary>
+    /// Tag per identificare correnti d'aria o d'acqua, utilizzato per varie abilità
+    /// </summary>
+
+    public struct CurrentTag : IComponentData
+    {
+        public float3 Direction;
+        public float Strength;
+        public byte CurrentType;
+    }
+     <summary>
+    /// Componente per l'effetto visivo di scioglimento del ghiaccio
+    /// </summary>
+
+    public struct IceMeltEffectComponent : IComponentData
+    {
+        public float3 Position;
+        public float Size;
     }
 }
 

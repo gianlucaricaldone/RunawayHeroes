@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 
 namespace RunawayHeroes.Authoring
 {

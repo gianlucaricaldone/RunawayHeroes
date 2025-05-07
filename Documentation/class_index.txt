@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Wed May  7 11:55:23 CEST 2025
+# Generato il: Wed May  7 15:22:35 CEST 2025
 
 private class CyclicDependency
 private class ProfilerScope : System.IDisposable
@@ -58,6 +58,7 @@ public class TutorialLevelInitializer : MonoBehaviour
 public class TutorialLevelSequence
 public class TutorialManagerWindow : MonoBehaviour
 public class TutorialMessagePanel : MonoBehaviour
+public class TutorialObstacleInitializer : MonoBehaviour
 public class TutorialScenarioEditor : UnityEditor.Editor
 public class TutorialSceneSetup : MonoBehaviour
 public class TutorialSequenceEditor : UnityEditor.Editor
@@ -269,7 +270,6 @@ public struct KnockbackEndedEvent : IComponentData
 public struct KnockbackStartedEvent : IComponentData
 public struct LandingEvent : IComponentData
 public struct LavaTag : IComponentData
-public struct LavaTag : IComponentData { }
 public struct LavaWalkingEvent : IComponentData
 public struct LevelCompletedEvent : IComponentData
 public struct LevelCompletionEvent : IComponentData
@@ -322,6 +322,7 @@ public struct ObstaclePhaseChangedEvent : IComponentData
 public struct ObstacleRepairedEvent : IComponentData
 public struct ObstacleSetup
 public struct ObstacleSpawnConfigComponent : IComponentData
+public struct ObstacleTag : IComponentData
 public struct ObstacleTypeComponent : IComponentData
 public struct OscillatingObstacleComponent : IComponentData
 public struct OxygenInteractionEvent : IComponentData
@@ -376,7 +377,6 @@ public struct SlideInputComponent : IComponentData
 public struct SlideStartedEvent : IComponentData
 public struct SlipInteractionEvent : IComponentData
 public struct SlipperyTag : IComponentData
-public struct SlipperyTag : IComponentData { }
 public struct SpawnPointComponent : IComponentData
 public struct StatusEffectComponent : IComponentData
 public struct StunDurationComponent : IComponentData

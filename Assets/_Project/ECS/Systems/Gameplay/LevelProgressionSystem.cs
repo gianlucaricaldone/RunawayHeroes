@@ -168,7 +168,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var entityManager = state.EntityManager;
             
             // Approccio alternativo senza destrutturazione
-            var query = SystemAPI.QueryBuilder().WithAll<LevelCompletionEvent>().Build(ref state);
+            var query = SystemAPI.QueryBuilder().WithAll<LevelCompletionEvent>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             
             foreach (var entity in entities)
@@ -273,7 +273,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var entityManager = state.EntityManager;
             
             // Approccio alternativo senza destrutturazione
-            var query = SystemAPI.QueryBuilder().WithAll<ObjectiveCompletedEvent>().Build(ref state);
+            var query = SystemAPI.QueryBuilder().WithAll<ObjectiveCompletedEvent>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             
             foreach (var entity in entities)
@@ -340,7 +340,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var entityManager = state.EntityManager;
             
             // Approccio alternativo senza destrutturazione e RefRW
-            var query = SystemAPI.QueryBuilder().WithAll<WorldProgressionComponent>().Build(ref state);
+            var query = SystemAPI.QueryBuilder().WithAll<WorldProgressionComponent>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             
             foreach (var entity in entities)
@@ -601,7 +601,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var entityManager = state.EntityManager;
             
             // Approccio alternativo senza destrutturazione
-            var query = SystemAPI.QueryBuilder().WithAll<LevelProgressionComponent>().Build(ref state);
+            var query = SystemAPI.QueryBuilder().WithAll<LevelProgressionComponent>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             
             foreach (var entity in entities)

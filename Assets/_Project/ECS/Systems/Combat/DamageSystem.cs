@@ -7,6 +7,8 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Systems.Movement;
 using RunawayHeroes.ECS.Events;
+using RunawayHeroes.ECS.Systems.Combat;
+using RunawayHeroes.ECS.Components.Combat;
 
 namespace RunawayHeroes.ECS.Systems.Combat
 {
@@ -182,65 +184,5 @@ namespace RunawayHeroes.ECS.Systems.Combat
         }
     }
     
-    /// <summary>
-    /// Componente che rappresenta l'armatura e le resistenze di un'entità
-    /// </summary>
-    public struct ArmorComponent : IComponentData
-    {
-        public float PhysicalDamageReduction;    // Riduzione danni fisici (0-1)
-        public float EnemyDamageReduction;       // Riduzione danni da nemici (0-1)
-        public float HazardDamageReduction;      // Riduzione danni da pericoli ambientali (0-1)
-        public float FallDamageReduction;        // Riduzione danni da caduta (0-1)
-        public float StatusEffectResistance;     // Resistenza agli effetti di stato (0-1)
-    }
-    
-    /// <summary>
-    /// Motivi per cui un danno può essere bloccato
-    /// </summary>
-    public enum BlockReason : byte
-    {
-        Invulnerability = 0,       // Invulnerabilità temporanea
-        Immunity = 1,              // Immunità al tipo di danno
-        Shield = 2,                // Assorbito da uno scudo
-        Dodge = 3,                 // Schivato
-        Parry = 4,                 // Parato/contrattaccato
-        AbilityBlock = 5           // Bloccato da un'abilità speciale
-    }
-    
-    /// <summary>
-    /// Evento generato quando un'entità riceve danno
-    /// </summary>
-    public struct DamageReceivedEvent : IComponentData
-    {
-        public Entity TargetEntity;         // Entità che ha ricevuto danno
-        public Entity SourceEntity;         // Entità che ha causato danno
-        public float DamageAmount;          // Quantità di danno applicata
-        public DamageType DamageType;       // Tipo di danno
-        public float3 ImpactPosition;       // Posizione dell'impatto
-        public float RemainingHealth;       // Salute rimanente
-        public float RemainingShield;       // Scudo rimanente
-    }
-    
-    /// <summary>
-    /// Evento generato quando un danno viene bloccato
-    /// </summary>
-    public struct DamageBlockedEvent : IComponentData
-    {
-        public Entity TargetEntity;         // Entità che ha bloccato il danno
-        public Entity SourceEntity;         // Entità che ha tentato di causare danno
-        public float DamageAmount;          // Quantità di danno bloccata
-        public DamageType DamageType;       // Tipo di danno
-        public BlockReason BlockReason;     // Motivo del blocco
-    }
-    
-    /// <summary>
-    /// Evento generato quando un'entità muore
-    /// </summary>
-    public struct DeathEvent : IComponentData
-    {
-        public Entity DeadEntity;           // Entità che è morta
-        public Entity KillerEntity;         // Entità che ha causato la morte
-        public DamageType DamageType;       // Tipo di danno che ha causato la morte
-        public float3 DeathPosition;        // Posizione della morte
-    }
+    // ArmorComponent è stato spostato in RunawayHeroes.ECS.Components.Combat.ArmorComponent
 }

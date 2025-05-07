@@ -85,7 +85,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var scenarioQuery = SystemAPI.QueryBuilder()
                 .WithAll<TutorialScenarioComponent, DynamicBuffer<TutorialObstacleBuffer>>()
                 .WithNone<TriggeredTag>()
-                .Build(ref state);
+                .Build();
                 
             // Eseguiamo il job per controllare i nuovi scenari
             state.Dependency = new CheckScenarioTriggerJob 

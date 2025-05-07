@@ -10,13 +10,11 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 using RunawayHeroes.ECS.Systems.Movement.Group;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
-    /// <summary>
-    /// Tag per identificare superfici scivolose
-    /// </summary>
-    public struct SlipperyTag : IComponentData { }
+    // Nota: SlipperyTag è ora definito in RunawayHeroes.ECS.Components.World.Obstacles.SlipperyTag
     
     /// <summary>
     /// Sistema che gestisce le interazioni speciali tra i personaggi e gli ostacoli in base alle loro abilità.

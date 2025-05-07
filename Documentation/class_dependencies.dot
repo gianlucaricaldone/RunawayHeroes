@@ -22,12 +22,12 @@ digraph ClassDependencies {
   "UITransitionManager" -> "[SerializeField]" [style=dotted, label="uses"];
   "GameBootstrap" [tooltip="File: GameBootstrap.cs"];
   "MonoBehaviour" -> "GameBootstrap" [arrowhead=empty, style=solid, label="extends"];
-  "TutorialLevelInitializer" [tooltip="File: TutorialLevelInitializer.cs"];
-  "MonoBehaviour" -> "TutorialLevelInitializer" [arrowhead=empty, style=solid, label="extends"];
-  "TutorialLevelInitializer" -> "Entity" [style=dotted, label="uses"];
-  "TutorialLevelInitializer" -> "[SerializeField]" [style=dotted, label="uses"];
   "ECSBootstrap" [tooltip="File: ECSBootstrap.cs"];
   "MonoBehaviour" -> "ECSBootstrap" [arrowhead=empty, style=solid, label="extends"];
+  "TutorialObstacleInitializer" [tooltip="File: TutorialObstacleInitializer.cs"];
+  "MonoBehaviour" -> "TutorialObstacleInitializer" [arrowhead=empty, style=solid, label="extends"];
+  "TutorialObstacleInitializer" -> "Entity" [style=dotted, label="uses"];
+  "TutorialObstacleInitializer" -> "[SerializeField]" [style=dotted, label="uses"];
   "WorldBootstrap" [tooltip="File: WorldBootstrap.cs"];
   "MonoBehaviour" -> "WorldBootstrap" [arrowhead=empty, style=solid, label="extends"];
   "BootSequence" [tooltip="File: BootSequence.cs"];

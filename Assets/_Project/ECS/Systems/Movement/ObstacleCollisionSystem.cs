@@ -10,6 +10,7 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 using RunawayHeroes.ECS.Events;
 using RunawayHeroes.ECS.Systems.Movement.Group;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 
 namespace RunawayHeroes.ECS.Systems.Movement
 {
@@ -461,35 +462,6 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public float3 BreakThroughPosition;
     }
     
-    /// <summary>
-    /// Tipi di danno che possono essere applicati
-    /// </summary>
-    public enum DamageType : byte
-    {
-        /// <summary>
-        /// Danno da collisione con ostacoli
-        /// </summary>
-        Obstacle = 0,
-        
-        /// <summary>
-        /// Danno da caduta
-        /// </summary>
-        Fall = 1,
-        
-        /// <summary>
-        /// Danno da nemici
-        /// </summary>
-        Enemy = 2,
-        
-        /// <summary>
-        /// Danno da trappole ambientali
-        /// </summary>
-        Hazard = 3,
-        
-        /// <summary>
-        /// Danno da effetti di stato (es. veleno, fuoco)
-        /// </summary>
-        StatusEffect = 4
-    }
+    // DamageType è stato spostato in un file dedicato in RunawayHeroes.ECS.Systems.Movement.DamageType
     
 }

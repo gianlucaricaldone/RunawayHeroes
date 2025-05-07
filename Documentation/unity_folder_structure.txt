@@ -1,5 +1,5 @@
 Alberatura delle directory, file .cs, .png e .fbx a partire da: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets
-Generato il: Wed May  7 11:55:29 CEST 2025
+Generato il: Wed May  7 15:22:41 CEST 2025
 ----------------------------------------
             📁 Assets
               📁 Adaptive Performance
@@ -149,7 +149,9 @@ Generato il: Wed May  7 11:55:29 CEST 2025
                       📄 NeoComponent.cs
                       📄 PlayerDataComponent.cs
                     📁 Combat
+                      📄 ArmorComponent.cs
                       📄 CombatComponent.cs
+                      📄 CombatTypes.cs
                       📄 DefenseComponent.cs
                     📁 Core
                       📄 CommonTags.cs
@@ -177,7 +179,7 @@ Generato il: Wed May  7 11:55:29 CEST 2025
                       📄 MovementComponent.cs
                       📄 ObjectiveComponents.cs
                       📄 ObstacleComponent.cs
-                      📄 ObstacleTagComponent.cs
+                      📄 ObstacleTagCompatibility.cs
                       📄 ProgressionComponents.cs
                       📄 TutorialComponents.cs
                     📁 Input
@@ -201,6 +203,7 @@ Generato il: Wed May  7 11:55:29 CEST 2025
                         📄 AbyssObstacles.cs
                         📄 ForestObstacles.cs
                         📄 ObstacleCatalog.cs
+                        📄 ObstacleTags.cs
                         📄 ObstacleTypeComponent.cs
                         📄 TundraObstacles.cs
                         📄 UniversalObstacles.cs
@@ -254,7 +257,10 @@ Generato il: Wed May  7 11:55:29 CEST 2025
                       📄 CharacterSwitchEvent.cs
                       📄 CheckpointReachedEvent.cs
                       📄 CollisionEvent.cs
+                      📄 DamageBlockedEvent.cs
                       📄 DamageEvent.cs
+                      📄 DamageReceivedEvent.cs
+                      📄 DeathEvent.cs
                       📄 EnemyDefeatedEvent.cs
                       📄 FocusTimeEvents.cs
                       📄 FragmentCollectedEvent.cs
@@ -314,6 +320,7 @@ Generato il: Wed May  7 11:55:29 CEST 2025
                       📄 InputSystem.cs
                       📄 TouchInputSystem.cs
                     📁 Movement
+                      📄 DamageType.cs
                       📁 Group
                         📄 MovementSystemGroup.cs
                       📄 JumpSystem.cs
@@ -375,7 +382,7 @@ Generato il: Wed May  7 11:55:29 CEST 2025
                   📁 Bootstrap
                     📄 ECSBootstrap.cs
                     📄 GameBootstrap.cs
-                    📄 TutorialLevelInitializer.cs
+                    📄 TutorialObstacleInitializer.cs
                     📄 WorldBootstrap.cs
                   📁 Bridge
                     📄 InputBridge.cs

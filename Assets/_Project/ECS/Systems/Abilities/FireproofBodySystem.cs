@@ -10,6 +10,7 @@ using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
 using RunawayHeroes.ECS.Components.Abilities;
 using RunawayHeroes.ECS.Components.World;
+using RunawayHeroes.ECS.Components.World.Obstacles;
 using RunawayHeroes.ECS.Events.EventDefinitions;
 using RunawayHeroes.ECS.Events;
 
@@ -96,7 +97,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             // Ottieni la query per le visualizzazioni del corpo ignifugo
             var fireBodyVisualQuery = SystemAPI.QueryBuilder()
                 .WithAll<FireBodyVisualComponent, TransformComponent>()
-                .Build(ref state);
+                .Build();
                 
             // Aggiorna i visualizzatori dell'effetto igneo con un IJobEntity
             state.Dependency = new FireBodyVisualUpdateJob
@@ -120,10 +121,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public float RemainingTime;  // Tempo rimanente
     }
     
-    /// <summary>
-    /// Tag per identificare le zone di lava
-    /// </summary>
-    public struct LavaTag : IComponentData { }
+    // Nota: LavaTag è ora definito in RunawayHeroes.ECS.Components.World.Obstacles.LavaTag
     
     /// <summary>
     /// Evento per l'attraversamento della lava

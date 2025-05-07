@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 07/05/2025 11:55:30
+# Generato il: 07/05/2025 15:22:42
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -32,11 +32,11 @@ public class MenuController
 public static class BackButtonHandler
 public class UITransitionManager
 public class GameBootstrap
-public class TutorialLevelInitializer
+public class ECSBootstrap
+public class TutorialObstacleInitializer
 public class ScenarioSetup
 public class ObstacleSetup
 public enum ObstacleType
-public class ECSBootstrap
 public class WorldBootstrap
 public class BootSequence
 public class UnityCameraBridge
@@ -119,8 +119,10 @@ public struct TransformComponent
 public struct IdentityComponent
 public struct PhysicsComponent
 public struct RenderComponent
+public enum BlockReason
 public struct DefenseComponent
 public struct CombatComponent
+public struct ArmorComponent
 public struct SlideInputComponent
 public struct JumpInputComponent
 public struct TouchInputComponent
@@ -168,15 +170,6 @@ public struct ActiveObjectiveTag
 public struct ObjectiveProgressComponent
 public struct ObjectiveCompletedEvent
 public struct ObjectiveProgressEvent
-public struct LavaTag
-public struct IceObstacleTag
-public struct IceIntegrityComponent
-public struct DigitalBarrierTag
-public struct UnderwaterTag
-public struct SlipperyTag
-public struct ToxicGroundTag
-public struct CurrentTag
-public struct IceMeltEffectComponent
 public struct FocusTimeComponent
 public struct TutorialLevelInfoComponent
 public struct TutorialScenarioBuffer
@@ -319,6 +312,7 @@ public struct UINotificationManagerComponent
 public struct UINotificationComponent
 public struct UITooltipManagerComponent
 public struct UITooltipComponent
+public struct DamageReceivedEvent
 public struct LevelCompletedEvent
 public struct CollisionEvent
 public struct LavaWalkingEvent
@@ -329,6 +323,7 @@ public struct IceMeltedEvent
 public struct SlipInteractionEvent
 public struct CurrentInteractionEvent
 public struct OxygenInteractionEvent
+public struct DeathEvent
 public struct FragmentCollectedEvent
 public struct CharacterSwitchEvent
 public struct FocusTimeActivatedEvent
@@ -337,6 +332,7 @@ public struct FocusTimeReadyEvent
 public struct FocusTimeFullEnergyEvent
 public struct ItemAddedToSlotEvent
 public struct ItemUsedEvent
+public struct DamageBlockedEvent
 public struct JumpStartedEvent
 public struct LandingEvent
 public struct SlideStartedEvent
@@ -381,11 +377,6 @@ public struct KnockbackStartedEvent
 public struct KnockbackEndedEvent
 public partial struct DamageSystem
 public partial struct ProcessDamageEventsJob
-public struct ArmorComponent
-public enum BlockReason
-public struct DamageReceivedEvent
-public struct DamageBlockedEvent
-public struct DeathEvent
 public partial struct HealthSystem
 public partial struct ProcessHealthJob
 public struct HealthRegeneratedEvent
@@ -453,7 +444,6 @@ public partial struct UrbanDashSystem
 private partial struct UpdateUrbanDashJob
 public partial struct FireproofBodySystem
 public struct FireBodyVisualComponent
-public struct LavaTag
 public struct LavaWalkingEvent
 public partial struct FireproofBodyJob
 public partial struct FireBodyVisualUpdateJob
@@ -495,13 +485,11 @@ public partial struct SlideSystem
 private partial struct SlideProcessorJob
 public partial struct JumpSystem
 private partial struct JumpProcessorJob
-public struct SlipperyTag
 public partial struct ObstacleInteractionSystem
 private partial struct SpecialObstacleInteractionJob
 public partial struct ObstacleCollisionSystem
 private partial struct ProcessCollisionsJob
 public struct ObstacleBreakThroughEvent
-public enum DamageType
 public partial struct NavigationSystem
 public struct NavigatorComponent
 public enum PathStatus
@@ -509,6 +497,7 @@ public struct DestinationReachedEvent
 public partial struct ObstacleAvoidanceSystem
 public partial struct ObstacleAvoidanceJob
 public struct ObstacleAvoiderComponent
+public enum DamageType
 public partial struct PlayerMovementSystem
 private partial struct PlayerMovementJob
 public partial struct PatrolSystem
@@ -622,6 +611,16 @@ public struct T05_FrostGeyser
 public struct T06_Avalanche
 public struct T07_IceBridge
 public struct T08_FreezingWind
+public struct ObstacleTag
+public struct LavaTag
+public struct IceObstacleTag
+public struct IceIntegrityComponent
+public struct DigitalBarrierTag
+public struct UnderwaterTag
+public struct SlipperyTag
+public struct ToxicGroundTag
+public struct CurrentTag
+public struct IceMeltEffectComponent
 public struct ObstacleTypeComponent
 public enum ObstacleCategory
 public struct UniversalObstacleTag
