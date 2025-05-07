@@ -21,8 +21,11 @@ namespace RunawayHeroes.ECS.Components.Enemies
         
         // Soglie di fase
         // Soglie di salute per le transizioni di fase (es. 0.7f, 0.4f, 0.1f)
-        // Nota: questo array deve essere inizializzato durante la creazione, non può avere un inizializzatore di campo
-        public float[] PhaseThresholds;
+        // Utilizziamo valori fissi per le soglie di fase (massimo 4 fasi)
+        public float PhaseThreshold1;
+        public float PhaseThreshold2;
+        public float PhaseThreshold3;
+        public float PhaseThreshold4;
         
         // Timer e cooldown
         public float PhaseTransitionTimer;    // Timer per le transizioni di fase
@@ -57,7 +60,21 @@ namespace RunawayHeroes.ECS.Components.Enemies
                 return false;
                 
             float healthPercent = GetCurrentHealthPercentage(currentHealth, maxHealth);
-            return healthPercent <= PhaseThresholds[CurrentPhase];
+            
+            // Controlla la soglia appropriata in base alla fase corrente
+            switch (CurrentPhase)
+            {
+                case 0:
+                    return healthPercent <= PhaseThreshold1;
+                case 1:
+                    return healthPercent <= PhaseThreshold2;
+                case 2:
+                    return healthPercent <= PhaseThreshold3;
+                case 3:
+                    return healthPercent <= PhaseThreshold4;
+                default:
+                    return false;
+            }
         }
     }
     
