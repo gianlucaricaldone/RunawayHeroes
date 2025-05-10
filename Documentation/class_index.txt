@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Sat May 10 22:23:51 CEST 2025
+# Generato il: Sun May 11 00:21:39 CEST 2025
 
 partial class ObstacleSystemGroup : ComponentSystemGroup
 partial class ResonanceUISystemGroup : ComponentSystemGroup

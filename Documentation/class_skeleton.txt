@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: Sat May 10 22:23:46 CEST 2025
+# Generato il: Sun May 11 00:21:34 CEST 2025
 # Questo file contiene le definizioni di classi, interfacce, metodi pubblici/protetti, proprietà ed eventi.
 # Include anche variabili [SerializeField] e variabili protected/private esposte.
 
@@ -358,7 +358,6 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/PathSegmentComponent.cs
     public struct PathSegmentComponent : IComponentData
     public enum SegmentType
-    public enum WorldTheme
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/RandomLevelConfigComponent.cs
     public struct RandomLevelConfigComponent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/RoomComponent.cs
@@ -383,6 +382,8 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
     public static WorldDifficultyConfigComponent CreateDefault()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/WorldIdentifierComponent.cs
     public struct WorldIdentifierComponent : IComponentData
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Components/World/WorldThemeEnum.cs
+    public enum WorldTheme
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Core/SystemGroups.cs
 namespace RunawayHeroes.ECS.Core
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Entities/Archetypes/CollectibleArchetypes.cs

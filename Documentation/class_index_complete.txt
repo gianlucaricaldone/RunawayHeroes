@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 10/05/2025 22:23:58
+# Generato il: 11/05/2025 00:21:47
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -62,7 +62,6 @@ public class UIPanel
 public class GameManager
 public class TutorialManagerWindow
 public class TutorialLevelInitializer
-public enum WorldTheme
 public struct TutorialScenario
 public class TutorialSceneSetup
 public class CameraFollow
@@ -73,7 +72,6 @@ public struct ObstacleSetup
 public enum ObstaclePlacement
 public class PlayerController
 public struct PlayerMovementComponent
-public struct TransformComponent
 public partial class TransformSystemGroup
 public partial class InputSystemGroup
 public partial class PhysicsSystemGroup
@@ -137,6 +135,7 @@ public struct WorldIdentifierComponent
 public struct ObstacleSpawnConfigComponent
 public struct RoomTemplateComponent
 public enum RoomType
+public enum WorldTheme
 public struct RoomComponent
 public enum RoomState
 public struct LevelComponent
@@ -156,7 +155,6 @@ public struct SegmentContentBuffer
 public enum SegmentContentType
 public struct PathSegmentComponent
 public enum SegmentType
-public enum WorldTheme
 public struct PathComponent
 public struct PathSegmentBuffer
 public struct SegmentReferenceComponent

@@ -3,9 +3,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using Unity.Entities;
 using Unity.Mathematics;
+using System;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
-using RunawayHeroes.ECS.Components.Characters;
+using RunawayHeroes.ECS.Systems.UI;
 using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.ECS.Systems.UI
@@ -35,7 +36,6 @@ namespace RunawayHeroes.ECS.Systems.UI
         private bool _isMenuOpen;
         
         // Timer per animazioni
-        private float _menuCloseTimer;
         private float _waveEffectTimer;
         private float _unlockEffectTimer;
         
@@ -46,7 +46,6 @@ namespace RunawayHeroes.ECS.Systems.UI
         {
             // Inizializza i valori che normalmente sarebbero inizializzati in-line
             _isMenuOpen = false;
-            _menuCloseTimer = -1f;
             _waveEffectTimer = -1f;
             _unlockEffectTimer = -1f;
             
@@ -99,14 +98,16 @@ namespace RunawayHeroes.ECS.Systems.UI
                     _characterButtons[i] = buttonTransform.GetComponent<Button>();
                     _characterButtonImages[i] = buttonTransform.Find("Icon").GetComponent<Image>();
                     
-                    // Aggiungi listener per il click
-                    int characterIndex = i;
-                    _characterButtons[i].onClick.AddListener(() => OnCharacterSelected(characterIndex));
+                    // Aggiungi gestione click tramite MonoBehaviour separato
+                    ResonanceCharacterButton buttonHandler = _characterButtons[i].gameObject.AddComponent<ResonanceCharacterButton>();
+                    buttonHandler.CharacterIndex = i;
+                    buttonHandler.WaveEffect = _resonanceWaveEffect;
                 }
                 
-                // Pulsante principale - apre il menu
-                Button mainButton = _resonanceButton.GetComponent<Button>();
-                mainButton.onClick.AddListener(ToggleCharacterMenu);
+                // Pulsante principale - aggiungi handler per il toggle menu
+                ResonanceMainButton mainButtonHandler = _resonanceButton.AddComponent<ResonanceMainButton>();
+                mainButtonHandler.CharacterMenu = _characterMenu;
+                mainButtonHandler.MenuAnimator = _menuAnimator;
                 
                 // Carica le sprite dei personaggi
                 _characterSprites = Resources.LoadAll<Sprite>("UI/CharacterIcons");
@@ -183,28 +184,6 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// </summary>
         private void UpdateTimers(float deltaTime)
         {
-            // Gestione timer menu chiusura
-            if (_menuCloseTimer > 0)
-            {
-                _menuCloseTimer -= deltaTime;
-                if (_menuCloseTimer <= 0)
-                {
-                    _characterMenu.SetActive(false);
-                    _menuCloseTimer = -1f;
-                }
-            }
-            
-            // Gestione timer effetto onda
-            if (_waveEffectTimer > 0)
-            {
-                _waveEffectTimer -= deltaTime;
-                if (_waveEffectTimer <= 0)
-                {
-                    _resonanceWaveEffect.SetActive(false);
-                    _waveEffectTimer = -1f;
-                }
-            }
-            
             // Gestione timer effetto sblocco
             if (_unlockEffectTimer > 0)
             {
@@ -213,6 +192,20 @@ namespace RunawayHeroes.ECS.Systems.UI
                 {
                     _resonanceUnlockEffect.SetActive(false);
                     _unlockEffectTimer = -1f;
+                }
+            }
+            
+            // Gestione timer effetto onda (la selezione è gestita da ResonanceCharacterButton)
+            if (_waveEffectTimer > 0)
+            {
+                _waveEffectTimer -= deltaTime;
+                if (_waveEffectTimer <= 0)
+                {
+                    if (_resonanceWaveEffect != null)
+                    {
+                        _resonanceWaveEffect.SetActive(false);
+                    }
+                    _waveEffectTimer = -1f;
                 }
             }
         }
@@ -303,98 +296,15 @@ namespace RunawayHeroes.ECS.Systems.UI
             return 0; // Default to Alex
         }
         
-        /// <summary>
-        /// Attiva/disattiva il menu dei personaggi
-        /// </summary>
-        private void ToggleCharacterMenu()
-        {
-            _isMenuOpen = !_isMenuOpen;
-            
-            // Se non è ancora attivo, attivalo prima di animarlo
-            if (_isMenuOpen && !_characterMenu.activeSelf)
-            {
-                _characterMenu.SetActive(true);
-            }
-            
-            // Avvia l'animazione appropriata
-            if (_menuAnimator != null)
-            {
-                _menuAnimator.SetTrigger(_isMenuOpen ? "Open" : "Close");
-            }
-            
-            // Se si sta chiudendo, configura il timer per disattivarlo dopo l'animazione
-            if (!_isMenuOpen)
-            {
-                float animationLength = 0.3f; // Tempo predefinito
-                if (_menuAnimator != null && _menuAnimator.runtimeAnimatorController != null)
-                {
-                    AnimationClip[] clips = _menuAnimator.runtimeAnimatorController.animationClips;
-                    foreach (AnimationClip clip in clips)
-                    {
-                        if (clip.name.Contains("Close"))
-                        {
-                            animationLength = clip.length;
-                            break;
-                        }
-                    }
-                }
-                _menuCloseTimer = animationLength;
-            }
-        }
+        // ToggleCharacterMenu è stato spostato in ResonanceMainButton.cs
         
-        /// <summary>
-        /// Gestisce la selezione di un personaggio
-        /// </summary>
-        private void OnCharacterSelected(int characterIndex)
-        {
-            // Chiudi menu
-            ToggleCharacterMenu();
-            
-            // Ottiene il mondo corrente dal TLS (ThreadLocalSystemGroup)
-            var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
-            if (world != null)
-            {
-                // Ottieni un riferimento alla SystemState per accedere all'EntityManager
-                var systemState = world.GetExistingSystemManaged<ResonanceUISystemGroup>().SystemState;
-                
-                // Ottieni l'entità del giocatore
-                Entity playerEntity = systemState.GetEntityQuery(_resonanceQuery.GetQueryTypes()).GetSingletonEntity();
-                var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-                var commandBuffer = ecbSingleton.CreateCommandBuffer(world.Unmanaged);
-                
-                // Aggiorna il componente di input della Risonanza
-                commandBuffer.SetComponent(playerEntity, new ResonanceInputComponent
-                {
-                    SwitchToCharacterIndex = characterIndex,
-                    NewCharacterUnlocked = false,
-                    NewCharacterEntity = Entity.Null,
-                    ResonanceLevelUp = false,
-                    NewResonanceLevel = 0
-                });
-            }
-            
-            // Mostra l'effetto onda
-            if (_resonanceWaveEffect != null)
-            {
-                _resonanceWaveEffect.SetActive(true);
-                
-                // Avvia l'animazione
-                Animator waveAnimator = _resonanceWaveEffect.GetComponent<Animator>();
-                if (waveAnimator != null)
-                {
-                    waveAnimator.SetTrigger("Play");
-                }
-                
-                // Imposta il timer per disattivare l'effetto
-                _waveEffectTimer = 1.5f;
-            }
-        }
+        // OnCharacterSelected è stato spostato in ResonanceCharacterButton.cs
         
-        // Classe di comodo per poter accedere alla SystemState dal metodo OnCharacterSelected
+        // Classe di comodo per poter accedere alla SystemState
         [UpdateInGroup(typeof(PresentationSystemGroup))]
         partial class ResonanceUISystemGroup : ComponentSystemGroup
         {
-            public SystemState SystemState => this.CheckedState();
+            public SystemState SystemState => this.GetCheckedState();
         }
         
         /// <summary>
