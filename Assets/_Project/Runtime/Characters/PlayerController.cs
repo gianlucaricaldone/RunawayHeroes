@@ -13,6 +13,16 @@ namespace RunawayHeroes.Runtime.Characters
     [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
     {
+        // Metodi helper per conversione tipi Unity a tipi ECS
+        private Unity.Mathematics.float3 ConvertToFloat3(Vector3 vector)
+        {
+            return new Unity.Mathematics.float3(vector.x, vector.y, vector.z);
+        }
+        
+        private Unity.Mathematics.quaternion ConvertToQuaternion(Quaternion quaternion)
+        {
+            return new Unity.Mathematics.quaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+        }
         [Header("Movimento")]
         [Tooltip("Velocità base di movimento in avanti")]
         public float forwardSpeed = 10f;
@@ -291,7 +301,7 @@ namespace RunawayHeroes.Runtime.Characters
             _playerEntity = _entityManager.CreateEntity(
                 ComponentType.ReadOnly<PlayerTag>(),
                 ComponentType.ReadWrite<PlayerMovementComponent>(),
-                ComponentType.ReadWrite<TransformComponent>()
+                ComponentType.ReadWrite<RunawayHeroes.ECS.Components.Core.TransformComponent>()
             );
             
             // Inizializza i componenti
@@ -303,11 +313,11 @@ namespace RunawayHeroes.Runtime.Characters
                 IsSliding = false
             });
             
-            _entityManager.SetComponentData(_playerEntity, new TransformComponent
+            _entityManager.SetComponentData(_playerEntity, new RunawayHeroes.ECS.Components.Core.TransformComponent
             {
-                Position = transform.position,
-                Rotation = transform.rotation,
-                Scale = transform.localScale
+                Position = ConvertToFloat3(transform.position),
+                Rotation = ConvertToQuaternion(transform.rotation),
+                Scale = transform.localScale.x // Assumiamo una scala uniforme prendendo solo X
             });
             
             Debug.Log("Player entity created in ECS world");
@@ -328,11 +338,11 @@ namespace RunawayHeroes.Runtime.Characters
             });
             
             // Aggiorna il componente transform
-            _entityManager.SetComponentData(_playerEntity, new TransformComponent
+            _entityManager.SetComponentData(_playerEntity, new RunawayHeroes.ECS.Components.Core.TransformComponent
             {
-                Position = transform.position,
-                Rotation = transform.rotation,
-                Scale = transform.localScale
+                Position = ConvertToFloat3(transform.position),
+                Rotation = ConvertToQuaternion(transform.rotation),
+                Scale = transform.localScale.x // Assumiamo una scala uniforme prendendo solo X
             });
         }
         
@@ -390,13 +400,5 @@ namespace RunawayHeroes.Runtime.Characters
         public bool IsSliding;
     }
     
-    /// <summary>
-    /// Componente per la trasformazione nell'ECS
-    /// </summary>
-    public struct TransformComponent : IComponentData
-    {
-        public Vector3 Position;
-        public Quaternion Rotation;
-        public Vector3 Scale;
-    }
+    // TransformComponent è stato spostato in RunawayHeroes.ECS.Components.Core
 }

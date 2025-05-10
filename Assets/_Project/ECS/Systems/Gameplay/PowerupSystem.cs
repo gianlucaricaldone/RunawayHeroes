@@ -155,7 +155,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 {
                     powerup.PulsationTime += DeltaTime;
                     float pulseFactor = 1.0f + math.sin(powerup.PulsationTime * powerup.PulseFrequency) * powerup.PulseAmplitude;
-                    transform.Scale = new float3(powerup.OriginalScale * pulseFactor);
+                    transform.Scale = powerup.OriginalScale * pulseFactor;
                 }
             }
         }
@@ -456,7 +456,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public bool HasPulsation;           // Se pulsa (cambia scala)
         public float PulseAmplitude;        // Ampiezza pulsazione
         public float PulseFrequency;        // Frequenza pulsazione
-        public float3 OriginalScale;        // Scala originale per la pulsazione
+        public float OriginalScale;        // Scala originale per la pulsazione
         
         // Timer per animazioni
         public float AnimationTime;

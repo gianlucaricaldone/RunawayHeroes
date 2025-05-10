@@ -52,7 +52,7 @@ namespace RunawayHeroes.Runtime.Levels
         private void Awake()
         {
             // Ottieni riferimento all'EntityManager
-            _entityManager = WorldExtensions.DefaultGameObjectInjectionWorld.EntityManager;
+            _entityManager = RunawayWorldExtensions.DefaultGameObjectInjectionWorld.EntityManager;
             _startPosition = transform.position;
         }
         

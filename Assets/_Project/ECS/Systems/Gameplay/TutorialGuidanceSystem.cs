@@ -83,7 +83,8 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             
             // Costruiamo la query per gli scenari non ancora attivati
             var scenarioQuery = SystemAPI.QueryBuilder()
-                .WithAll<TutorialScenarioComponent, DynamicBuffer<TutorialObstacleBuffer>>()
+                .WithAll<TutorialScenarioComponent>()
+                .WithAll<TutorialObstacleBuffer>()
                 .WithNone<TriggeredTag>()
                 .Build();
                 
@@ -130,7 +131,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 ECB.AddComponent<TriggeredTag>(entityInQueryIndex, entity);
                 
                 // Mostra messaggio di istruzione
-                if (!string.IsNullOrEmpty(scenario.InstructionMessage))
+                if (scenario.InstructionMessage.Length > 0)
                 {
                     // Crea un'entità per il messaggio UI
                     Entity messageEntity = ECB.CreateEntity(entityInQueryIndex);
@@ -302,11 +303,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             ECB.AddComponent<ObstacleTag>(entityInQueryIndex, obstacleEntity);
             
             // Aggiungi la posizione
-            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new TransformComponent
+            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new RunawayHeroes.ECS.Components.Core.TransformComponent
             {
                 Position = position,
                 Rotation = quaternion.identity,
-                Scale = new float3(scale, scale, scale)
+                Scale = scale
             });
             
             // Analizza il codice dell'ostacolo per determinarne la categoria
