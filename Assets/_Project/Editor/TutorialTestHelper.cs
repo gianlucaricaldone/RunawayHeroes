@@ -3,6 +3,9 @@ using UnityEditor;
 using RunawayHeroes.Runtime.Levels;
 using RunawayHeroes.ECS.Components.World;
 using Unity.Entities;
+using RunawayHeroes.Utilities.ECSCompatibility;
+using NUnit.Framework.Constraints;
+using RunawayHeroes.ECS.Components.Gameplay;
 
 namespace RunawayHeroes.Editor
 {
@@ -32,7 +35,7 @@ namespace RunawayHeroes.Editor
             // Trova l'inizializzatore del tutorial nella scena
             if (_tutorialInitializer == null)
             {
-                _tutorialInitializer = FindObjectOfType<TutorialLevelInitializer>();
+                _tutorialInitializer = FindFirstObjectByType<TutorialLevelInitializer>();
             }
             
             if (_tutorialInitializer == null)
@@ -134,7 +137,7 @@ namespace RunawayHeroes.Editor
                 return;
                 
             // Ottieni accesso al mondo ECS
-            var world = World.DefaultGameObjectInjectionWorld;
+            var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
             if (world == null)
             {
                 Debug.LogError("ECS World not found!");
@@ -185,7 +188,7 @@ namespace RunawayHeroes.Editor
         private void ClearTutorialLevel()
         {
             // Ottieni accesso al mondo ECS
-            var world = World.DefaultGameObjectInjectionWorld;
+            var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
             if (world == null)
             {
                 Debug.LogError("ECS World not found!");

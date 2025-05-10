@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Systems.Abilities;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.Runtime.Bridge
 {
@@ -82,7 +83,7 @@ namespace RunawayHeroes.Runtime.Bridge
         private void Start()
         {
             // Ottieni il World e l'EntityManager
-            World defaultWorld = World.DefaultGameObjectInjectionWorld;
+            World defaultWorld = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
             if (defaultWorld != null)
             {
                 _entityManager = defaultWorld.EntityManager;

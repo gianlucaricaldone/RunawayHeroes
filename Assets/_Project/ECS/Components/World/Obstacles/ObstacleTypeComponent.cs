@@ -82,19 +82,22 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
     {
         None = 0,
         SmallBarrier = 1,     // Barriera bassa
-        LargeBarrier = 2,     // Barriera alta
-        Gap = 3,              // Buco/Vuoto
-        HangingObject = 4,    // Oggetto sospeso
-        MovingObstacle = 5,   // Ostacolo in movimento
-        GroundHazard = 6,     // Pericolo al suolo
-        SpecialBarrier = 7,   // Barriera che richiede abilità speciali
-        Vehicle = 8,          // Veicolo (auto, camion, ecc.)
-        NaturalObstacle = 9,  // Ostacolo naturale (rocce, alberi, ecc.)
-        ElectronicObstacle = 10, // Ostacolo elettronico
-        WaterObstacle = 11,   // Ostacolo acquatico
-        FireObstacle = 12,    // Ostacolo di fuoco
-        IceObstacle = 13,     // Ostacolo di ghiaccio
-        DigitalObstacle = 14  // Ostacolo digitale
+        MediumBarrier = 2,    // Barriera media
+        LargeBarrier = 3,     // Barriera alta
+        Gap = 4,              // Buco/Vuoto
+        HangingObject = 5,    // Oggetto sospeso
+        MovingObstacle = 6,   // Ostacolo in movimento
+        GroundHazard = 7,     // Pericolo al suolo
+        SpecialBarrier = 8,   // Barriera che richiede abilità speciali
+        Vehicle = 9,          // Veicolo (auto, camion, ecc.)
+        NaturalObstacle = 10, // Ostacolo naturale (rocce, alberi, ecc.)
+        ElectronicObstacle = 11, // Ostacolo elettronico
+        WaterObstacle = 12,   // Ostacolo acquatico
+        FireObstacle = 13,    // Ostacolo di fuoco
+        IceObstacle = 14,     // Ostacolo di ghiaccio
+        DigitalObstacle = 15, // Ostacolo digitale
+        AreaEffect = 16,      // Effetto ad area (gas, campi elettrici, ecc.)
+        SpecialEffect = 17    // Effetti speciali (glitch, distorsioni, ecc.)
     }
     
     /// <summary>

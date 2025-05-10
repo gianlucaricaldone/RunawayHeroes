@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
 using RunawayHeroes.ECS.Components.Characters;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.ECS.Systems.UI
 {
@@ -350,7 +351,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             ToggleCharacterMenu();
             
             // Ottiene il mondo corrente dal TLS (ThreadLocalSystemGroup)
-            var world = World.DefaultGameObjectInjectionWorld;
+            var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
             if (world != null)
             {
                 // Ottieni un riferimento alla SystemState per accedere all'EntityManager
@@ -391,7 +392,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         
         // Classe di comodo per poter accedere alla SystemState dal metodo OnCharacterSelected
         [UpdateInGroup(typeof(PresentationSystemGroup))]
-        public class ResonanceUISystemGroup : ComponentSystemGroup
+        partial class ResonanceUISystemGroup : ComponentSystemGroup
         {
             public SystemState SystemState => this.CheckedState();
         }

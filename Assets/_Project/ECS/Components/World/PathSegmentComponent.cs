@@ -48,16 +48,5 @@ namespace RunawayHeroes.ECS.Components.World
         Challenge       // Segmento sfida
     }
     
-    /// <summary>
-    /// Enumerazione dei temi di mondo disponibili
-    /// </summary>
-    public enum WorldTheme
-    {
-        City,           // Città in caos
-        Forest,         // Foresta primordiale
-        Tundra,         // Tundra eterna
-        Volcano,        // Inferno di lava
-        Abyss,          // Abissi inesplorati
-        Virtual         // Realtà virtuale
-    }
+    // Nota: Enumerazione WorldTheme ora definita in file separato: WorldThemeEnum.cs
 }

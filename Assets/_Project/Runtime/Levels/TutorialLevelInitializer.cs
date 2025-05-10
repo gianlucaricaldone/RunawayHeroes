@@ -9,7 +9,9 @@ using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Systems.Gameplay;
 using RunawayHeroes.Gameplay;
+using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Components.World.Obstacles;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.Runtime.Levels
 {
@@ -19,6 +21,16 @@ namespace RunawayHeroes.Runtime.Levels
     public class TutorialLevelInitializer : MonoBehaviour
     {
         [Header("Configurazione Tutorial")]
+        [Tooltip("Tema del mondo per questo tutorial")]
+        public WorldTheme tutorialTheme = WorldTheme.City;
+        
+        [Tooltip("Lunghezza del livello tutorial in metri")]
+        public int tutorialLength = 500;
+        
+        [Tooltip("Seed per la generazione randomica (0 = casuale)")]
+        public int seed = 0;
+        
+        [Header("Livelli")]
         [Tooltip("Livelli tutorial in sequenza")]
         public TutorialLevelData[] tutorialSequence;
         
@@ -40,7 +52,7 @@ namespace RunawayHeroes.Runtime.Levels
         private void Awake()
         {
             // Ottieni riferimento all'EntityManager
-            _entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+            _entityManager = WorldExtensions.DefaultGameObjectInjectionWorld.EntityManager;
             _startPosition = transform.position;
         }
         
@@ -371,17 +383,5 @@ namespace RunawayHeroes.Runtime.Levels
     }
     */
     
-    /// <summary>
-    /// Temi di mondo disponibili
-    /// </summary>
-    public enum WorldTheme
-    {
-        Tutorial,
-        City,
-        Forest,
-        Tundra,
-        Volcano,
-        Abyss,
-        Virtual
-    }
+    // Nota: Enumerazione WorldTheme ora definita in RunawayHeroes.ECS.Components.World.WorldTheme
 }

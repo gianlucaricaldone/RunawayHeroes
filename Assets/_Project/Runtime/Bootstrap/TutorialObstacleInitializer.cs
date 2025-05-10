@@ -9,6 +9,7 @@ using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.Authoring;
 using RunawayHeroes.ECS.Components.World.Obstacles;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.Runtime.Bootstrap
 {
@@ -94,7 +95,7 @@ namespace RunawayHeroes.Runtime.Bootstrap
         private void Awake()
         {
             // Ottiene il World di default e l'EntityManager
-            var world = World.DefaultGameObjectInjectionWorld;
+            var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
             _entityManager = world.EntityManager;
 
             // Inizializza gli archetipi

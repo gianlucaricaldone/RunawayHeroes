@@ -30,7 +30,7 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
     {
         public static ObstacleTypeComponent GetTypeData()
         {
-            var data = ObstacleTypeComponent.CreateUniversal(2, ObstacleCategory.LargeBarrier, 2.5f, 3.0f, 0.5f);
+            var data = ObstacleTypeComponent.CreateUniversal(2, ObstacleCategory.MediumBarrier, 2.5f, 3.0f, 0.5f);
             data.RequiresSlide = true;
             data.DifficultyLevel = 2;
             return data;

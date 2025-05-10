@@ -275,7 +275,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in MagnetizationMovementData magnetData)
             {
                 // Se l'entità target esiste ancora
-                if (EntityLookupTable.Exists(magnetData.TargetEntity, out _))
+                if (EntityLookupTable.Exists(magnetData.TargetEntity))
                 {
                     // Aggiorna la posizione target se il magnete si muove
                     float3 targetPosition;

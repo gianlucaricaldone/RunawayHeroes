@@ -621,7 +621,7 @@ namespace RunawayHeroes.Runtime.Levels
             foreach (var otherSetup in scenario.obstacles)
             {
                 // Non confrontare con se stesso
-                if (otherSetup == obstacleSetup)
+                if (AreObstacleSetupsEqual(otherSetup, obstacleSetup)) 
                     continue;
                     
                 var otherPositions = EstimateObstaclePositions(otherSetup, scenario);
@@ -1034,6 +1034,21 @@ namespace RunawayHeroes.Runtime.Levels
         }
         
         /// <summary>
+        /// Confronta due ObstacleSetup per determinare se sono uguali
+        /// </summary>
+        private bool AreObstacleSetupsEqual(ObstacleSetup a, ObstacleSetup b)
+        {
+            return a.obstacleCode == b.obstacleCode
+                && a.count == b.count
+                && a.placement == b.placement
+                && a.randomizeHeight == b.randomizeHeight
+                && a.heightRange.Equals(b.heightRange)
+                && a.randomizeScale == b.randomizeScale
+                && a.scaleRange.Equals(b.scaleRange)
+                && Math.Abs(a.startOffset - b.startOffset) < 0.001f;
+        }
+        
+        /// <summary>
         /// Popola la mappa degli ostacoli per uno specifico setup
         /// </summary>
         private void PopulateObstacleMap(Dictionary<float, List<(float x, float y, float width, float height)>> map,
@@ -1325,6 +1340,7 @@ namespace RunawayHeroes.Runtime.Levels
         /// </summary>
         public Vector3 Position;
     }
+    
     
     /// <summary>
     /// Tipo di problema di validazione

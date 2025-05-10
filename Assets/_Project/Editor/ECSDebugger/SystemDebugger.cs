@@ -4,13 +4,14 @@ using System.Linq;
 using System.Reflection;
 using Unity.Entities;
 using UnityEngine;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 public class SystemDebugger : MonoBehaviour
 {
     void Start()
     {
         // Otteniamo il world di default
-        var world = World.DefaultGameObjectInjectionWorld;
+        var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
         if (world != null)
         {
             Debug.Log("=== SISTEMI REGISTRATI ===");

@@ -105,7 +105,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                     
                     // Controlla se tutti i tutorial sono completati
-                    var tutorialManager = UnityEngine.Object.FindObjectOfType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
+                    var tutorialManager = UnityEngine.Object.FindFirstObjectByType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
                     if (tutorialManager != null && tutorialLevel.CurrentSequence >= tutorialManager.tutorialSequence.Length - 1)
                     {
                         progress.TutorialsCompleted = true;
@@ -158,7 +158,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var tutorialLevel = SystemAPI.GetComponent<TutorialLevelTag>(tutorialEntity);
             
             // Controlla se il giocatore ha raggiunto la fine del livello
-            var tutorialManager = UnityEngine.Object.FindObjectOfType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
+            var tutorialManager = UnityEngine.Object.FindFirstObjectByType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
             if (tutorialManager != null && tutorialManager.tutorialSequence.Length > tutorialLevel.CurrentSequence)
             {
                 float levelLength = tutorialManager.tutorialSequence[tutorialLevel.CurrentSequence].length;
@@ -321,11 +321,11 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     PlayerPrefs.Save();
                     
                     // Avanza al prossimo tutorial automaticamente o mostra UI per procedere
-                    var tutorialManager = UnityEngine.Object.FindObjectOfType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
+                    var tutorialManager = UnityEngine.Object.FindFirstObjectByType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
                     if (tutorialManager != null)
                     {
                         // Mostra un messaggio prima di passare al prossimo tutorial
-                        UnityEngine.Object.FindObjectOfType<MonoBehaviour>().StartCoroutine(
+                        UnityEngine.Object.FindFirstObjectByType<MonoBehaviour>().StartCoroutine(
                             DelayedTutorialAdvance(tutorialManager, 3.0f)
                         );
                     }

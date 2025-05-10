@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 07/05/2025 15:22:42
+# Generato il: 10/05/2025 22:23:58
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -1712,6 +1712,36 @@ namespace RunawayHeroes.ECS.Utilities
     private class ProfilerScope : System.IDisposable
     {
         public void Dispose();
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Utilities/ECSCompatibility/WorldCompatibility.cs
+
+namespace RunawayHeroes.Utilities.ECSCompatibility
+{
+     <summary>
+    /// Classe di utilità che fornisce compatibilità tra diverse versioni di Unity DOTS.
+    /// Implementa metodi di estensione per World per supportare proprietà mancanti.
+    /// </summary>
+
+    public static class RunawayWorldCompatibility
+    {
+        private static World _defaultGameObjectInjectionWorld;
+        public static World DefaultGameObjectInjectionWorld { get; set; }
+         <summary>
+        /// Implementazione interna per ottenere il World predefinito.
+        /// </summary>
+
+        private static World DefaultGameObjectInjectionWorld_Internal();
+    }
+     <summary>
+    /// Estensione per la classe World che aggiunge proprietà mancanti.
+    /// </summary>
+
+    public static class RunawayWorldExtensions
+    {
+        public static World DefaultGameObjectInjectionWorld { get; set; }
     }
 }
 
@@ -3858,12 +3888,13 @@ namespace RunawayHeroes.ECS.Components.Gameplay
 
         public bool AddCharacter(Entity characterEntity);
          <summary>
-        /// Ottiene i bonus ambientali in base al tipo di mondo e al personaggio
+        /// Ottiene i bonus ambientali in base al tipo di mondo e al carattere fornito
         /// </summary>
         /// <param name="worldType">Il tipo di mondo corrente</param>
+        /// <param name="characterType">Il tipo di carattere</param>
         /// <returns>Struttura contenente i bonus applicabili</returns>
 
-        public EnvironmentalBonus GetEnvironmentalBonus(WorldType worldType);
+        public EnvironmentalBonus GetEnvironmentalBonus(WorldType worldType, CharacterType characterType);
          <summary>
         /// Riduce il cooldown della Risonanza tramite oggetti o abilità
         /// </summary>
@@ -5084,7 +5115,10 @@ namespace RunawayHeroes.ECS.Components.Enemies
         public int TotalPhases;
         public int BaseDamage;
         public int AttackPatternComplexity;
-        public float[] PhaseThresholds;
+        public float PhaseThreshold1;
+        public float PhaseThreshold2;
+        public float PhaseThreshold3;
+        public float PhaseThreshold4;
         public float PhaseTransitionTimer;
         public float SpecialAttackCooldown;
         public float CurrentPhaseIntensity;
@@ -6309,7 +6343,7 @@ namespace RunawayHeroes.ECS.Events
     public struct FragmentCollectedEvent : IComponentData
     {
         public int FragmentID;
-        public int FragmentType;
+        public byte FragmentType;
         public Entity CollectorEntity;
     }
 }
@@ -6844,7 +6878,7 @@ namespace RunawayHeroes.ECS.Systems.UI
 
         public void PlayUnlockEffect(int characterIndex);
     }
-    public class ResonanceUISystemGroup : ComponentSystemGroup
+    partial class ResonanceUISystemGroup : ComponentSystemGroup
     {
         public SystemState SystemState { ... }
     }
@@ -8064,7 +8098,7 @@ namespace RunawayHeroes.ECS.Systems.World
     /// Sistema che raggruppa tutti i sistemi relativi agli ostacoli
     /// </summary>
 
-    public class ObstacleSystemGroup : ComponentSystemGroup
+    partial class ObstacleSystemGroup : ComponentSystemGroup
     {
         protected override void OnCreate();
     }
@@ -8624,7 +8658,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter ECB;
         public EntityQuery EnemyQuery;
-        public IntPtr EntityManagerPtr;
         public EntityTypeHandle EntityTypeHandle;
         public void Run(EntityManager entityManager, EntityQuery query);
     }
@@ -8647,7 +8680,6 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     {
         public float DeltaTime;
         public float GameTime;
-        public IntPtr EntityManagerPtr;
         public void Run(EntityManager entityManager, EntityQuery query);
     }
 }
@@ -9268,9 +9300,40 @@ namespace RunawayHeroes.ECS.Systems.Movement
         public float SteeringSpeed;
         public bool RotateTowardsTarget;
         public PathStatus PathStatus;
-        public float3[] PathPoints;
+        public const int MaxPathPoints;
+        public float3 PathPoint1;
+        public float3 PathPoint2;
+        public float3 PathPoint3;
+        public float3 PathPoint4;
+        public float3 PathPoint5;
+        public float3 PathPoint6;
+        public float3 PathPoint7;
+        public float3 PathPoint8;
+        public float3 PathPoint9;
+        public float3 PathPoint10;
+        public float3 PathPoint11;
+        public float3 PathPoint12;
+        public float3 PathPoint13;
+        public float3 PathPoint14;
+        public float3 PathPoint15;
+        public float3 PathPoint16;
+        public float3 PathPoint17;
+        public float3 PathPoint18;
+        public float3 PathPoint19;
+        public float3 PathPoint20;
+        public int PathPointCount;
         public int CurrentPathIndex;
         public float WaypointReachedThreshold;
+         <summary>
+        /// Ottiene il punto del percorso all'indice specificato
+        /// </summary>
+
+        public float3 GetPathPoint(int index);
+         <summary>
+        /// Imposta il punto del percorso all'indice specificato
+        /// </summary>
+
+        public void SetPathPoint(int index, float3 point);
     }
      <summary>
     /// Stato del calcolo del percorso
@@ -11776,19 +11839,22 @@ namespace RunawayHeroes.ECS.Components.World.Obstacles
     {
         None = 0,
         SmallBarrier = 1,
-        LargeBarrier = 2,
-        Gap = 3,
-        HangingObject = 4,
-        MovingObstacle = 5,
-        GroundHazard = 6,
-        SpecialBarrier = 7,
-        Vehicle = 8,
-        NaturalObstacle = 9,
-        ElectronicObstacle = 10,
-        WaterObstacle = 11,
-        FireObstacle = 12,
-        IceObstacle = 13,
-        DigitalObstacle = 14
+        MediumBarrier = 2,
+        LargeBarrier = 3,
+        Gap = 4,
+        HangingObject = 5,
+        MovingObstacle = 6,
+        GroundHazard = 7,
+        SpecialBarrier = 8,
+        Vehicle = 9,
+        NaturalObstacle = 10,
+        ElectronicObstacle = 11,
+        WaterObstacle = 12,
+        FireObstacle = 13,
+        IceObstacle = 14,
+        DigitalObstacle = 15,
+        AreaEffect = 16,
+        SpecialEffect = 17
     }
      <summary>
     /// Componente tag per ostacoli universali

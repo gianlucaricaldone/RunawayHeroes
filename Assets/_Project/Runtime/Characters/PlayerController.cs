@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Entities;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.Runtime.Characters
 {
@@ -101,7 +102,7 @@ namespace RunawayHeroes.Runtime.Characters
             _currentSpeed = forwardSpeed * 0.5f;
             
             // Ottieni il riferimento al mondo ECS
-            var world = World.DefaultGameObjectInjectionWorld;
+            var world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
             if (world != null)
             {
                 _entityManager = world.EntityManager;

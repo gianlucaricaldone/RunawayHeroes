@@ -126,7 +126,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         private void CreateObjectivesPanelDynamically()
         {
             // Cerca il canvas di gioco
-            Canvas gameCanvas = GameObject.FindObjectOfType<Canvas>();
+            Canvas gameCanvas = GameObject.FindFirstObjectByType<Canvas>();
             if (gameCanvas == null)
             {
                 Debug.LogError("Nessun canvas trovato per il pannello obiettivi!");

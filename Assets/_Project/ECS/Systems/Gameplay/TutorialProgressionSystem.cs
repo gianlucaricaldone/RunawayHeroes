@@ -77,7 +77,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public void OnStartRunning(ref SystemState state)
         {
             // Ottieni riferimento al gestore tutorial
-            _tutorialManager = UnityEngine.Object.FindObjectOfType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
+            _tutorialManager = UnityEngine.Object.FindFirstObjectByType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
             if (_tutorialManager != null && _tutorialManager.tutorialSequence != null)
             {
                 _totalAvailableTutorials = _tutorialManager.tutorialSequence.Length;
@@ -109,7 +109,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 var tutorialLevel = SystemAPI.GetComponent<TutorialLevelTag>(tutorialEntity);
                 
                 // Controlla se il tutorial è completato
-                foreach (var (entity, completedTag) in 
+                foreach (var (completedTag, entity) in 
                     SystemAPI.Query<RefRO<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>>()
                         .WithEntityAccess()
                         .WithAll<RunawayHeroes.ECS.Components.Gameplay.TutorialCompletedTag>())
@@ -179,7 +179,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     // Genera messaggio UI per il completamento
                     CreateTutorialCompletionMessage(commandBuffer, false);
                     
-                    // Rimuovi il tag di completamento
+                    // Rimuovi l'entità con il tag di completamento
                     commandBuffer.DestroyEntity(entity);
                 }
                     

@@ -305,6 +305,7 @@ namespace RunawayHeroes.ECS.Systems.World
                 case ObstacleCategory.GroundHazard:
                     return SegmentContentType.SmallObstacle;
                     
+                case ObstacleCategory.MediumBarrier:
                 case ObstacleCategory.LargeBarrier:
                 case ObstacleCategory.HangingObject:
                 case ObstacleCategory.NaturalObstacle:
@@ -318,6 +319,8 @@ namespace RunawayHeroes.ECS.Systems.World
                 case ObstacleCategory.WaterObstacle:
                 case ObstacleCategory.DigitalObstacle:
                 case ObstacleCategory.ElectronicObstacle:
+                case ObstacleCategory.AreaEffect:
+                case ObstacleCategory.SpecialEffect:
                     return SegmentContentType.LargeObstacle;
                     
                 default:

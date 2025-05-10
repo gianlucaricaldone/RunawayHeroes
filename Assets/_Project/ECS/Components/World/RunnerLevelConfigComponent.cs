@@ -1,6 +1,5 @@
 using System;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace RunawayHeroes.ECS.Components.World
 {
@@ -28,7 +27,6 @@ namespace RunawayHeroes.ECS.Components.World
         
         // Configurazione del tema
         public WorldTheme PrimaryTheme;  // Tema principale del livello
-        public WorldTheme SecondaryTheme; // Tema secondario (per transizioni)
         public float ThemeBlendFactor;  // Fattore di mescolamento dei temi (0-1)
         
         // Configurazione avanzata

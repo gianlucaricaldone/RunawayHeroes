@@ -61,7 +61,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public void OnStartRunning(ref SystemState state)
         {
             // Ottieni riferimento all'audio manager
-            _audioManager = UnityEngine.Object.FindObjectOfType<AudioManager>();
+            _audioManager = UnityEngine.Object.FindFirstObjectByType<AudioManager>();
         }
         
         public void OnDestroy(ref SystemState state)
@@ -107,7 +107,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         // Avanzamento tutorial potrebbe influenzare mondo
                         if (eventData.IsSignificantAdvancement)
                         {
-                            NotifyWorldOfTutorialAdvancement(commandBuffer, eventData.PrimaryIndex);
+                            NotifyWorldOfTutorialAdvancement(commandBuffer, eventData.PrimaryIndex, ref state);
                         }
                         break;
                         
@@ -123,7 +123,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         // Avanzamento livello potrebbe influenzare mondo
                         if (eventData.IsSignificantAdvancement)
                         {
-                            NotifyWorldOfLevelAdvancement(commandBuffer, eventData.PrimaryIndex, eventData.SecondaryIndex);
+                            NotifyWorldOfLevelAdvancement(commandBuffer, eventData.PrimaryIndex, eventData.SecondaryIndex, ref state);
                         }
                         break;
                 }
@@ -222,7 +222,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Notifica avanzamento tutorial al sistema mondo
         /// </summary>
-        private void NotifyWorldOfTutorialAdvancement(EntityCommandBuffer commandBuffer, int tutorialIndex)
+        private void NotifyWorldOfTutorialAdvancement(EntityCommandBuffer commandBuffer, int tutorialIndex, ref SystemState state)
         {
             // Se tutti i tutorial sono completati, sblocca il primo mondo vero
             if (!_playerProgressionQuery.IsEmpty)
@@ -271,7 +271,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Notifica avanzamento livello al sistema mondo
         /// </summary>
-        private void NotifyWorldOfLevelAdvancement(EntityCommandBuffer commandBuffer, int worldIndex, int levelIndex)
+        private void NotifyWorldOfLevelAdvancement(EntityCommandBuffer commandBuffer, int worldIndex, int levelIndex, ref SystemState state)
         {
             // Se l'ultimo livello di un mondo è stato completato, genera evento di completamento mondo
             if (levelIndex >= GetMaxLevelsForWorld(worldIndex) - 1) // -1 perché l'indice è 0-based

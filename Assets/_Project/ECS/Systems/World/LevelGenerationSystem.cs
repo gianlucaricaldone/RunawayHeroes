@@ -125,7 +125,6 @@ namespace RunawayHeroes.ECS.Systems.World
                 EnemyDensity = enemyDensity,
                 CollectibleDensity = isTutorial ? 0.8f : 0.6f, // Più collezionabili nel tutorial
                 PrimaryTheme = theme,
-                SecondaryTheme = GetComplementaryTheme(theme),
                 ThemeBlendFactor = isTutorial ? 0.1f : 0.2f, // Minore mescolamento nel tutorial
                 GenerateCheckpoints = true,
                 DynamicDifficulty = !isTutorial, // Disabilita difficoltà dinamica nel tutorial

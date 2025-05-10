@@ -15,6 +15,7 @@ using RunawayHeroes.ECS.Systems.World;
 using RunawayHeroes.ECS.Systems.UI;
 using RunawayHeroes.ECS.Systems.Input;
 using RunawayHeroes.ECS.Events.Handlers;
+using RunawayHeroes.Utilities.ECSCompatibility;
 
 namespace RunawayHeroes.Runtime.Bootstrap
 {
@@ -56,7 +57,7 @@ namespace RunawayHeroes.Runtime.Bootstrap
                 Debug.Log("Inizializzazione del sistema ECS...");
                 
                 // Ottiene o crea il mondo predefinito
-                _world = World.DefaultGameObjectInjectionWorld;
+                _world = RunawayWorldExtensions.DefaultGameObjectInjectionWorld;
                 
                 // Applica la configurazione dei sistemi
                 var systems = new List<Type>(); 

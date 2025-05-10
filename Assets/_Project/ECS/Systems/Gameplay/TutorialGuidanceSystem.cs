@@ -154,7 +154,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             QueuePosition = 0
                         });
                     
-                    UnityEngine.Debug.Log($"[Tutorial] Messaggio creato: {scenario.InstructionMessage}");
+                    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                UnityEngine.Debug.Log($"[Tutorial] Messaggio creato: {scenario.InstructionMessage}");
+                #endif
                 }
                 
                 // Genera gli ostacoli per questo scenario
@@ -307,39 +309,143 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 Scale = new float3(scale, scale, scale)
             });
             
+            // Analizza il codice dell'ostacolo per determinarne la categoria
+            var obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.SmallBarrier;
+            bool isUniversal = false;
+            
+            // Verifica se è un ostacolo universale (inizia con U)
+            if (obstacleCode.Length > 0 && (obstacleCode[0] == 'U' || obstacleCode[0] == 'u'))
+            {
+                isUniversal = true;
+            }
+            
+            // Determina la categoria in base al secondo carattere numerico del codice (se disponibile)
+            if (obstacleCode.Length >= 3 && char.IsDigit(obstacleCode[2]))
+            {
+                int categoryNum = int.Parse(obstacleCode[2].ToString());
+                switch (categoryNum)
+                {
+                    case 1: 
+                    case 2: obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.SmallBarrier; break;
+                    case 3: 
+                    case 4: obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.MediumBarrier; break;
+                    case 5: 
+                    case 6: obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.LargeBarrier; break;
+                    case 7: obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.AreaEffect; break;
+                    case 8: obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.SpecialEffect; break;
+                    default: obstacleCategory = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.SmallBarrier; break;
+                }
+            }
+            
+            // Crea un ID univoco basato sul codice completo
+            ushort obstacleId = (ushort)obstacleCode.GetHashCode();
+            
             // Aggiungi un componente per tenere traccia del codice dell'ostacolo
             ECB.AddComponent(entityInQueryIndex, obstacleEntity, new RunawayHeroes.ECS.Components.World.Obstacles.ObstacleTypeComponent
             {
-                ObstacleID = (ushort)obstacleCode.GetHashCode(),
-                Category = RunawayHeroes.ECS.Components.World.Obstacles.ObstacleCategory.SmallBarrier,
-                IsUniversal = true
+                ObstacleID = obstacleId,
+                Category = obstacleCategory,
+                IsUniversal = isUniversal
             });
             
-            // Qui andrebbe aggiunta la logica per configurare ostacoli specifici in base al codice
-            // Ad esempio, se il codice inizia con "L" potrebbe essere un ostacolo di lava
-            if (obstacleCode.StartsWith("L", StringComparison.OrdinalIgnoreCase))
+            // Configura ostacoli specifici in base al prefisso del codice
+            // I prefissi seguono la convenzione descritta nel catalogo ostacoli:
+            // U: Universali, C: Città, F: Foresta, T: Tundra, V: Vulcano, A: Abisso, D: Digitale
+            if (obstacleCode.Length > 0)
             {
-                ECB.AddComponent<LavaTag>(entityInQueryIndex, obstacleEntity);
-                ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
+                char prefix = obstacleCode[0];
+                
+                switch (prefix)
                 {
-                    ToxicType = 1, // Tipo fuoco/lava
-                    DamagePerSecond = 20.0f
-                });
-            }
-            // Ghiaccio
-            else if (obstacleCode.StartsWith("I", StringComparison.OrdinalIgnoreCase))
-            {
-                ECB.AddComponent<IceObstacleTag>(entityInQueryIndex, obstacleEntity);
-                ECB.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
-                {
-                    MaxIntegrity = 100.0f,
-                    CurrentIntegrity = 100.0f
-                });
-            }
-            // Barriere digitali
-            else if (obstacleCode.StartsWith("D", StringComparison.OrdinalIgnoreCase))
-            {
-                ECB.AddComponent<DigitalBarrierTag>(entityInQueryIndex, obstacleEntity);
+                    // Ostacoli del Vulcano (V) - compatibili con l'abilità Corpo Ignifugo di Ember
+                    case 'V':
+                    case 'v':
+                        if (obstacleCode.StartsWith("V01") || obstacleCode.StartsWith("V02") || 
+                            obstacleCode.StartsWith("V04") || obstacleCode.StartsWith("V07"))
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new LavaTag
+                            {
+                                DamagePerSecond = 20.0f
+                            });
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new ToxicGroundTag
+                            {
+                                ToxicType = 1, // Tipo fuoco/lava
+                                DamagePerSecond = 20.0f
+                            });
+                        }
+                        break;
+                    
+                    // Ostacoli della Tundra (T) - compatibili con l'abilità Aura di Calore di Kai
+                    case 'T':
+                    case 't':
+                        if (obstacleCode.StartsWith("T01") || obstacleCode.StartsWith("T02") || obstacleCode.StartsWith("T03"))
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new IceObstacleTag
+                            {
+                                SlipperyFactor = 0.8f
+                            });
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new IceIntegrityComponent
+                            {
+                                MaxIntegrity = 100.0f,
+                                CurrentIntegrity = 100.0f
+                            });
+                        }
+                        else if (obstacleCode.StartsWith("T08")) // Freezing Wind
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new CurrentTag
+                            {
+                                Direction = new Unity.Mathematics.float3(1, 0, 0), // Direzione orizzontale
+                                Strength = 3.0f,
+                                CurrentType = 2 // Tipo aria fredda
+                            });
+                        }
+                        break;
+                    
+                    // Ostacoli Digitali (D) - compatibili con l'abilità Glitch Controllato di Neo
+                    case 'D':
+                    case 'd':
+                        if (obstacleCode.StartsWith("D01") || obstacleCode.StartsWith("D02"))
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new DigitalBarrierTag
+                            {
+                                SecurityLevel = 1
+                            });
+                        }
+                        break;
+                    
+                    // Ostacoli dell'Abisso (A) - compatibili con l'abilità Bolla d'Aria di Marina
+                    case 'A':
+                    case 'a':
+                        if (obstacleCode.StartsWith("A01"))
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new UnderwaterTag
+                            {
+                                DepthPressure = 1.5f
+                            });
+                        }
+                        else if (obstacleCode.StartsWith("A02"))
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new CurrentTag
+                            {
+                                Direction = new Unity.Mathematics.float3(0, 0, 1), // Direzione lungo il percorso
+                                Strength = 3.0f,
+                                CurrentType = 2 // Tipo acqua
+                            });
+                        }
+                        break;
+                        
+                    // Ostacoli della Foresta (F) - alcuni compatibili con abilità speciali
+                    case 'F':
+                    case 'f':
+                        if (obstacleCode.StartsWith("F07")) // Mud Pit
+                        {
+                            ECB.AddComponent(entityInQueryIndex, obstacleEntity, new SlipperyTag
+                            {
+                                SlipFactor = 0.5f
+                            });
+                        }
+                        break;
+                }
             }
             
             return obstacleEntity;

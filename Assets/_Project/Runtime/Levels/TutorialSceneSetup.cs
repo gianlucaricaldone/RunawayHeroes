@@ -44,7 +44,7 @@ namespace RunawayHeroes.Runtime.Levels
                 // Se ancora non lo troviamo, lo cerchiamo nella scena
                 if (tutorialInitializer == null)
                 {
-                    tutorialInitializer = FindObjectOfType<TutorialLevelInitializer>();
+                    tutorialInitializer = FindFirstObjectByType<TutorialLevelInitializer>();
                 }
                 
                 // Se ancora non lo troviamo, lo creiamo
@@ -154,7 +154,7 @@ namespace RunawayHeroes.Runtime.Levels
             if (loadMainMenuOnCompletion)
             {
                 // Controlla se il tutorial è completato (in un gioco reale, useremmo eventi)
-                var progressTracker = FindObjectOfType<ProgressTracker>();
+                var progressTracker = FindFirstObjectByType<ProgressTracker>();
                 if (progressTracker != null && progressTracker.IsTutorialCompleted())
                 {
                     LoadMainMenu();
