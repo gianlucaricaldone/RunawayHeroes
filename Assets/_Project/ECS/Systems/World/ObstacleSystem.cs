@@ -267,11 +267,13 @@ namespace RunawayHeroes.ECS.Systems.World
                 {
                     float fadeRatio = temporary.RemainingLifetime / temporary.FadeOutTime;
                     
-                    // Se ha un componente di rendering, aggiorna l'alpha
+                    // Se ha un componente di rendering, aggiorna l'alpha (trasparenza)
                     if (RenderLookup.HasComponent(entity))
                     {
                         var render = RenderLookup[entity];
-                        render.Alpha = fadeRatio;
+                        // Mantiene i colori RGB originali ma aggiorna l'alpha (trasparenza)
+                        // fadeRatio va da 1.0 (completamente visibile) a 0.0 (invisibile)
+                        render.Color = new float4(render.Color.x, render.Color.y, render.Color.z, fadeRatio);
                         ECB.SetComponent(sortKey, entity, render);
                     }
                 }

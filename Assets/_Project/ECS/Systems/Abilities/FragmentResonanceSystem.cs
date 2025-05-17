@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Burst;
+using Unity.Assertions;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Input;
@@ -17,6 +18,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     public partial struct FragmentResonanceSystem : ISystem
     {
         private EntityQuery _resonanceQuery;
+        private ComponentLookup<PlayerDataComponent> _playerDataLookup;
         
         public void OnCreate(ref SystemState state)
         {
@@ -25,9 +27,12 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             
             // Query per entità con il componente Risonanza
             _resonanceQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAllRW<FragmentResonanceComponent, FocusTimeComponent, HealthComponent>()
-                .WithAll<ResonanceInputComponent, TransformComponent>()
+                .WithAll<FragmentResonanceComponent, FocusTimeComponent, HealthComponent, ResonanceInputComponent, TransformComponent>()
+                .WithNone<Unity.Entities.Disabled>() // Esclude entità disabilitate
                 .Build(ref state);
+            
+            // Inizializza il ComponentLookup per accedere ai dati del personaggio
+            _playerDataLookup = state.GetComponentLookup<PlayerDataComponent>(true); // readonly
             
             // Richiede entità corrispondenti per eseguire l'aggiornamento
             state.RequireForUpdate(_resonanceQuery);
@@ -38,6 +43,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
         {
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter CommandBuffer;
+            [ReadOnly] public ComponentLookup<PlayerDataComponent> PlayerDataLookup;
             
             void Execute(
                 Entity entity,
@@ -92,7 +98,15 @@ namespace RunawayHeroes.ECS.Systems.Abilities
                             // 4. Applica bonus ambientali in base al personaggio e all'ambiente
                             // (in un sistema reale, otterremmo il tipo di mondo attuale dal livello)
                             WorldType currentWorld = WorldType.Urban; // Esempio
-                            EnvironmentalBonus bonus = resonance.GetEnvironmentalBonus(currentWorld);
+                            
+                            // Recupera il tipo di personaggio dall'entità del carattere attivo usando il lookup
+                            CharacterType characterType = CharacterType.Alex; // Default in caso di fallimento
+                            if (PlayerDataLookup.HasComponent(resonance.ActiveCharacter))
+                            {
+                                characterType = PlayerDataLookup[resonance.ActiveCharacter].Type;
+                            }
+                            
+                            EnvironmentalBonus bonus = resonance.GetEnvironmentalBonus(currentWorld, characterType);
                             
                             // 5. Applica bonus di Risonanza Amplificata se sbloccata
                             if (resonance.ResonanceLevel >= 2)
@@ -191,11 +205,15 @@ namespace RunawayHeroes.ECS.Systems.Abilities
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             
+            // Aggiorna il ComponentLookup per accedere ai dati più recenti
+            _playerDataLookup.Update(ref state);
+            
             // Elabora le richieste e lo stato della Risonanza
             state.Dependency = new FragmentResonanceJob
             {
                 DeltaTime = deltaTime,
-                CommandBuffer = commandBuffer
+                CommandBuffer = commandBuffer,
+                PlayerDataLookup = _playerDataLookup
             }.ScheduleParallel(state.Dependency);
         }
     }

@@ -88,6 +88,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             var fragmentInventoryLookup = SystemAPI.GetComponentLookup<FragmentInventoryComponent>(true);
             var keyInventoryLookup = SystemAPI.GetComponentLookup<KeyInventoryComponent>(true);
             var collectibleLookup = SystemAPI.GetComponentLookup<CollectibleComponent>(true);
+            var magnetizedLookup = SystemAPI.GetComponentLookup<MagnetizedTag>(true);
             var entityLookup = SystemAPI.GetEntityStorageInfoLookup();
             
             // 1. Aggiorna l'animazione dei collezionabili (rotazione, fluttuazione, ecc.)
@@ -114,6 +115,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     MagnetSources = magnetSources,
                     MagnetPositions = magnetPositions,
                     MagnetProperties = magnetProperties,
+                    MagnetizedLookup = magnetizedLookup,
                     ECB = ecb.AsParallelWriter()
                 }.ScheduleParallel(_collectiblesQuery, state.Dependency);
                 
@@ -211,6 +213,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             [ReadOnly] public NativeArray<Entity> MagnetSources;
             [ReadOnly] public NativeArray<TransformComponent> MagnetPositions;
             [ReadOnly] public NativeArray<MagnetSourceComponent> MagnetProperties;
+            [ReadOnly] public ComponentLookup<MagnetizedTag> MagnetizedLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
             
             [BurstCompile]
@@ -225,7 +228,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     return;
                 
                 // Se è già magnetizzato, non fa nulla (gestito da MoveMagnetizedCollectiblesJob)
-                if (SystemAPI.HasComponent<MagnetizedTag>(entity))
+                if (MagnetizedLookup.HasComponent(entity))
                     return;
                 
                 // Controlla ogni sorgente magnetica
