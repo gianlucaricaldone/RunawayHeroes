@@ -17,7 +17,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Monitora il completamento degli obiettivi e trigger eventi di progressione.
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    [BurstCompile]
+    // Non può utilizzare Burst a causa della creazione di array di EntityQuery[]
     public partial struct ProgressionSystem : ISystem
     {
         // Query per varie entità
@@ -55,7 +55,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             state.RequireAnyForUpdate(new EntityQuery[] { _tutorialLevelQuery, _tutorialProgressQuery });
         }
         
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             // Cleanup se necessario
@@ -64,7 +63,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Aggiorna il sistema di progressione
         /// </summary>
-        [BurstCompile]
+        // Non si può usare BurstCompile per via della creazione di array di EntityQuery[]
         public void OnUpdate(ref SystemState state)
         {
             // Inizializza se necessario
@@ -276,7 +275,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ProgressionSystem))]
-    [BurstCompile]
+    // Non può utilizzare Burst a causa di riferimenti a tipi managed
     public partial struct ObjectiveSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
@@ -285,13 +284,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             // Cleanup se necessario
         }
         
-        [BurstCompile]
+        // Non si può usare BurstCompile per via della creazione di array di ComponentType[] e l'uso di tipi managed
         public void OnUpdate(ref SystemState state)
         {
             // Processa eventi di completamento tutorial

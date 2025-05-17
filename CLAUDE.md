@@ -372,7 +372,7 @@ Burst Compiler non supporta:
 - Tipi di riferimento (classi) generici
 - Tipi gestiti (managed types) come MonoBehaviour, ScriptableObject o altre classi Unity
 - La classe `Unity.Entities.World` e molti altri tipi in Unity.Entities che sono classi anziché strutture
-- Array di tipi managed come `ComponentType[]` (anche se ComponentType è una struct, l'array stesso è managed)
+- Array di tipi managed come `ComponentType[]` o `EntityQueryDesc[]` (anche se ComponentType è una struct, l'array stesso è managed)
 - Reflection
 - Eccezioni a runtime
 - `dynamic` o `RTTI`
@@ -618,6 +618,36 @@ void PrepareJob()
            // ma evita la creazione di un array di ComponentType
            var difficultyQuery = EntityManager.CreateEntityQuery(typeof(WorldDifficultyConfigComponent));
        }
+   }
+   
+   // Esempio problematico: creazione di EntityQueryDesc con array in metodo Burst-compilato
+   [BurstCompile] // <-- Problematico!
+   public void OnUpdate(ref SystemState state)
+   {
+       // Errore: Creazione di EntityQueryDesc con array di ComponentType
+       var tempQuery = state.GetEntityQuery(new EntityQueryDesc{
+           All = new ComponentType[] { ComponentType.ReadOnly<ObstacleComponent>() },
+           Any = new ComponentType[] { 
+               ComponentType.ReadOnly<LavaTag>(), 
+               ComponentType.ReadOnly<IceObstacleTag>() 
+           },
+           None = new ComponentType[] { }
+       });
+   }
+   
+   // Soluzione: rimuovere BurstCompile dal metodo che crea EntityQueryDesc
+   // Non si può usare BurstCompile perché creiamo EntityQueryDesc[] (managed array)
+   public void OnUpdate(ref SystemState state)
+   {
+       // Questo codice è ancora non compatibile con Burst, quindi rimuoviamo [BurstCompile]
+       var tempQuery = state.GetEntityQuery(new EntityQueryDesc{
+           All = new ComponentType[] { ComponentType.ReadOnly<ObstacleComponent>() },
+           Any = new ComponentType[] { 
+               ComponentType.ReadOnly<LavaTag>(), 
+               ComponentType.ReadOnly<IceObstacleTag>() 
+           },
+           None = new ComponentType[] { }
+       });
    }
    ```
 

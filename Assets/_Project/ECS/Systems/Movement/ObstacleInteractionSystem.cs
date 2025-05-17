@@ -65,7 +65,7 @@ namespace RunawayHeroes.ECS.Systems.Movement
         {
         }
         
-        [BurstCompile]
+        // Non si può usare BurstCompile perché creiamo EntityQueryDesc[] (managed array)
         public void OnUpdate(ref SystemState state)
         {
             // Prepara il command buffer per le modifiche strutturali
@@ -80,7 +80,9 @@ namespace RunawayHeroes.ECS.Systems.Movement
             // Ottiene i componenti Obstacle se presenti
             NativeArray<ObstacleComponent> obstacleComponents;
             
-            // Verifica se la query contiene entità con ObstacleComponent usando IsEmpty su una query temporanea
+            // Utilizziamo un approccio alternativo per verificare se la query contiene entità con ObstacleComponent
+            // Nota: Questo codice non è compatibile con Burst a causa della creazione di array di ComponentType[]
+            // quindi abbiamo rimosso l'attributo [BurstCompile] dal metodo OnUpdate
             var tempQuery = state.GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[] { ComponentType.ReadOnly<ObstacleComponent>() },
                 Any = new ComponentType[] { 
