@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.World;
+using RunawayHeroes.Gameplay;
 
 namespace RunawayHeroes.Runtime.Levels
 {
@@ -64,47 +65,4 @@ namespace RunawayHeroes.Runtime.Levels
         public float obstacleSpacing;
     }
     
-    /// <summary>
-    /// Configurazione di un tipo di ostacolo per uno scenario tutorial
-    /// </summary>
-    [Serializable]
-    public struct ObstacleSetup
-    {
-        [Tooltip("Codice dell'ostacolo (es. U01, C03, ecc.)")]
-        public string obstacleCode;
-        
-        [Tooltip("Numero di ostacoli da generare")]
-        public int count;
-        
-        [Tooltip("Disposizione laterale (sinistra, centro, destra, casuale)")]
-        public ObstaclePlacement placement;
-        
-        [Tooltip("Permetti variazione dell'altezza")]
-        public bool randomizeHeight;
-        
-        [Tooltip("Range per la randomizzazione dell'altezza")]
-        public Vector2 heightRange;
-        
-        [Tooltip("Permetti variazione della scala")]
-        public bool randomizeScale;
-        
-        [Tooltip("Range per la randomizzazione della scala")]
-        public Vector2 scaleRange;
-        
-        [Tooltip("Offset iniziale lungo l'asse Z rispetto all'inizio dello scenario")]
-        public float startOffset;
-    }
-    
-    /// <summary>
-    /// Posizionamento laterale degli ostacoli
-    /// </summary>
-    [Serializable]
-    public enum ObstaclePlacement
-    {
-        Center,   // Al centro
-        Left,     // A sinistra
-        Right,    // A destra
-        Random,   // Posizione casuale
-        Pattern   // Pattern specifico (alternati, ecc.)
-    }
 }

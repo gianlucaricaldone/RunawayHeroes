@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: Sun May 11 00:21:34 CEST 2025
+# Generato il: Sat May 17 11:29:05 CEST 2025
 # Questo file contiene le definizioni di classi, interfacce, metodi pubblici/protetti, proprietà ed eventi.
 # Include anche variabili [SerializeField] e variabili protected/private esposte.
 
@@ -678,6 +678,10 @@ namespace RunawayHeroes.ECS.Systems.Movement.Group
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/FocusTimeUISystem.cs
 namespace RunawayHeroes.ECS.Systems.UI
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ObjectiveFeedbackSystem.cs
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceCharacterButton.cs
+    public class ResonanceCharacterButton : MonoBehaviour
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceMainButton.cs
+    public class ResonanceMainButton : MonoBehaviour
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceUISystem.cs
     partial class ResonanceUISystemGroup : ComponentSystemGroup
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/UIMessageSystem.cs
@@ -824,7 +828,6 @@ namespace RunawayHeroes.Runtime.Levels
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Levels/TutorialLevelSequence.cs
     public struct TutorialLevelData
     public struct TutorialScenario
-    public enum ObstaclePlacement
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Levels/TutorialManagerWindow.cs
     public class TutorialManagerWindow : MonoBehaviour
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Levels/TutorialScenario.cs
@@ -877,8 +880,11 @@ namespace RunawayHeroes.Runtime.UI
     public class TutorialMessagePanel : MonoBehaviour
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/UI/UITransitionManager.cs
     public class UITransitionManager : MonoBehaviour
-## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Utilities/ECSCompatibility/WorldCompatibility.cs
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Utilities/ECSCompatibility/SystemGroupExtensions.cs
 namespace RunawayHeroes.Utilities.ECSCompatibility
+    public static class SystemGroupExtensions
+    public static SystemState GetCheckedState(this ComponentSystemGroup systemGroup)
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Utilities/ECSCompatibility/WorldCompatibility.cs
     public static class RunawayWorldCompatibility
     public static World DefaultGameObjectInjectionWorld
     public static class RunawayWorldExtensions

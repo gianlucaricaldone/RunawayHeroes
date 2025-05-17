@@ -1,5 +1,5 @@
 Alberatura delle directory, file .cs, .png e .fbx a partire da: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets
-Generato il: Sun May 11 00:21:45 CEST 2025
+Generato il: Sat May 17 11:29:17 CEST 2025
 ----------------------------------------
             📁 Assets
               📁 Adaptive Performance
@@ -334,6 +334,8 @@ Generato il: Sun May 11 00:21:45 CEST 2025
                     📁 UI
                       📄 FocusTimeUISystem.cs
                       📄 ObjectiveFeedbackSystem.cs
+                      📄 ResonanceCharacterButton.cs
+                      📄 ResonanceMainButton.cs
                       📄 ResonanceUISystem.cs
                       📄 UIMessageSystem.cs
                     📁 World
@@ -414,6 +416,7 @@ Generato il: Sun May 11 00:21:45 CEST 2025
                     📄 UITransitionManager.cs
                 📁 Utilities
                   📁 ECSCompatibility
+                    📄 SystemGroupExtensions.cs
                     📄 WorldCompatibility.cs
                   📁 Extensions
                     📄 StringExtensions.cs

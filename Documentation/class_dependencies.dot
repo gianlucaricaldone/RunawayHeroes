@@ -77,8 +77,14 @@ digraph ClassDependencies {
   "System.IDisposable" -> "ProfilerScope" [arrowhead=empty, style=solid, label="extends"];
   "ResonanceUISystemGroup" [tooltip="File: ResonanceUISystem.cs"];
   "ComponentSystemGroup" -> "ResonanceUISystemGroup" [arrowhead=empty, style=solid, label="extends"];
-  "ResonanceUISystemGroup" -> "Entity" [style=dotted, label="uses"];
+  "ResonanceUISystemGroup" -> "ResonanceCharacterButton" [style=dotted, label="uses"];
+  "ResonanceUISystemGroup" -> "ResonanceMainButton" [style=dotted, label="uses"];
   "ResonanceUISystemGroup" -> "Transform" [style=dotted, label="uses"];
+  "ResonanceCharacterButton" [tooltip="File: ResonanceCharacterButton.cs"];
+  "MonoBehaviour" -> "ResonanceCharacterButton" [arrowhead=empty, style=solid, label="extends"];
+  "ResonanceCharacterButton" -> "Entity" [style=dotted, label="uses"];
+  "ResonanceMainButton" [tooltip="File: ResonanceMainButton.cs"];
+  "MonoBehaviour" -> "ResonanceMainButton" [arrowhead=empty, style=solid, label="extends"];
   "ObstacleSystemGroup" [tooltip="File: ObstacleSystemGroup.cs"];
   "ComponentSystemGroup" -> "ObstacleSystemGroup" [arrowhead=empty, style=solid, label="extends"];
   "StandardObstacleAuthoring" [tooltip="File: ObstacleAuthoringComponents.cs"];

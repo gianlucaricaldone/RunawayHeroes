@@ -67,24 +67,31 @@ namespace RunawayHeroes.ECS.Systems.Movement
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             
-            // Usa SystemAPI.Query invece di Entities.ForEach per maggiore flessibilità
-            // quando si lavora con API di Unity che non sono compatibili con Burst
-            foreach (var (entity, navigator, transform, physics) in 
-                    SystemAPI.Query<EntityRef<Entity>, RefRW<NavigatorComponent>, RefRO<TransformComponent>, RefRW<PhysicsComponent>>()
-                    .WithAll<NavigatorComponent>())
+            // Ottieni gli array di entità e componenti
+            var navEntities = _navigatorQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            var navComponents = _navigatorQuery.ToComponentDataArray<NavigatorComponent>(Unity.Collections.Allocator.Temp);
+            var transformComponents = _navigatorQuery.ToComponentDataArray<TransformComponent>(Unity.Collections.Allocator.Temp);
+            var physicsComponents = _navigatorQuery.ToComponentDataArray<PhysicsComponent>(Unity.Collections.Allocator.Temp);
+            
+            // Processa tutte le entità di navigazione
+            for (int i = 0; i < navEntities.Length; i++)
             {
-                if (navigator.ValueRO.HasDestination)
+                Entity entity = navEntities[i];
+                NavigatorComponent navigator = navComponents[i];
+                TransformComponent transform = transformComponents[i];
+                PhysicsComponent physics = physicsComponents[i];
+                if (navigator.HasDestination)
                 {
                     // Se il percorso è già stato calcolato
-                    if (navigator.ValueRO.PathStatus == PathStatus.Ready && navigator.ValueRO.PathPointCount > 0)
+                    if (navigator.PathStatus == PathStatus.Ready && navigator.PathPointCount > 0)
                     {
                         // Ottieni il prossimo punto target
-                        int currentPointIndex = navigator.ValueRO.CurrentPathIndex;
+                        int currentPointIndex = navigator.CurrentPathIndex;
                         
-                        if (currentPointIndex < navigator.ValueRO.PathPointCount)
+                        if (currentPointIndex < navigator.PathPointCount)
                         {
-                            float3 currentTarget = navigator.ValueRO.GetPathPoint(currentPointIndex);
-                            float3 directionToTarget = currentTarget - transform.ValueRO.Position;
+                            float3 currentTarget = navigator.GetPathPoint(currentPointIndex);
+                            float3 directionToTarget = currentTarget - transform.Position;
                             
                             // Ignora l'asse Y per movimento orizzontale
                             directionToTarget.y = 0;
@@ -93,28 +100,28 @@ namespace RunawayHeroes.ECS.Systems.Movement
                             float distanceToTarget = math.length(directionToTarget);
                             
                             // Se siamo abbastanza vicini al punto corrente, passa al prossimo
-                            if (distanceToTarget < navigator.ValueRO.WaypointReachedThreshold)
+                            if (distanceToTarget < navigator.WaypointReachedThreshold)
                             {
-                                navigator.ValueRW.CurrentPathIndex++;
+                                navigator.CurrentPathIndex++;
                                 
                                 // Se abbiamo raggiunto la destinazione finale
-                                if (navigator.ValueRW.CurrentPathIndex >= navigator.ValueRO.PathPointCount)
+                                if (navigator.CurrentPathIndex >= navigator.PathPointCount)
                                 {
                                     // Crea evento di destinazione raggiunta
                                     var destinationReachedEvent = commandBuffer.CreateEntity();
                                     commandBuffer.AddComponent(destinationReachedEvent, new DestinationReachedEvent
                                     {
-                                        NavigatorEntity = entity.Value,
-                                        FinalDestination = navigator.ValueRO.Destination,
-                                        ActualPosition = transform.ValueRO.Position
+                                        NavigatorEntity = entity,
+                                        FinalDestination = navigator.Destination,
+                                        ActualPosition = transform.Position
                                     });
                                     
                                     // Resetta la navigazione
-                                    navigator.ValueRW.HasDestination = false;
-                                    navigator.ValueRW.PathStatus = PathStatus.None;
+                                    navigator.HasDestination = false;
+                                    navigator.PathStatus = PathStatus.None;
                                     
                                     // Ferma gradualmente l'entità
-                                    physics.ValueRW.Velocity *= 0.8f;
+                                    physics.Velocity *= 0.8f;
                                 }
                             }
                             else
@@ -123,15 +130,15 @@ namespace RunawayHeroes.ECS.Systems.Movement
                                 float3 moveDirection = math.normalize(directionToTarget);
                                 
                                 // Smoothing del movimento (steering behavior semplificato)
-                                float3 targetVelocity = moveDirection * navigator.ValueRO.MovementSpeed;
-                                physics.ValueRW.Velocity = math.lerp(
-                                    physics.ValueRO.Velocity,
-                                    new float3(targetVelocity.x, physics.ValueRO.Velocity.y, targetVelocity.z),
-                                    deltaTime * navigator.ValueRO.SteeringSpeed
+                                float3 targetVelocity = moveDirection * navigator.MovementSpeed;
+                                physics.Velocity = math.lerp(
+                                    physics.Velocity,
+                                    new float3(targetVelocity.x, physics.Velocity.y, targetVelocity.z),
+                                    deltaTime * navigator.SteeringSpeed
                                 );
                                 
                                 // Aggiorna la rotazione per guardare nella direzione del movimento
-                                if (navigator.ValueRO.RotateTowardsTarget && math.lengthsq(moveDirection) > 0.01f)
+                                if (navigator.RotateTowardsTarget && math.lengthsq(moveDirection) > 0.01f)
                                 {
                                     float targetAngle = math.atan2(moveDirection.x, moveDirection.z);
                                     quaternion targetRotation = quaternion.RotateY(targetAngle);
@@ -144,21 +151,31 @@ namespace RunawayHeroes.ECS.Systems.Movement
                         }
                     }
                     // Se il percorso non è ancora stato calcolato, calcolalo
-                    else if (navigator.ValueRO.PathStatus == PathStatus.None || 
-                            navigator.ValueRO.PathStatus == PathStatus.Failed)
+                    else if (navigator.PathStatus == PathStatus.None || 
+                            navigator.PathStatus == PathStatus.Failed)
                     {
                         // Calcola un nuovo percorso utilizzando NavMesh di Unity
-                        CalculatePath(ref state, ref navigator.ValueRW, transform.ValueRO.Position);
+                        CalculatePath(ref state, ref navigator, transform.Position);
                     }
                     // Se il percorso è in fase di calcolo, aspetta
-                    else if (navigator.ValueRO.PathStatus == PathStatus.Calculating)
+                    else if (navigator.PathStatus == PathStatus.Calculating)
                     {
                         // In una implementazione reale, gestiremmo meglio async paths
                         // Ma per semplicità, assumiamo che il calcolo sia completato immediatamente
-                        navigator.ValueRW.PathStatus = PathStatus.Ready;
+                        navigator.PathStatus = PathStatus.Ready;
                     }
                 }
+                
+                // Aggiorna i componenti nell'EntityManager
+                state.EntityManager.SetComponentData(entity, navigator);
+                state.EntityManager.SetComponentData(entity, physics);
             }
+            
+            // Pulisci le risorse allocate
+            navEntities.Dispose();
+            navComponents.Dispose();
+            transformComponents.Dispose();
+            physicsComponents.Dispose();
         }
         
         #endregion

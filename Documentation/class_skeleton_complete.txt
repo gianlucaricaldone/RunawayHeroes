@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 11/05/2025 00:21:47
+# Generato il: 17/05/2025 11:29:18
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -1420,33 +1420,6 @@ namespace RunawayHeroes.Runtime.Levels
         public bool randomPlacement;
         public float obstacleSpacing;
     }
-     <summary>
-    /// Configurazione di un tipo di ostacolo per uno scenario tutorial
-    /// </summary>
-
-    public struct ObstacleSetup
-    {
-        public string obstacleCode;
-        public int count;
-        public ObstaclePlacement placement;
-        public bool randomizeHeight;
-        public Vector2 heightRange;
-        public bool randomizeScale;
-        public Vector2 scaleRange;
-        public float startOffset;
-    }
-     <summary>
-    /// Posizionamento laterale degli ostacoli
-    /// </summary>
-
-    public enum ObstaclePlacement
-    {
-        Center,
-        Left,
-        Right,
-        Random,
-        Pattern
-    }
 }
 
 
@@ -1723,6 +1696,28 @@ namespace RunawayHeroes.Utilities.ECSCompatibility
     public static class RunawayWorldExtensions
     {
         public static World DefaultGameObjectInjectionWorld { get; set; }
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Utilities/ECSCompatibility/SystemGroupExtensions.cs
+
+namespace RunawayHeroes.Utilities.ECSCompatibility
+{
+     <summary>
+    /// Classe di utilità che fornisce metodi di estensione per ComponentSystemGroup.
+    /// </summary>
+
+    public static class SystemGroupExtensions
+    {
+         <summary>
+        /// Metodo di estensione per ottenere lo stato del sistema (SystemState)
+        /// da un ComponentSystemGroup.
+        /// </summary>
+        /// <param name="systemGroup">Il gruppo di sistemi</param>
+        /// <returns>Lo stato del sistema</returns>
+
+        public static SystemState GetCheckedState(ComponentSystemGroup systemGroup);
     }
 }
 
@@ -6816,7 +6811,6 @@ namespace RunawayHeroes.ECS.Systems.UI
         private Text _resonanceLevelText;
         private Animator _menuAnimator;
         private bool _isMenuOpen;
-        private float _menuCloseTimer;
         private float _waveEffectTimer;
         private float _unlockEffectTimer;
         private EntityQuery _resonanceQuery;
@@ -6856,16 +6850,6 @@ namespace RunawayHeroes.ECS.Systems.UI
 
         private int GetActiveCharacterIndex(FragmentResonanceComponent resonance);
          <summary>
-        /// Attiva/disattiva il menu dei personaggi
-        /// </summary>
-
-        private void ToggleCharacterMenu();
-         <summary>
-        /// Gestisce la selezione di un personaggio
-        /// </summary>
-
-        private void OnCharacterSelected(int characterIndex);
-         <summary>
         /// Mostra l'effetto per lo sblocco di un nuovo personaggio
         /// </summary>
 
@@ -6874,6 +6858,68 @@ namespace RunawayHeroes.ECS.Systems.UI
     partial class ResonanceUISystemGroup : ComponentSystemGroup
     {
         public SystemState SystemState { ... }
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceCharacterButton.cs
+
+namespace RunawayHeroes.ECS.Systems.UI
+{
+     <summary>
+    /// Classe MonoBehaviour che gestisce il click sul pulsante di un personaggio.
+    /// Utilizzata per evitare il problema delle lambda in struct.
+    /// </summary>
+
+    public class ResonanceCharacterButton : MonoBehaviour
+    {
+        public int CharacterIndex;
+        public GameObject WaveEffect;
+        private Unity.Entities.World _world;
+        private void Start();
+         <summary>
+        /// Gestisce il click sul pulsante del personaggio
+        /// </summary>
+
+        public void OnButtonClick();
+    }
+     <summary>
+    /// Classe helper per accedere alla SystemState
+    /// </summary>
+
+    public partial class ResonanceUISystemGroup : ComponentSystemGroup
+    {
+        public SystemState SystemState { ... }
+    }
+}
+
+
+## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceMainButton.cs
+
+namespace RunawayHeroes.ECS.Systems.UI
+{
+     <summary>
+    /// Classe MonoBehaviour che gestisce il pulsante principale della risonanza.
+    /// Utilizzata per evitare il problema delle lambda in struct.
+    /// </summary>
+
+    public class ResonanceMainButton : MonoBehaviour
+    {
+        public GameObject CharacterMenu;
+        public Animator MenuAnimator;
+        public float MenuCloseTimer;
+        private bool _isMenuOpen;
+        private void Start();
+         <summary>
+        /// Update per gestire il timer di chiusura
+        /// </summary>
+
+        private void Update();
+         <summary>
+        /// Attiva/disattiva il menu dei personaggi
+        /// </summary>
+
+        public void ToggleCharacterMenu();
     }
 }
 

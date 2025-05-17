@@ -24,7 +24,7 @@ namespace RunawayHeroes.Utilities.ECSCompatibility
                 // Se non è stato impostato, restituisci il mondo predefinito
                 if (_defaultGameObjectInjectionWorld == null || !_defaultGameObjectInjectionWorld.IsCreated)
                 {
-                    _defaultGameObjectInjectionWorld = World.DefaultGameObjectInjectionWorld_Internal();
+                    _defaultGameObjectInjectionWorld = DefaultGameObjectInjectionWorld_Internal();
                 }
                 return _defaultGameObjectInjectionWorld;
             }

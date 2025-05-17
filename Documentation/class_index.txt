@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: Sun May 11 00:21:39 CEST 2025
+# Generato il: Sat May 17 11:29:10 CEST 2025
 
 partial class ObstacleSystemGroup : ComponentSystemGroup
 partial class ResonanceUISystemGroup : ComponentSystemGroup
@@ -41,6 +41,8 @@ public class PlayerBridge : MonoBehaviour
 public class PlayerBridgeBaker : Baker<PlayerBridge>
 public class PlayerController : MonoBehaviour
 public class ProgressTracker : MonoBehaviour
+public class ResonanceCharacterButton : MonoBehaviour
+public class ResonanceMainButton : MonoBehaviour
 public class ScenarioSetup
 public class ShopCategory
 public class ShopItem
@@ -93,7 +95,6 @@ public enum IssueType
 public enum MidBossType : byte
 public enum MovementAnimationState : byte
 public enum ObstacleCategory : byte
-public enum ObstaclePlacement
 public enum ObstaclePlacement : byte
 public enum ObstaclePreset
 public enum ObstacleType

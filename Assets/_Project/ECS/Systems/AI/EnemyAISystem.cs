@@ -78,8 +78,8 @@ namespace RunawayHeroes.ECS.Systems.AI
             
             if (!_playerQuery.IsEmpty)
             {
-                var playerTransforms = _playerQuery.ToComponentDataArray<TransformComponent>(Allocator.Temp);
-                playerPositions = new NativeArray<float3>(playerTransforms.Length, Allocator.TempJob);
+                var playerTransforms = _playerQuery.ToComponentDataArray<TransformComponent>(Unity.Collections.Allocator.Temp);
+                playerPositions = new NativeArray<float3>(playerTransforms.Length, Unity.Collections.Allocator.TempJob);
                 
                 for (int i = 0; i < playerTransforms.Length; i++)
                 {
@@ -90,17 +90,25 @@ namespace RunawayHeroes.ECS.Systems.AI
             }
             else
             {
-                playerPositions = new NativeArray<float3>(0, Allocator.TempJob);
+                playerPositions = new NativeArray<float3>(0, Unity.Collections.Allocator.TempJob);
             }
             
+            // Ottieni gli array di entità e componenti
+            var aiEntities = _aiAgentsQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            var aiComponents = _aiAgentsQuery.ToComponentDataArray<EnemyAIComponent>(Unity.Collections.Allocator.Temp);
+            var transformComponents = _aiAgentsQuery.ToComponentDataArray<TransformComponent>(Unity.Collections.Allocator.Temp);
+            var physicsComponents = _aiAgentsQuery.ToComponentDataArray<PhysicsComponent>(Unity.Collections.Allocator.Temp);
+            
             // Processa tutti gli agenti IA
-            // Utilizziamo SystemAPI.Query per maggiore flessibilità
-            foreach (var (entity, ai, transform, physics) in 
-                    SystemAPI.Query<EntityRef<Entity>, RefRW<EnemyAIComponent>, RefRO<TransformComponent>, RefRW<PhysicsComponent>>()
-                    .WithAll<EnemyAIComponent>())
+            for (int i = 0; i < aiEntities.Length; i++)
             {
+                Entity entity = aiEntities[i];
+                EnemyAIComponent ai = aiComponents[i];
+                TransformComponent transform = transformComponents[i];
+                PhysicsComponent physics = physicsComponents[i];
+                
                 // Aggiorna i timer di IA
-                UpdateAITimers(ref ai.ValueRW, deltaTime);
+                UpdateAITimers(ref ai, deltaTime);
                 
                 // Calcola la distanza dal giocatore più vicino
                 float distanceToNearestPlayer = float.MaxValue;
@@ -108,55 +116,63 @@ namespace RunawayHeroes.ECS.Systems.AI
                 
                 if (playerPositions.Length > 0)
                 {
-                    for (int i = 0; i < playerPositions.Length; i++)
+                    for (int j = 0; j < playerPositions.Length; j++)
                     {
-                        float distance = math.distance(transform.ValueRO.Position, playerPositions[i]);
+                        float distance = math.distance(transform.Position, playerPositions[j]);
                         if (distance < distanceToNearestPlayer)
                         {
                             distanceToNearestPlayer = distance;
-                            nearestPlayerPosition = playerPositions[i];
+                            nearestPlayerPosition = playerPositions[j];
                         }
                     }
                 }
                 
                 // Controlla se c'è un cambio di stato necessario
                 AIState nextState = DetermineNextState(
-                    ai.ValueRO, 
+                    ai,
                     distanceToNearestPlayer,
-                    transform.ValueRO.Position,
+                    transform.Position,
                     nearestPlayerPosition
                 );
                 
                 // Se è necessario cambiare stato
-                if (nextState != ai.ValueRO.CurrentState)
+                if (nextState != ai.CurrentState)
                 {
                     // Gestisci l'uscita dallo stato corrente
-                    ExitState(entity.Value, ai.ValueRO.CurrentState, ref state, commandBuffer);
+                    ExitState(entity, ai.CurrentState, ref state, commandBuffer);
                     
                     // Aggiorna lo stato
-                    ai.ValueRW.CurrentState = nextState;
-                    ai.ValueRW.StateEnterTime = elapsedTime;
+                    ai.CurrentState = nextState;
+                    ai.StateEnterTime = elapsedTime;
                     
                     // Gestisci l'entrata nel nuovo stato
-                    EnterState(entity.Value, nextState, ref state, commandBuffer, nearestPlayerPosition);
+                    EnterState(entity, nextState, ref state, commandBuffer, nearestPlayerPosition);
                 }
                 
                 // Aggiorna il comportamento in base allo stato corrente
                 UpdateState(
-                    entity.Value, 
-                    ai.ValueRO, 
-                    transform.ValueRO.Position,
-                    ref physics.ValueRW,
-                    nearestPlayerPosition, 
+                    entity,
+                    ai,
+                    transform.Position,
+                    ref physics,
+                    nearestPlayerPosition,
                     distanceToNearestPlayer,
                     deltaTime,
                     ref state,
                     commandBuffer
                 );
+                
+                // Aggiorna i componenti nell'EntityManager
+                state.EntityManager.SetComponentData(entity, ai);
+                state.EntityManager.SetComponentData(entity, physics);
             }
             
             // Pulisci le risorse allocate
             playerPositions.Dispose();
+            aiEntities.Dispose();
+            aiComponents.Dispose();
+            transformComponents.Dispose();
+            physicsComponents.Dispose();
         }
         
         /// <summary>
