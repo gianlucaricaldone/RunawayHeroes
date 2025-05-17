@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: Sat May 17 11:29:05 CEST 2025
+# Generato il: Sat May 17 12:15:06 CEST 2025
 # Questo file contiene le definizioni di classi, interfacce, metodi pubblici/protetti, proprietà ed eventi.
 # Include anche variabili [SerializeField] e variabili protected/private esposte.
 

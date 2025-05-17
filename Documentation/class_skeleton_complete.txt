@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 17/05/2025 11:29:18
+# Generato il: 17/05/2025 12:15:18
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -5487,7 +5487,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
     {
         public Entity TargetEntity;
         public float DamageAmount;
-        public byte DamageType;
+        public RunawayHeroes.ECS.Systems.Movement.DamageType DamageType;
         public bool IsCritical;
         public float3 HitPoint;
     }
@@ -6603,7 +6603,7 @@ namespace RunawayHeroes.ECS.Events
         public Entity TargetEntity;
         public Entity SourceEntity;
         public float DamageAmount;
-        public RunawayHeroes.ECS.Systems.Movement.DamageType DamageType;
+        public DamageType DamageType;
         public bool IsCritical;
         public float3 ImpactPosition;
         public byte StatusEffectType;
