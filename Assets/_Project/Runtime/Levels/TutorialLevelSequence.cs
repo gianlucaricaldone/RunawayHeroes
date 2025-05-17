@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using RunawayHeroes.ECS.Components.World;
-using RunawayHeroes.Gameplay;
+using RunawayHeroes.Gameplay; // Importa il namespace con la definizione corretta di TutorialScenario
 
 namespace RunawayHeroes.Runtime.Levels
 {
@@ -34,35 +34,6 @@ namespace RunawayHeroes.Runtime.Levels
         public float enemyDensity;
         
         [Tooltip("Scenari di insegnamento specifici")]
-        public TutorialScenario[] scenarios;
+        public TutorialScenario[] scenarios; // Usa TutorialScenario da RunawayHeroes.Gameplay
     }
-    
-    /// <summary>
-    /// Definisce uno scenario di insegnamento specifico in un livello tutorial
-    /// </summary>
-    [Serializable]
-    public struct TutorialScenario
-    {
-        [Tooltip("Nome dello scenario")]
-        public string name;
-        
-        [Tooltip("Distanza dall'inizio in metri")]
-        public float distanceFromStart;
-        
-        [Tooltip("Tipi di ostacoli da usare per l'insegnamento")]
-        public ObstacleSetup[] obstacles;
-        
-        [Tooltip("Messaggio di istruzione da mostrare")]
-        public string instructionMessage;
-        
-        [Tooltip("Durata del messaggio in secondi")]
-        public float messageDuration;
-        
-        [Tooltip("Posizionamento in sequenza o casuale")]
-        public bool randomPlacement;
-        
-        [Tooltip("Distanza tra gli ostacoli")]
-        public float obstacleSpacing;
-    }
-    
 }

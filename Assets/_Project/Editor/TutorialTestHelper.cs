@@ -3,9 +3,12 @@ using UnityEditor;
 using RunawayHeroes.Runtime.Levels;
 using RunawayHeroes.ECS.Components.World;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using RunawayHeroes.Utilities.ECSCompatibility;
 using NUnit.Framework.Constraints;
 using RunawayHeroes.ECS.Components.Gameplay;
+using System; // Necessario per Exception
 
 namespace RunawayHeroes.Editor
 {
@@ -148,30 +151,76 @@ namespace RunawayHeroes.Editor
             
             // Trova o crea la configurazione di difficoltà
             var difficultyQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
-            if (!difficultyQuery.HasAnyEntities())
+            if (difficultyQuery.IsEmpty) // Usa IsEmpty invece di HasAnyEntities() per DOTS 1.3.14
             {
                 var configEntity = entityManager.CreateEntity(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
                 entityManager.SetComponentData(configEntity, WorldDifficultyConfigComponent.CreateDefault());
             }
             
-            // Ottieni il sistema di generazione livelli
-            var levelGenSystem = world.GetOrCreateSystemManaged<RunawayHeroes.ECS.Systems.World.LevelGenerationSystem>();
-            if (levelGenSystem == null)
+            // Ottieni il sistema di generazione livelli (per DOTS 1.3.14)
+            // Nota: LevelGenerationSystem è una struct che implementa ISystem, quindi non possiamo
+            // usare GetOrCreateSystemManaged che funziona solo con ComponentSystemBase
+            var levelGenSystemHandle = world.GetExistingSystem<RunawayHeroes.ECS.Systems.World.LevelGenerationSystem>();
+            if (levelGenSystemHandle == SystemHandle.Null)
             {
-                Debug.LogError("LevelGenerationSystem not found!");
+                levelGenSystemHandle = world.CreateSystem<RunawayHeroes.ECS.Systems.World.LevelGenerationSystem>();
+            }
+            
+            if (levelGenSystemHandle == SystemHandle.Null)
+            {
+                Debug.LogError("LevelGenerationSystem not found and could not be created!");
                 return;
             }
             
             // Genera il livello tutorial
             int actualSeed = _tutorialInitializer.seed == 0 ? 
-                             Random.Range(1, 99999) : _tutorialInitializer.seed;
+                             UnityEngine.Random.Range(1, 99999) : _tutorialInitializer.seed;
                              
-            var tutorialLevelEntity = levelGenSystem.CreateRunnerLevelRequest(
-                _tutorialInitializer.tutorialTheme, 
-                _tutorialInitializer.tutorialLength,
-                actualSeed,
-                true // tutorial flag
-            );
+            // In DOTS 1.3.14, per i sistemi ISystem, dobbiamo usare un approccio alternativo
+            // che non richiede codice unsafe
+            var tutorialLevelEntity = default(Entity);
+            
+            try
+            {
+                // Invece di usare direttamente il sistema, creiamo manualmente l'entità di richiesta
+                // con i componenti necessari per la generazione del livello
+                tutorialLevelEntity = entityManager.CreateEntity();
+                
+                // Aggiungi il componente RunnerLevelConfigComponent con i parametri richiesti
+                entityManager.AddComponentData(tutorialLevelEntity, new RunnerLevelConfigComponent
+                {
+                    LevelLength = _tutorialInitializer.tutorialLength,
+                    MinSegments = _tutorialInitializer.tutorialLength / 50,  // Un segmento ogni 50 metri circa
+                    MaxSegments = _tutorialInitializer.tutorialLength / 20,  // Un segmento ogni 20 metri circa
+                    Seed = actualSeed,
+                    StartDifficulty = 1,  // Bassa difficoltà per tutorial
+                    EndDifficulty = 3,    // Difficoltà moderata alla fine
+                    DifficultyRamp = 0.3f,
+                    ObstacleDensity = 0.5f,
+                    EnemyDensity = 0.3f,
+                    CollectibleDensity = 0.8f, // Più collezionabili nel tutorial
+                    PrimaryTheme = _tutorialInitializer.tutorialTheme,
+                    ThemeBlendFactor = 0.1f, // Minore mescolamento nel tutorial
+                    GenerateCheckpoints = true,
+                    DynamicDifficulty = false, // Disabilita difficoltà dinamica nel tutorial
+                    SegmentVarietyFactor = 0.4f // Minore varietà nel tutorial
+                });
+                
+                // Aggiungi il componente transform
+                entityManager.AddComponentData(tutorialLevelEntity, new LocalTransform
+                {
+                    Position = float3.zero,
+                    Rotation = quaternion.identity,
+                    Scale = 1.0f
+                });
+                
+                Debug.Log($"Created tutorial level request entity with seed {actualSeed}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error creating tutorial level: {ex.Message}\n{ex.StackTrace}");
+                return;
+            }
             
             // Aggiungi un tag tutorial
             entityManager.AddComponentData(tutorialLevelEntity, new TutorialLevelTag());
@@ -199,7 +248,7 @@ namespace RunawayHeroes.Editor
             
             // Cerca le entità con TutorialLevelTag
             var tutorialQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TutorialLevelTag>());
-            if (tutorialQuery.HasAnyEntities())
+            if (!tutorialQuery.IsEmpty) // Usa !IsEmpty invece di HasAnyEntities() per DOTS 1.3.14
             {
                 entityManager.DestroyEntity(tutorialQuery);
                 Debug.Log("Tutorial level cleared!");

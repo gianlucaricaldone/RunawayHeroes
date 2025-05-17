@@ -54,6 +54,10 @@ namespace RunawayHeroes.Gameplay
         [Tooltip("Distanza tra gli ostacoli (metri)")]
         public float obstacleSpacing;
         
+        // Questi campi sono obsoleti e sostituiti dall'array obstacles
+        // public string obstacleCode;
+        // public int obstacleCount;
+        
         /// <summary>
         /// Crea uno scenario di base per il tutorial
         /// </summary>
@@ -63,7 +67,7 @@ namespace RunawayHeroes.Gameplay
             {
                 name = name,
                 distanceFromStart = distance,
-                obstacles = new ObstacleSetup[] 
+                obstacles = new ObstacleSetup[]
                 {
                     ObstacleSetup.CreateDefault()
                 },

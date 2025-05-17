@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Collections;
 
 namespace RunawayHeroes.ECS.Systems.World
 {
@@ -14,7 +15,18 @@ namespace RunawayHeroes.ECS.Systems.World
             base.OnCreate();
             
             // Aggiungi i sistemi al gruppo
-            World.GetOrCreateSystemManaged<ThematicObstacleGenerationSystem>().AddSystemToUpdateList(this);
+            // Nota: ThematicObstacleGenerationSystem è un ISystem (struct), non un ComponentSystemBase
+            // In DOTS 1.3.14, dobbiamo aggiungere i sistemi ISystem in modo diverso
+            
+            // Ottieni un SystemHandle per il sistema ThematicObstacleGenerationSystem
+            var thematicObstacleSystemHandle = World.GetExistingSystem<ThematicObstacleGenerationSystem>();
+            if (thematicObstacleSystemHandle == SystemHandle.Null)
+            {
+                thematicObstacleSystemHandle = World.CreateSystem<ThematicObstacleGenerationSystem>();
+            }
+            
+            // Aggiungi il sistema al gruppo tramite il suo SystemHandle
+            AddSystemToUpdateList(thematicObstacleSystemHandle);
         }
     }
 }

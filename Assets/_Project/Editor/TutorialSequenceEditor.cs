@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using RunawayHeroes.Runtime.Levels;
 using RunawayHeroes.ECS.Components.World;
+using RunawayHeroes.Gameplay; // Contiene la definizione corretta di TutorialScenario
 
 namespace RunawayHeroes.Editor
 {
@@ -187,10 +188,22 @@ namespace RunawayHeroes.Editor
                                     {
                                         name = $"Scenario {j + 1}",
                                         distanceFromStart = j * 50f,
-                                        obstacleCode = "U01",
-                                        obstacleCount = 3,
+                                        // Inizializza l'array obstacles invece di usare obstacleCode e obstacleCount
+                                        obstacles = new ObstacleSetup[] 
+                                        {
+                                            new ObstacleSetup
+                                            {
+                                                obstacleCode = "U01",
+                                                count = 3,
+                                                placement = ObstaclePlacement.Center,
+                                                randomizeHeight = false,
+                                                randomizeScale = false
+                                            }
+                                        },
                                         instructionMessage = "New instruction",
-                                        messageDuration = 5.0f
+                                        messageDuration = 5.0f,
+                                        randomPlacement = false,
+                                        obstacleSpacing = 8f
                                     };
                                 }
                             }

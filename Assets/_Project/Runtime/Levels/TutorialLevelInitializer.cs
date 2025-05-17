@@ -8,7 +8,7 @@ using Unity.Collections;
 using RunawayHeroes.ECS.Components.Gameplay;
 using RunawayHeroes.ECS.Components.Core;
 using RunawayHeroes.ECS.Systems.Gameplay;
-using RunawayHeroes.Gameplay;
+using RunawayHeroes.Gameplay; // Contiene la definizione corretta di TutorialScenario
 using RunawayHeroes.ECS.Components.World;
 using RunawayHeroes.ECS.Components.World.Obstacles;
 using RunawayHeroes.Utilities.ECSCompatibility;
