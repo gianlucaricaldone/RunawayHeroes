@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: Sat May 17 12:15:06 CEST 2025
+# Generato il: Sat May 17 16:52:47 CEST 2025
 # Questo file contiene le definizioni di classi, interfacce, metodi pubblici/protetti, proprietà ed eventi.
 # Include anche variabili [SerializeField] e variabili protected/private esposte.
 
@@ -685,6 +685,10 @@ namespace RunawayHeroes.ECS.Systems.UI
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/ResonanceUISystem.cs
     partial class ResonanceUISystemGroup : ComponentSystemGroup
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/UI/UIMessageSystem.cs
+    protected override void OnCreate()
+    protected override void OnDestroy()
+    protected override void OnStartRunning()
+    protected override void OnUpdate()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/CheckpointSystem.cs
 namespace RunawayHeroes.ECS.Systems.World
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/DynamicSegmentLoadingSystem.cs
@@ -710,7 +714,6 @@ namespace RunawayHeroes.ECS.Systems.World
     public struct ObstacleDamageEffectEvent : IComponentData
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/ObstacleSystemGroup.cs
     partial class ObstacleSystemGroup : ComponentSystemGroup
-    protected override void OnCreate()
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/RandomLevelGenerationSystem.cs
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/ECS/Systems/World/RoomConnectionSystem.cs
     public struct RequiresConnectionTag : IComponentData { }
@@ -826,11 +829,12 @@ namespace RunawayHeroes.Runtime.Levels
     public class TutorialLevelInitializer : MonoBehaviour
     public class TutorialLevelSequence
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Levels/TutorialLevelSequence.cs
+namespace con
     public struct TutorialLevelData
-    public struct TutorialScenario
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Levels/TutorialManagerWindow.cs
     public class TutorialManagerWindow : MonoBehaviour
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Runtime/Levels/TutorialScenario.cs
+    public struct TutorialScenario
     public static TutorialScenario CreateBasic(string name, float distance, string message)
     public static TutorialScenario CreateJumpScenario(float distance)
     public static TutorialScenario CreateSlideScenario(float distance)

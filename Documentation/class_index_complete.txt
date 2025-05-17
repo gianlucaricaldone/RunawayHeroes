@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 17/05/2025 12:15:18
+# Generato il: 17/05/2025 16:53:00
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
@@ -67,7 +67,6 @@ public class TutorialSceneSetup
 public class CameraFollow
 public class ProgressTracker
 public struct TutorialLevelData
-public struct TutorialScenario
 public class PlayerController
 public struct PlayerMovementComponent
 public partial class TransformSystemGroup
@@ -346,7 +345,7 @@ public struct EnemyDefeatedEvent
 public struct CheckpointReachedEvent
 public struct DamageEvent
 public partial struct FocusTimeUISystem
-public partial struct UIMessageSystem
+public partial class UIMessageSystem
 public partial struct ObjectiveFeedbackSystem
 public partial struct ResonanceUISystem
 partial class ResonanceUISystemGroup

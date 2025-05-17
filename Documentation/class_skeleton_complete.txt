@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 17/05/2025 12:15:18
+# Generato il: 17/05/2025 16:53:00
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -1405,20 +1405,6 @@ namespace RunawayHeroes.Runtime.Levels
         public float obstacleDensity;
         public float enemyDensity;
         public TutorialScenario[] scenarios;
-    }
-     <summary>
-    /// Definisce uno scenario di insegnamento specifico in un livello tutorial
-    /// </summary>
-
-    public struct TutorialScenario
-    {
-        public string name;
-        public float distanceFromStart;
-        public ObstacleSetup[] obstacles;
-        public string instructionMessage;
-        public float messageDuration;
-        public bool randomPlacement;
-        public float obstacleSpacing;
     }
 }
 
@@ -6663,9 +6649,13 @@ namespace RunawayHeroes.ECS.Systems.UI
      <summary>
     /// Sistema che gestisce la visualizzazione dei messaggi UI nel gioco,
     /// inclusi i messaggi di istruzione del tutorial, notifiche e avvisi.
+    /// 
+    /// Nota: Questo è implementato come ComponentSystemBase perché contiene
+    /// riferimenti a oggetti Unity come TextMeshProUGUI e GameObject che non possono
+    /// essere serializzati correttamente in sistemi ECS puri (ISystem)
     /// </summary>
 
-    public partial struct UIMessageSystem : ISystem
+    public partial class UIMessageSystem : SystemBase
     {
         private GameObject _messagePanel;
         private TextMeshProUGUI _messageText;
@@ -6678,45 +6668,45 @@ namespace RunawayHeroes.ECS.Systems.UI
         private Queue<Entity> _messageQueue;
         private const float FADE_IN_TIME;
         private const float FADE_OUT_TIME;
-        public void OnCreate(SystemState state);
-        public void OnDestroy(SystemState state);
-        public void OnStartRunning(SystemState state);
+        protected override void OnCreate();
+        protected override void OnDestroy();
+        protected override void OnStartRunning();
          <summary>
         /// Crea dinamicamente un pannello per i messaggi se non esiste già
         /// </summary>
 
         private void CreateMessagePanelDynamically(Transform parentTransform);
-        public void OnUpdate(SystemState state);
+        protected override void OnUpdate();
          <summary>
         /// Processa nuovi messaggi aggiunti al sistema
         /// </summary>
 
-        private void ProcessNewMessages(SystemState state);
+        private void ProcessNewMessages();
          <summary>
         /// Aggiorna lo stato del messaggio correntemente visualizzato
         /// </summary>
 
-        private void UpdateCurrentMessage(SystemState state);
+        private void UpdateCurrentMessage();
          <summary>
         /// Mostra il prossimo messaggio nella coda
         /// </summary>
 
-        private void ShowNextMessage(SystemState state);
+        private void ShowNextMessage();
          <summary>
         /// Processa eventi relativi ai messaggi
         /// </summary>
 
-        private void ProcessMessageEvents(SystemState state);
+        private void ProcessMessageEvents();
          <summary>
         /// Mostra il pannello dei messaggi con animazione
         /// </summary>
 
-        private void ShowMessage(SystemState state);
+        private void ShowMessage();
          <summary>
         /// Nasconde il pannello dei messaggi con animazione
         /// </summary>
 
-        private void HideCurrentMessage(SystemState state);
+        private void HideCurrentMessage();
         private System.Collections.IEnumerator FadeIn(CanvasGroup canvasGroup);
         private System.Collections.IEnumerator FadeOut(CanvasGroup canvasGroup, GameObject panel);
         private System.Collections.IEnumerator DisableAfterDelay(GameObject obj, float delay);
@@ -8636,8 +8626,10 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     public partial struct FragmentResonanceSystem : ISystem
     {
         private EntityQuery _resonanceQuery;
+        private ComponentLookup<PlayerDataComponent> _playerDataLookup;
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public ComponentLookup<PlayerDataComponent> PlayerDataLookup;
         public void OnCreate(SystemState state);
          void Execute(Entity entity, int chunkIndexInQuery, FragmentResonanceComponent resonance, FocusTimeComponent focusTime, HealthComponent health, ResonanceInputComponent input, TransformComponent transform);
         public void OnUpdate(SystemState state);
@@ -8646,6 +8638,7 @@ namespace RunawayHeroes.ECS.Systems.Abilities
     {
         public float DeltaTime;
         public EntityCommandBuffer.ParallelWriter CommandBuffer;
+        public ComponentLookup<PlayerDataComponent> PlayerDataLookup;
          void Execute(Entity entity, int chunkIndexInQuery, FragmentResonanceComponent resonance, FocusTimeComponent focusTime, HealthComponent health, ResonanceInputComponent input, TransformComponent transform);
     }
 }
@@ -10948,6 +10941,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public NativeArray<Entity> MagnetSources;
         public NativeArray<TransformComponent> MagnetPositions;
         public NativeArray<MagnetSourceComponent> MagnetProperties;
+        public ComponentLookup<MagnetizedTag> MagnetizedLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
         public float DeltaTime;
         public ComponentLookup<TransformComponent> TransformLookup;
@@ -11000,6 +10994,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         public NativeArray<Entity> MagnetSources;
         public NativeArray<TransformComponent> MagnetPositions;
         public NativeArray<MagnetSourceComponent> MagnetProperties;
+        public ComponentLookup<MagnetizedTag> MagnetizedLookup;
         public EntityCommandBuffer.ParallelWriter ECB;
         private void Execute(Entity entity, int sortKey, TransformComponent transform, CollectibleComponent collectible);
     }
