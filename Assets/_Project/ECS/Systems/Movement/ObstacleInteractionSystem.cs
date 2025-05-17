@@ -79,7 +79,20 @@ namespace RunawayHeroes.ECS.Systems.Movement
             
             // Ottiene i componenti Obstacle se presenti
             NativeArray<ObstacleComponent> obstacleComponents;
-            bool hasObstacleComponent = _specialObstaclesQuery.HasComponent<ObstacleComponent>();
+            
+            // Verifica se la query contiene entità con ObstacleComponent usando IsEmpty su una query temporanea
+            var tempQuery = state.GetEntityQuery(new EntityQueryDesc{
+                All = new ComponentType[] { ComponentType.ReadOnly<ObstacleComponent>() },
+                Any = new ComponentType[] { 
+                    ComponentType.ReadOnly<LavaTag>(), 
+                    ComponentType.ReadOnly<IceObstacleTag>(), 
+                    ComponentType.ReadOnly<DigitalBarrierTag>(), 
+                    ComponentType.ReadOnly<UnderwaterTag>() 
+                },
+                None = new ComponentType[] { }
+            });
+            
+            bool hasObstacleComponent = !tempQuery.IsEmpty;
             
             if (hasObstacleComponent)
             {

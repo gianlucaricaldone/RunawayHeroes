@@ -188,7 +188,9 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 {
                     float pulseFactor = 1.0f + math.sin(collectible.AnimationTime * collectible.PulseFrequency) * 
                                        collectible.PulseAmplitude;
-                    transform.Scale = collectible.OriginalScale * pulseFactor;
+                    // Calcola la scala media per mantenere la proporzione dell'effetto visivo
+                    float avgScale = math.length(collectible.OriginalScale) / math.sqrt(3.0f);
+                    transform.Scale = avgScale * pulseFactor;
                 }
                 
                 // Effetto bagliore/luce (impostato solo come flag, l'effetto visivo è gestito dal rendering)

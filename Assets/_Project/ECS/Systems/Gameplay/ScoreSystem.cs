@@ -160,7 +160,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 in ScoreUpdatedEvent scoreEvent)
             {
                 // Controlla se l'entità giocatore esiste ancora
-                if (!EntityLookup.Exists(scoreEvent.PlayerEntity, out _))
+                if (!EntityLookup.Exists(scoreEvent.PlayerEntity))
                 {
                     ECB.DestroyEntity(sortKey, entity);
                     return;
@@ -169,35 +169,21 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 // Aggiorna la combo del giocatore se il punteggio proviene da azioni di combattimento
                 if (scoreEvent.ScoreSource <= 3) // 0-3 sono tipi di punteggio da combattimento
                 {
-                    // Ottieni o inizializza lo stato della combo
-                    ComboState comboState;
-                    if (!PlayerCombos.TryGetValue(scoreEvent.PlayerEntity, out comboState))
+                    // Inizializza lo stato della combo
+                    // In un job parallelo non possiamo leggere dalla ParallelWriter,
+                    // quindi inizializziamo sempre un nuovo stato indipendentemente
+                    // dalle combo esistenti
+                    ComboState comboState = new ComboState
                     {
-                        comboState = new ComboState
-                        {
-                            CurrentCombo = 0,
-                            ComboMultiplier = 1.0f,
-                            ComboTimeRemaining = 0,
-                            ScoreFromCurrentCombo = 0
-                        };
-                    }
-                    
-                    // Incrementa la combo
-                    comboState.CurrentCombo++;
-                    
-                    // Aggiorna il moltiplicatore di combo (esempio: 1.0 + 0.1 * combo fino a un massimo di 3.0)
-                    comboState.ComboMultiplier = math.min(1.0f + 0.1f * comboState.CurrentCombo, 3.0f);
-                    
-                    // Resetta il timer della combo
-                    comboState.ComboTimeRemaining = 5.0f; // 5 secondi di tempo per continuare la combo
-                    
-                    // Somma il punteggio guadagnato con questa combo
-                    comboState.ScoreFromCurrentCombo += scoreEvent.ScoreIncrement * comboState.ComboMultiplier;
+                        CurrentCombo = 1, // Inizia da 1 poiché questa è una nuova hit
+                        ComboMultiplier = 1.1f, // 1.0 + 0.1 * 1
+                        ComboTimeRemaining = 5.0f, // 5 secondi di tempo per continuare la combo
+                        ScoreFromCurrentCombo = scoreEvent.ScoreIncrement * 1.1f // Punteggio con il moltiplicatore iniziale
+                    };
                     
                     // Aggiorna lo stato della combo per questo giocatore
-                    // Utilizziamo TryAdd con ParallelWriter per aggiornare in modo thread-safe
-                    // Nota: In un contesto parallelo, potrebbe sovrascrivere altri aggiornamenti
-                    // ma è accettabile in questo scenario di gioco
+                    // In una versione più completa, si potrebbe memorizzare lo stato in un buffer
+                    // o in una componente allegata all'entità giocatore, per preservare la progressione della combo
                     PlayerCombos.TryAdd(scoreEvent.PlayerEntity, comboState);
                     
                     // Milestone combo: ogni 10 hit crea un evento speciale
