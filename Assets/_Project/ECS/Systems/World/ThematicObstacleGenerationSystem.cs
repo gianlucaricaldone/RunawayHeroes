@@ -27,7 +27,7 @@ namespace RunawayHeroes.ECS.Systems.World
         public void OnCreate(ref SystemState state)
         {
             // Inizializza il generatore di numeri casuali
-            _seed = (uint)DateTime.Now.Ticks;
+            _seed = (uint)SystemAPI.Time.ElapsedTime * 1000000 + 123456u; // Usa SystemAPI.Time.ElapsedTime per compatibilità con Burst
             _random = Unity.Mathematics.Random.CreateFromIndex(_seed);
             
             // Configura la query per segmenti che richiedono generazione

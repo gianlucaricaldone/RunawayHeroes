@@ -24,7 +24,7 @@ namespace RunawayHeroes.ECS.Systems.World
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Inizializza il generatore di numeri casuali
-            _seed = (uint)DateTime.Now.Ticks;
+            _seed = (uint)SystemAPI.Time.ElapsedTime * 1000000 + 654321u; // Usa SystemAPI.Time.ElapsedTime per compatibilità con Burst
             
             // Configura query per le stanze non ancora popolate
             _roomQuery = new EntityQueryBuilder(Allocator.Temp)

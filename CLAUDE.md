@@ -349,6 +349,42 @@ public class CharacterAuthoring : MonoBehaviour, IConvertGameObjectToEntity
 - Tutorial interni ECS
 - Sessioni di formazione periodiche
 
+## 11. NOTE SPECIFICHE PER BURST COMPILER
+
+### Timestamp in sistemi Burst-compatibili
+
+Per generare timestamp all'interno di sistemi Burst-compatibili, occorre usare la seguente tecnica:
+
+```csharp
+// NON USARE: Non compatibile con Burst Compiler
+// long timestamp = DateTime.Now.Ticks;
+
+// USARE INVECE: Approccio compatibile con Burst Compiler
+long timestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000);
+```
+
+Questo convertirà il tempo trascorso dall'avvio in un formato simile al formato ticks di DateTime.Now, moltiplicandolo per 10,000,000 (numero di ticks in un secondo).
+
+### Tipi non supportati da Burst
+
+Burst Compiler non supporta:
+- `System.DateTime` e tipi simili dal namespace System
+- Tipi di riferimento (classi) generici
+- Reflection
+- Eccezioni a runtime
+- `dynamic` o `RTTI`
+
+Quando si definisce un sistema con l'attributo `[BurstCompile]`, assicurarsi che:
+1. Tutti i tipi di dati utilizzati siano blittable o struct semplici
+2. Non si utilizzi reflection o codice dinamico
+3. Non si utilizzino API di Unity non supportate da Burst (come MonoBehaviour, GameObject, ecc.)
+
+### Attributi utili
+
+- `[BurstCompile]`: Applica compilazione Burst a un job o sistema
+- `[BurstDiscard]`: Esclude una sezione di codice dalla compilazione Burst
+- `[NativeDisableParallelForRestriction]`: Consente accesso in parallelo a una NativeContainer
+
 ---
 
 Per il documento completo di standard ECS, fare riferimento a:

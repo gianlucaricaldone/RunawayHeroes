@@ -13,9 +13,13 @@ namespace RunawayHeroes.ECS.Systems.UI
     /// <summary>
     /// Sistema che gestisce la visualizzazione dei messaggi UI nel gioco,
     /// inclusi i messaggi di istruzione del tutorial, notifiche e avvisi.
+    /// 
+    /// Nota: Questo è implementato come ComponentSystemBase perché contiene
+    /// riferimenti a oggetti Unity come TextMeshProUGUI e GameObject che non possono
+    /// essere serializzati correttamente in sistemi ECS puri (ISystem)
     /// </summary>
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    public partial struct UIMessageSystem : ISystem
+    public partial class UIMessageSystem : SystemBase
     {
         // Riferimenti UI
         private GameObject _messagePanel;
@@ -36,7 +40,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         private const float FADE_IN_TIME = 0.5f;
         private const float FADE_OUT_TIME = 0.4f;
         
-        public void OnCreate(ref SystemState state)
+        protected override void OnCreate()
         {
             // Inizializza i valori che normalmente sarebbero inizializzati in-line
             _messageTypeColors = new Color[]
@@ -52,17 +56,18 @@ namespace RunawayHeroes.ECS.Systems.UI
             _messageQueue = new Queue<Entity>();
             
             // Richiedi singleton per il command buffer
-            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             // Non è necessario un RequireForUpdate aggiuntivo poiché questo sistema dovrebbe
             // essere sempre attivo per gestire potenziali messaggi
         }
         
-        public void OnDestroy(ref SystemState state)
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
         }
         
-        public void OnStartRunning(ref SystemState state)
+        protected override void OnStartRunning()
         {
             // Cerca il panel dei messaggi tramite UIManager
             if (UIManager.Instance != null && UIManager.Instance.IsPanelActive("GameHUD"))
@@ -138,41 +143,42 @@ namespace RunawayHeroes.ECS.Systems.UI
             _messagePanel.SetActive(false);
         }
         
-        public void OnUpdate(ref SystemState state)
+        protected override void OnUpdate()
         {
             // Verifica se ci sono nuovi messaggi da mostrare
-            ProcessNewMessages(ref state);
+            ProcessNewMessages();
             
             // Gestione del messaggio corrente
             if (_isMessageVisible && _currentMessageEntity != Entity.Null)
             {
-                UpdateCurrentMessage(ref state);
+                UpdateCurrentMessage();
             }
             // Passa al messaggio successivo se disponibile e nessun messaggio è attivo
             else if (!_isMessageVisible && _messageQueue.Count > 0 && _currentMessageEntity == Entity.Null)
             {
-                ShowNextMessage(ref state);
+                ShowNextMessage();
             }
             
             // Processa gli eventi di visualizzazione messaggi
-            ProcessMessageEvents(ref state);
+            ProcessMessageEvents();
         }
         
         /// <summary>
         /// Processa nuovi messaggi aggiunti al sistema
         /// </summary>
-        private void ProcessNewMessages(ref SystemState state)
+        private void ProcessNewMessages()
         {
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecbSingleton = GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
             // Raccogli i nuovi messaggi e li metti in coda
-            // Utilizzo di EntityQueryBuilder per la query di entità
-            var queryBuilder = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<UIMessageComponent, QueuedMessageTag>()
-                .Build(ref state);
+            // Utilizzo di EntityQuery per la query di entità
+            var messageQuery = GetEntityQuery(
+                ComponentType.ReadOnly<UIMessageComponent>(),
+                ComponentType.ReadOnly<QueuedMessageTag>()
+            );
             
-            var entities = queryBuilder.ToEntityArray(Allocator.Temp);
+            var entities = messageQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
@@ -194,26 +200,26 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Aggiorna lo stato del messaggio correntemente visualizzato
         /// </summary>
-        private void UpdateCurrentMessage(ref SystemState state)
+        private void UpdateCurrentMessage()
         {
-            // Accedi al deltaTime dalla state passata come parametro
+            // Accedi al deltaTime
             var deltaTime = SystemAPI.Time.DeltaTime;
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecbSingleton = GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
             
-            if (state.EntityManager.Exists(_currentMessageEntity) && 
-                state.EntityManager.HasComponent<UIMessageComponent>(_currentMessageEntity))
+            if (EntityManager.Exists(_currentMessageEntity) && 
+                EntityManager.HasComponent<UIMessageComponent>(_currentMessageEntity))
             {
-                var message = state.EntityManager.GetComponentData<UIMessageComponent>(_currentMessageEntity);
+                var message = EntityManager.GetComponentData<UIMessageComponent>(_currentMessageEntity);
                 
                 // Aggiorna il timer del messaggio
-                message.RemainingTime -= (float)deltaTime;
-                state.EntityManager.SetComponentData(_currentMessageEntity, message);
+                message.RemainingTime -= deltaTime;
+                EntityManager.SetComponentData(_currentMessageEntity, message);
                 
                 // Se il tempo è scaduto e il messaggio non è persistente, nascondilo
                 if (message.RemainingTime <= 0 && !message.IsPersistent)
                 {
-                    HideCurrentMessage(state);
+                    HideCurrentMessage();
                     
                     // Genera un evento di nascondiglio messaggio
                     Entity hideEvent = commandBuffer.CreateEntity();
@@ -231,7 +237,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             else
             {
                 // Se l'entità non esiste più, puliamo lo stato
-                HideCurrentMessage(state);
+                HideCurrentMessage();
                 _currentMessageEntity = Entity.Null;
             }
         }
@@ -239,19 +245,19 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Mostra il prossimo messaggio nella coda
         /// </summary>
-        private void ShowNextMessage(ref SystemState state)
+        private void ShowNextMessage()
         {
             if (_messageQueue.Count > 0)
             {
                 _currentMessageEntity = _messageQueue.Dequeue();
                 
-                if (state.EntityManager.Exists(_currentMessageEntity) && 
-                    state.EntityManager.HasComponent<UIMessageComponent>(_currentMessageEntity))
+                if (EntityManager.Exists(_currentMessageEntity) && 
+                    EntityManager.HasComponent<UIMessageComponent>(_currentMessageEntity))
                 {
-                    var message = state.EntityManager.GetComponentData<UIMessageComponent>(_currentMessageEntity);
+                    var message = EntityManager.GetComponentData<UIMessageComponent>(_currentMessageEntity);
                     
                     // Aggiungi tag per indicare che il messaggio è attivo
-                    state.EntityManager.AddComponent<ActiveMessageTag>(_currentMessageEntity);
+                    EntityManager.AddComponent<ActiveMessageTag>(_currentMessageEntity);
                     
                     // Configura l'UI
                     if (_messageText != null)
@@ -265,15 +271,15 @@ namespace RunawayHeroes.ECS.Systems.UI
                     }
                     
                     // Mostra il messaggio con animazione
-                    ShowMessage(state);
+                    ShowMessage();
                     
                     // Inizializza il timer
                     message.RemainingTime = message.Duration;
-                    state.EntityManager.SetComponentData(_currentMessageEntity, message);
+                    EntityManager.SetComponentData(_currentMessageEntity, message);
                     
                     // Genera evento di visualizzazione
-                    var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-                    var commandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+                    var ecbSingleton = GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+                    var commandBuffer = ecbSingleton.CreateCommandBuffer(World.Unmanaged);
                     Entity showEvent = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent(showEvent, new MessageShowEvent
                     {
@@ -290,13 +296,11 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Processa eventi relativi ai messaggi
         /// </summary>
-        private void ProcessMessageEvents(ref SystemState state)
+        private void ProcessMessageEvents()
         {
             // Rimuovi entità eventi dopo l'elaborazione
             // Query per MessageShowEvent
-            var showEventQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<MessageShowEvent>()
-                .Build(ref state);
+            var showEventQuery = GetEntityQuery(ComponentType.ReadOnly<MessageShowEvent>());
             var showEntities = showEventQuery.ToEntityArray(Allocator.Temp);
             
             try
@@ -304,7 +308,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                 foreach (var entity in showEntities)
                 {
                     // L'evento è già stato gestito nel metodo ShowNextMessage
-                    state.EntityManager.DestroyEntity(entity);
+                    EntityManager.DestroyEntity(entity);
                 }
             }
             finally
@@ -313,9 +317,7 @@ namespace RunawayHeroes.ECS.Systems.UI
             }
             
             // Query per MessageHideEvent
-            var hideEventQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<MessageHideEvent>()
-                .Build(ref state);
+            var hideEventQuery = GetEntityQuery(ComponentType.ReadOnly<MessageHideEvent>());
             var hideEntities = hideEventQuery.ToEntityArray(Allocator.Temp);
             
             try
@@ -323,7 +325,7 @@ namespace RunawayHeroes.ECS.Systems.UI
                 foreach (var entity in hideEntities)
                 {
                     // L'evento è già stato gestito nel metodo UpdateCurrentMessage
-                    state.EntityManager.DestroyEntity(entity);
+                    EntityManager.DestroyEntity(entity);
                 }
             }
             finally
@@ -335,7 +337,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Mostra il pannello dei messaggi con animazione
         /// </summary>
-        private void ShowMessage(SystemState state)
+        private void ShowMessage()
         {
             if (_messagePanel != null)
             {
@@ -373,7 +375,7 @@ namespace RunawayHeroes.ECS.Systems.UI
         /// <summary>
         /// Nasconde il pannello dei messaggi con animazione
         /// </summary>
-        private void HideCurrentMessage(SystemState state)
+        private void HideCurrentMessage()
         {
             if (_messagePanel != null)
             {

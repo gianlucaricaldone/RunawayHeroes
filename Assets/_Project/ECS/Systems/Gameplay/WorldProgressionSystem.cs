@@ -154,7 +154,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         if (playerProgress.HighestUnlockedWorld < 1)
                         {
                             playerProgress.HighestUnlockedWorld = 1;
-                            playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                            playerProgress.LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                             
                             state.EntityManager.SetComponentData(playerProgressEntity, playerProgress);
                             
@@ -276,7 +276,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     }
                     
                     // Aggiorna timestamp
-                    playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                    playerProgress.LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                     
                     // Salva progressione globale
                     state.EntityManager.SetComponentData(playerProgressEntity, playerProgress);
@@ -363,7 +363,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             
             if (needsUpdate)
             {
-                playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                playerProgress.LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                 state.EntityManager.SetComponentData(playerProgressEntity, playerProgress);
             }
         }
@@ -392,7 +392,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     TotalBonusObjectivesCompleted = 0,
                     UnlockedCharactersMask = 1, // Solo Alex sbloccato
                     CurrentActiveCharacter = 0, // Alex attivo
-                    LastUpdatedTimestamp = DateTime.Now.Ticks
+                    LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000) // Timestamp compatibile con Burst
                 });
                 
                 Debug.Log("Creata nuova entità per la progressione globale del giocatore");

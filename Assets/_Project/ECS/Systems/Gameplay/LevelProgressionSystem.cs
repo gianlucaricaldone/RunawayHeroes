@@ -206,7 +206,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     levelProgress.IsCompleted = true;
                     levelProgress.BestCompletionTime = isFirstCompletion ? completionTime : Math.Min(levelProgress.BestCompletionTime, completionTime);
                     levelProgress.AttemptCount++;
-                    levelProgress.LastPlayedTimestamp = DateTime.Now.Ticks;
+                    levelProgress.LastPlayedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                     
                     // Aggiorna con dati di collezionabili e obiettivi bonus
                     if (completionEvent.BonusObjectiveCompleted || _bonusObjectiveCompleted)
@@ -410,7 +410,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 
                 // Incrementa counter obiettivi bonus
                 playerProgress.TotalBonusObjectivesCompleted++;
-                playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                playerProgress.LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                 
                 entityManager.SetComponentData(playerProgressEntity, playerProgress);
             }
@@ -552,7 +552,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             
             if (needsUpdate)
             {
-                playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                playerProgress.LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                 entityManager.SetComponentData(playerProgressEntity, playerProgress);
             }
         }
@@ -582,7 +582,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     TotalBonusObjectivesCompleted = 0,
                     UnlockedCharactersMask = 1, // Solo Alex sbloccato
                     CurrentActiveCharacter = 0, // Alex attivo
-                    LastUpdatedTimestamp = DateTime.Now.Ticks
+                    LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000) // Timestamp compatibile con Burst
                 });
                 
                 Debug.Log("Creata nuova entità per la progressione globale del giocatore");
@@ -633,7 +633,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     BestCompletionTime = float.MaxValue,
                     AttemptCount = 0,
                     TreasuresFound = 0,
-                    LastPlayedTimestamp = DateTime.Now.Ticks
+                    LastPlayedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000) // Timestamp compatibile con Burst
                 });
                 
                 Debug.Log($"Creata nuova entità per la progressione del livello: Mondo {worldIndex}, Livello {levelIndex}");

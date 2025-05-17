@@ -158,7 +158,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         playerProgress.CompletedTutorialCount = tutorialProgress.CompletedTutorialCount;
                         playerProgress.HighestUnlockedTutorial = tutorialProgress.HighestUnlockedTutorial;
                         playerProgress.TutorialsCompleted = tutorialProgress.AllTutorialsCompleted;
-                        playerProgress.LastUpdatedTimestamp = DateTime.Now.Ticks;
+                        playerProgress.LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000); // Timestamp compatibile con Burst
                         
                         SystemAPI.SetComponent(playerProgressEntity, playerProgress);
                     }
@@ -273,7 +273,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                     TotalBonusObjectivesCompleted = 0,
                     UnlockedCharactersMask = 1, // Solo Alex sbloccato
                     CurrentActiveCharacter = 0, // Alex attivo
-                    LastUpdatedTimestamp = DateTime.Now.Ticks
+                    LastUpdatedTimestamp = (long)(SystemAPI.Time.ElapsedTime * 10000000) // Timestamp compatibile con Burst
                 });
                 
                 Debug.Log("Creata nuova entità per la progressione globale del giocatore");
