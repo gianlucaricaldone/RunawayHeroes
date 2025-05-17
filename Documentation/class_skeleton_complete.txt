@@ -1,5 +1,5 @@
 # Runaway Heroes - Skeleton delle Classi
-# Generato il: 17/05/2025 16:53:00
+# Generato il: 17/05/2025 18:42:16
 # Questo file contiene definizioni complete di classi, inclusi attributi, campi, proprietà, metodi ed eventi.
 
 ## File: /Users/gianlucaricaldone/Progetti/RunawayHeroes/Assets/_Project/Authoring/ObstacleAuthoringComponents.cs
@@ -8477,6 +8477,7 @@ namespace RunawayHeroes.ECS.Systems.World
     }
      <summary>
     /// Job per elaborare le richieste di generazione livello
+    /// Nota: Non possiamo usare [BurstCompile] perché accediamo a EntityManager (tipo gestito)
     /// </summary>
 
     public partial struct ProcessRunnerLevelRequestsJob : IJobEntity
@@ -10069,7 +10070,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         private bool _initializationComplete;
         private Unity.Entities.World _world;
         private int[] _worldCharacterMapping;
-        private string[] _worldNames;
+        private FixedString128Bytes[] _worldNames;
         private const int TOTAL_WORLDS;
          <summary>
         /// Inizializza il sistema
@@ -10136,12 +10137,12 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// Ottiene il nome di un frammento in base all'indice
         /// </summary>
 
-        private string GetFragmentName(int fragmentIndex);
+        private FixedString128Bytes GetFragmentName(int fragmentIndex);
          <summary>
         /// Ottiene il nome di un personaggio in base all'indice
         /// </summary>
 
-        private string GetCharacterName(int characterIndex);
+        private FixedString128Bytes GetCharacterName(int characterIndex);
     }
 }
 

@@ -1,5 +1,5 @@
 # Runaway Heroes - Indice delle Classi
-# Generato il: 17/05/2025 16:53:00
+# Generato il: 17/05/2025 18:42:16
 
 public abstract class BaseObstacleAuthoring
 public enum ObstaclePreset
