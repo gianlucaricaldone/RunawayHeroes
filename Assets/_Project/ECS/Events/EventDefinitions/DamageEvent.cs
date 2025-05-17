@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using RunawayHeroes.ECS.Systems.Movement;
 
 namespace RunawayHeroes.ECS.Events
 {
@@ -16,7 +17,7 @@ namespace RunawayHeroes.ECS.Events
         
         // Dati del danno
         public float DamageAmount;        // Quantità di danno base
-        public RunawayHeroes.ECS.Systems.Movement.DamageType DamageType; // Tipo di danno (fisico, elementale, ecc.)
+        public DamageType DamageType; // Tipo di danno (fisico, elementale, ecc.)
         public bool IsCritical;           // Se è un colpo critico
         
         // Dati di impatto

@@ -65,7 +65,7 @@ namespace RunawayHeroes.ECS.Systems.World
             bool hasDifficultyConfig = false;
             
             var difficultyQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
-            if (difficultyQuery.HasAnyEntities())
+            if (!difficultyQuery.IsEmpty)
             {
                 difficultyConfig = difficultyQuery.GetSingleton<WorldDifficultyConfigComponent>();
                 hasDifficultyConfig = true;

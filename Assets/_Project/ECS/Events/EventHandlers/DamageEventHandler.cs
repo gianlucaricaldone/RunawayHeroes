@@ -184,7 +184,7 @@ namespace RunawayHeroes.ECS.Events.Handlers
     {
         public Entity TargetEntity;    // Entità che ha subito danno
         public float DamageAmount;     // Quantità di danno
-        public byte DamageType;        // Tipo di danno
+        public RunawayHeroes.ECS.Systems.Movement.DamageType DamageType;  // Tipo di danno (uniformato con DamageEvent)
         public bool IsCritical;        // Se è un colpo critico
         public float3 HitPoint;        // Punto di impatto
     }
