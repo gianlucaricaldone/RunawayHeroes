@@ -18,7 +18,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// Si occupa dell'apprendimento delle meccaniche di base e dello sblocco sequenziale dei tutorial.
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    [BurstCompile]
+    // Non può utilizzare Burst a causa di riferimenti a tipi managed
     public partial struct TutorialProgressionSystem : ISystem
     {
         // Query per varie entità
@@ -30,7 +30,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         // Stato
         private bool _initializationComplete;
         
-        // Riferimenti Tutorial
+        // Riferimenti Tutorial - Tipo managed, non compatibile con Burst
         private RunawayHeroes.Runtime.Levels.TutorialLevelInitializer _tutorialManager;
         private int _totalAvailableTutorials;
         
@@ -68,7 +68,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             state.RequireAnyForUpdate(new EntityQuery[] { _tutorialLevelQuery, _tutorialProgressQuery });
         }
         
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             // Cleanup se necessario
@@ -87,7 +86,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Aggiorna il sistema di progressione tutorial
         /// </summary>
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Inizializza se necessario

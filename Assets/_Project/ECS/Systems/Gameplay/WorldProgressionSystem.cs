@@ -17,7 +17,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(TutorialProgressionSystem))]
-    [BurstCompile]
+    // Non può utilizzare Burst a causa del riferimento a World (tipo managed)
     public partial struct WorldProgressionSystem : ISystem
     {
         // Query per varie entità
@@ -28,14 +28,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         // Stato
         private bool _initializationComplete;
         
-        // Reference to World
+        // Reference to World (tipo managed, non compatibile con Burst)
         private Unity.Entities.World _world;
         
         // Mapping dei personaggi sbloccabili per ogni mondo
         private int[] _worldCharacterMapping;
         
         // Nomi dei mondi
-        private string[] _worldNames;
+        private FixedString128Bytes[] _worldNames;
         
         // Costanti
         private const int TOTAL_WORLDS = 6;
@@ -61,15 +61,15 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             };
             
             // Inizializza array dei nomi dei mondi
-            _worldNames = new string[]
+            _worldNames = new FixedString128Bytes[]
             {
-                "Tutorial",
-                "Città in Caos",
-                "Foresta Primordiale",
-                "Tundra Eterna",
-                "Inferno di Lava",
-                "Abissi Inesplorati",
-                "Realtà Virtuale"
+                new FixedString128Bytes("Tutorial"),
+                new FixedString128Bytes("Città in Caos"),
+                new FixedString128Bytes("Foresta Primordiale"),
+                new FixedString128Bytes("Tundra Eterna"),
+                new FixedString128Bytes("Inferno di Lava"),
+                new FixedString128Bytes("Abissi Inesplorati"),
+                new FixedString128Bytes("Realtà Virtuale")
             };
             
             // Inizializza query per la progressione globale
@@ -89,7 +89,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
             state.RequireForUpdate(_worldProgressionQuery);
         }
         
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             // Cleanup se necessario
@@ -98,7 +97,6 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Aggiorna il sistema di progressione dei mondi
         /// </summary>
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Inizializza se necessario
@@ -164,7 +162,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             {
                                 UnlockType = 1, // Mondo
                                 UnlockedItemIndex = 1, // Città in Caos
-                                UnlockedItemName = new FixedString64Bytes(_worldNames[1])
+                                UnlockedItemName = new FixedString64Bytes(_worldNames[1].ToString())
                             });
                             
                             // Crea un messaggio UI per lo sblocco
@@ -236,7 +234,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                         {
                             UnlockType = 1, // Mondo
                             UnlockedItemIndex = nextWorldIndex,
-                            UnlockedItemName = new FixedString64Bytes(_worldNames[nextWorldIndex])
+                            UnlockedItemName = new FixedString64Bytes(_worldNames[nextWorldIndex].ToString())
                         });
                         
                         // Crea un messaggio UI per lo sblocco
@@ -264,7 +262,7 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                             {
                                 UnlockType = 3, // Personaggio
                                 UnlockedItemIndex = characterToUnlock,
-                                UnlockedItemName = new FixedString64Bytes(GetCharacterName(characterToUnlock))
+                                UnlockedItemName = new FixedString64Bytes(GetCharacterName(characterToUnlock).ToString())
                             });
                             
                             // Crea messaggio UI per lo sblocco personaggio
@@ -498,11 +496,13 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
                 
             Entity messageEntity = commandBuffer.CreateEntity();
             
-            string message = $"Nuovo Mondo Sbloccato: {_worldNames[worldIndex]}!";
+            var message = new FixedString128Bytes("Nuovo Mondo Sbloccato: ");
+            message.Append(_worldNames[worldIndex]);
+            message.Append(new FixedString128Bytes("!"));
                 
             commandBuffer.AddComponent(messageEntity, new UIMessageComponent
             {
-                Message = new FixedString128Bytes(message),
+                Message = message,
                 Duration = 6.0f,
                 RemainingTime = 6.0f,
                 MessageType = 1, // Notifica (verde)
@@ -523,12 +523,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             Entity messageEntity = commandBuffer.CreateEntity();
             
-            string fragmentName = GetFragmentName(fragmentIndex);
-            string message = $"Frammento dell'Equilibrio Raccolto: {fragmentName}!";
+            var fragmentName = GetFragmentName(fragmentIndex);
+            var message = new FixedString128Bytes("Frammento dell'Equilibrio Raccolto: ");
+            message.Append(fragmentName);
+            message.Append(new FixedString128Bytes("!"));
                 
             commandBuffer.AddComponent(messageEntity, new UIMessageComponent
             {
-                Message = new FixedString128Bytes(message),
+                Message = message,
                 Duration = 5.0f,
                 RemainingTime = 5.0f,
                 MessageType = 1, // Notifica (verde)
@@ -549,12 +551,14 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         {
             Entity messageEntity = commandBuffer.CreateEntity();
             
-            string characterName = GetCharacterName(characterIndex);
-            string message = $"Nuovo Eroe Sbloccato: {characterName}!";
+            var characterName = GetCharacterName(characterIndex);
+            var message = new FixedString128Bytes("Nuovo Eroe Sbloccato: ");
+            message.Append(characterName);
+            message.Append(new FixedString128Bytes("!"));
                 
             commandBuffer.AddComponent(messageEntity, new UIMessageComponent
             {
-                Message = new FixedString128Bytes(message),
+                Message = message,
                 Duration = 5.0f,
                 RemainingTime = 5.0f,
                 MessageType = 1, // Notifica (verde)
@@ -580,43 +584,43 @@ namespace RunawayHeroes.ECS.Systems.Gameplay
         /// <summary>
         /// Ottiene il nome di un frammento in base all'indice
         /// </summary>
-        private string GetFragmentName(int fragmentIndex)
+        private FixedString128Bytes GetFragmentName(int fragmentIndex)
         {
-            string[] fragmentNames = new string[]
+            FixedString128Bytes[] fragmentNames = new FixedString128Bytes[]
             {
-                "Frammento Urbano",
-                "Frammento della Natura",
-                "Frammento Glaciale",
-                "Frammento Igneo",
-                "Frammento Abissale",
-                "Frammento Digitale"
+                new FixedString128Bytes("Frammento Urbano"),
+                new FixedString128Bytes("Frammento della Natura"),
+                new FixedString128Bytes("Frammento Glaciale"),
+                new FixedString128Bytes("Frammento Igneo"),
+                new FixedString128Bytes("Frammento Abissale"),
+                new FixedString128Bytes("Frammento Digitale")
             };
             
             if (fragmentIndex >= 0 && fragmentIndex < fragmentNames.Length)
                 return fragmentNames[fragmentIndex];
                 
-            return "Frammento Sconosciuto";
+            return new FixedString128Bytes("Frammento Sconosciuto");
         }
         
         /// <summary>
         /// Ottiene il nome di un personaggio in base all'indice
         /// </summary>
-        private string GetCharacterName(int characterIndex)
+        private FixedString128Bytes GetCharacterName(int characterIndex)
         {
-            string[] characterNames = new string[]
+            FixedString128Bytes[] characterNames = new FixedString128Bytes[]
             {
-                "Alex",
-                "Maya",
-                "Kai",
-                "Ember",
-                "Marina",
-                "Neo"
+                new FixedString128Bytes("Alex"),
+                new FixedString128Bytes("Maya"),
+                new FixedString128Bytes("Kai"),
+                new FixedString128Bytes("Ember"),
+                new FixedString128Bytes("Marina"),
+                new FixedString128Bytes("Neo")
             };
             
             if (characterIndex >= 0 && characterIndex < characterNames.Length)
                 return characterNames[characterIndex];
                 
-            return "Eroe Sconosciuto";
+            return new FixedString128Bytes("Eroe Sconosciuto");
         }
     }
 }

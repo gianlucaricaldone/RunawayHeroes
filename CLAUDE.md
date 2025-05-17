@@ -370,6 +370,9 @@ Questo convertirà il tempo trascorso dall'avvio in un formato simile al formato
 Burst Compiler non supporta:
 - `System.DateTime` e tipi simili dal namespace System
 - Tipi di riferimento (classi) generici
+- Tipi gestiti (managed types) come MonoBehaviour, ScriptableObject o altre classi Unity
+- La classe `Unity.Entities.World` e molti altri tipi in Unity.Entities che sono classi anziché strutture
+- Array di tipi managed come `ComponentType[]` (anche se ComponentType è una struct, l'array stesso è managed)
 - Reflection
 - Eccezioni a runtime
 - `dynamic` o `RTTI`
@@ -378,12 +381,245 @@ Quando si definisce un sistema con l'attributo `[BurstCompile]`, assicurarsi che
 1. Tutti i tipi di dati utilizzati siano blittable o struct semplici
 2. Non si utilizzi reflection o codice dinamico
 3. Non si utilizzino API di Unity non supportate da Burst (come MonoBehaviour, GameObject, ecc.)
+4. Non si dichiarino campi di tipo classe (reference type/managed type) all'interno del sistema
 
 ### Attributi utili
 
 - `[BurstCompile]`: Applica compilazione Burst a un job o sistema
 - `[BurstDiscard]`: Esclude una sezione di codice dalla compilazione Burst
 - `[NativeDisableParallelForRestriction]`: Consente accesso in parallelo a una NativeContainer
+
+### Gestire tipi gestiti con Burst Compiler
+
+Quando è necessario utilizzare tipi gestiti (managed types) in un sistema che si desidera ottimizzare con Burst, ci sono diversi approcci:
+
+1. **Rimuovere l'attributo `[BurstCompile]`**: Se il sistema richiede estensivamente tipi gestiti, potrebbe essere meglio rimuovere completamente Burst.
+
+   ```csharp
+   // Esempio reale: TutorialProgressionSystem che utilizza tipi gestiti, senza Burst
+   // [BurstCompile] <-- Rimosso per consentire l'uso di tipi gestiti
+   public partial struct TutorialProgressionSystem : ISystem
+   {
+       // Riferimenti a tipi gestiti - incompatibili con Burst
+       private RunawayHeroes.Runtime.Levels.TutorialLevelInitializer _tutorialManager;
+       private int _totalAvailableTutorials;
+       
+       public void OnStartRunning(ref SystemState state)
+       {
+           // Questo metodo accede a un tipo gestito (MonoBehaviour)
+           _tutorialManager = UnityEngine.Object.FindFirstObjectByType<RunawayHeroes.Runtime.Levels.TutorialLevelInitializer>();
+           if (_tutorialManager != null && _tutorialManager.tutorialSequence != null)
+           {
+               _totalAvailableTutorials = _tutorialManager.tutorialSequence.Length;
+           }
+       }
+       
+       // Implementazione...
+   }
+   ```
+
+   ```csharp
+   // Esempio reale: WorldProgressionSystem che utilizza World (tipo managed)
+   // [BurstCompile] <-- Rimosso per consentire l'uso di World (tipo managed)
+   public partial struct WorldProgressionSystem : ISystem
+   {
+       // Reference to World (tipo managed, non compatibile con Burst)
+       private Unity.Entities.World _world;
+       
+       public void OnCreate(ref SystemState state)
+       {
+           // Salva riferimento al World corrente
+           _world = state.World;
+       }
+       
+       // In un metodo utilizziamo questo riferimento
+       private Entity GetOrCreateWorldProgressionEntity(int worldIndex, ref SystemState state)
+       {
+           // ...
+           
+           if (worldEntity == Entity.Null)
+           {
+               // Recupera SystemState utilizzando _world (riferimento managed)
+               var systemState = _world.Unmanaged.GetExistingSystemState<WorldProgressionSystem>();
+               // ...
+           }
+           
+           // ...
+       }
+   }
+   ```
+
+2. **Utilizzare componenti singleton**: Spostare i riferimenti gestiti in singleton IComponentData che possono essere interrogati quando necessario.
+
+   ```csharp
+   // Componente singleton per riferimenti gestiti
+   public struct TutorialManagerReference : IComponentData
+   {
+       public Entity TutorialManagerEntity;
+   }
+   
+   // Nel sistema [BurstCompile], usare il riferimento
+   [BurstCompile]
+   public partial struct TutorialSystem : ISystem
+   {
+       public void OnUpdate(ref SystemState state)
+       {
+           // Accedere al singleton solo quando necessario
+           var tutorialRef = SystemAPI.GetSingleton<TutorialManagerReference>();
+           // ...
+       }
+   }
+   ```
+
+3. **Usare `[BurstDiscard]` per sezioni specifiche**: Annotare solo i metodi che accedono a tipi gestiti.
+
+   ```csharp
+   [BurstCompile]
+   public partial struct HybridSystem : ISystem
+   {
+       [BurstDiscard]
+       private void ProcessManagedTypes()
+       {
+           // Codice che utilizza tipi gestiti
+           var manager = UnityEngine.Object.FindObjectOfType<GameManager>();
+           // ...
+       }
+       
+       [BurstCompile]
+       public void OnUpdate(ref SystemState state)
+       {
+           // Logica compatibile con Burst
+           // ...
+           
+           // Chiamata a codice gestito
+           ProcessManagedTypes();
+       }
+   }
+   ```
+
+### Utilizzare tipi di array compatibili con Burst
+
+Per evitare problemi con gli array gestiti, utilizza alternative da Unity.Collections:
+
+```csharp
+// Utilizzo corretto di array in Burst
+[BurstCompile]
+public partial struct BurstFriendlyJob : IJobEntity
+{
+    // Array di tipo nativo compatibile con Burst
+    [ReadOnly] public NativeArray<int> ValidIndices;
+    [ReadOnly] public NativeArray<float3> Positions;
+    
+    // Buffer di scrittura
+    public NativeList<Entity> ResultEntities;
+    
+    // Altre opzioni utili
+    // public NativeHashMap<int, float> MappingValues;
+    // public NativeQueue<Entity> ProcessQueue;
+    
+    public void Execute(Entity entity)
+    {
+        // Ora puoi accedere agli array in modo sicuro
+        for (int i = 0; i < ValidIndices.Length; i++)
+        {
+            int index = ValidIndices[i];
+            
+            // Esempio di operazione con array
+            float3 position = Positions[index];
+            
+            // Aggiungi all'output
+            if (math.length(position) > 5f)
+                ResultEntities.Add(entity);
+        }
+    }
+}
+
+// Preparazione per un job
+void PrepareJob()
+{
+    // Sempre ricordare di inizializzare con Allocator
+    var indices = new NativeArray<int>(10, Allocator.TempJob);
+    var positions = new NativeArray<float3>(10, Allocator.TempJob);
+    var results = new NativeList<Entity>(Allocator.TempJob);
+    
+    try
+    {
+        // Configura il job
+        var job = new BurstFriendlyJob
+        {
+            ValidIndices = indices,
+            Positions = positions,
+            ResultEntities = results
+        };
+        
+        // Esegui il job
+        job.Schedule().Complete();
+        
+        // Usa i risultati
+        foreach (var result in results)
+        {
+            // Fai qualcosa con result
+        }
+    }
+    finally
+    {
+        // IMPORTANTE: Rilascia sempre le risorse
+        indices.Dispose();
+        positions.Dispose();
+        results.Dispose();
+    }
+}
+```
+
+4. **Separare in sistemi diversi**: Dividere la logica in un sistema Burst-compatibile e uno per i tipi gestiti.
+
+   ```csharp
+   // Sistema per la gestione dei tipi gestiti
+   public partial class ManagedReferencesSystem : SystemBase
+   {
+       protected override void OnUpdate()
+       {
+           // Logica che utilizza tipi gestiti
+       }
+   }
+   
+   // Sistema ottimizzato con Burst
+   [BurstCompile]
+   public partial struct BurstOptimizedSystem : ISystem
+   {
+       // Solo logica compatibile con Burst
+   }
+   ```
+
+5. **Evitare la creazione di array gestiti**: Gli array classici in C# sono tipi managed, anche se contengono struct.
+
+   ```csharp
+   // Esempio problematico: creazione di array in job Burst-compiled
+   [BurstCompile] // <-- Problematico!
+   public partial struct ProcessLevelRequestsJob : IJobEntity
+   {
+       public EntityManager EntityManager;
+   
+       private void GenerateLevel()
+       {
+           // Errore: La creazione di questo array non è compatibile con Burst
+           var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+       }
+   }
+   
+   // Soluzione: rimuovere BurstCompile o usare un approccio alternativo
+   public partial struct ProcessLevelRequestsJob : IJobEntity // [BurstCompile] rimosso
+   {
+       public EntityManager EntityManager;
+   
+       private void GenerateLevel()
+       {
+           // Ancora non compatibile con Burst a causa di EntityManager,
+           // ma evita la creazione di un array di ComponentType
+           var difficultyQuery = EntityManager.CreateEntityQuery(typeof(WorldDifficultyConfigComponent));
+       }
+   }
+   ```
 
 ---
 

@@ -51,8 +51,8 @@ namespace RunawayHeroes.ECS.Systems.World
         
     /// <summary>
     /// Job per elaborare le richieste di generazione livello
+    /// Nota: Non possiamo usare [BurstCompile] perché accediamo a EntityManager (tipo gestito)
     /// </summary>
-    [BurstCompile]
     public partial struct ProcessRunnerLevelRequestsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter CommandBuffer;
@@ -104,10 +104,12 @@ namespace RunawayHeroes.ECS.Systems.World
             WorldDifficultyConfigComponent difficultyConfig = default;
             bool hasDifficultyConfig = false;
             
-            // Nota: Non possiamo usare direttamente SystemAPI in un IJobEntity, 
-            // quindi dobbiamo verificare la presenza del componente prima dell'esecuzione del job
-            // Per semplicità, controlliamo se esiste almeno un'entità con questo componente
-            var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            // NOTA: Questo codice non è compatibile con Burst a causa dell'array ComponentType[]
+            // Per questo motivo abbiamo rimosso l'attributo [BurstCompile] da questo job
+            // var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            
+            // Approccio alternativo che non richiede la creazione di un ComponentType[] (ma comunque non compatibile con Burst a causa di EntityManager)
+            var difficultyQuery = EntityManager.CreateEntityQuery(typeof(WorldDifficultyConfigComponent));
             if (difficultyQuery.CalculateEntityCount() > 0)
             {
                 // Otteniamo il primo componente che troviamo (dovrebbe essere un singleton)
@@ -202,7 +204,8 @@ namespace RunawayHeroes.ECS.Systems.World
             bool hasDifficultyConfig = false;
             
             // Cerca la configurazione di difficoltà nel mondo
-            var difficultyQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldDifficultyConfigComponent>());
+            // Approccio compatibile con EntityManager ma non con Burst
+            var difficultyQuery = EntityManager.CreateEntityQuery(typeof(WorldDifficultyConfigComponent));
             if (difficultyQuery.CalculateEntityCount() > 0)
             {
                 // Otteniamo il primo componente che troviamo (dovrebbe essere un singleton)
